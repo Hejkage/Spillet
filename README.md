@@ -1,11 +1,4 @@
 # Project structure
-
-Your 5,662-line `gametest.py`, split into files. **Behaviour is unchanged** — verified
-by running the old and new versions side by side for 300 frames with randomness and
-frame timing pinned, and diffing player position, health, XP, coins, all 14 derived
-stats, enemy positions, enemy health, aggro flags, projectile counts and inventory
-contents. Identical.
-
 Run it with `python main.py` from this folder.
 
 ## The one rule
@@ -173,28 +166,3 @@ in data. Writing a mechanic once is correct; writing it per-item is the failure 
   that legitimately need each other at runtime but not at import time.
 - The `# region` comments are preserved throughout, so search still works the way
   you're used to.
-
-## Verification
-
-Beyond the 300-frame state diff, a functional suite exercises the paths an idle
-headless run never reaches: firing projectiles, melee swings connecting, active +
-support gem combinations, enemy death and loot drops, pet abilities, enemy AI
-casting, leaper movement, shop stocking and rerolling, rolling every base item and
-item template, switching through all four areas, save/load round trip, dropping and
-picking up items, and `register_active_gem`.
-
-Every one of these was also run against the original single-file version, so any
-difference would show up as a behaviour change rather than a pass/fail I had to
-guess about.
-
-## Known gotcha for future edits
-
-The import generator I used had a scope bug: a name used as a *parameter* somewhere
-in a file (like `player` in `update_ai(self, player, dt)`) was mistakenly treated as
-already defined, so its module-level import was skipped. That's what caused the
-`NameError: name 'player' is not defined` on the first projectile hit.
-
-All modules have since been re-checked with Python's `symtable`, which is properly
-scope-aware. If you hit a similar `NameError` after moving code between files, the
-fix is always the same: add the missing `from x import y` at the top of the file, or
-inside the function if the other module is created later.
