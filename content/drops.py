@@ -4,9 +4,8 @@ Pure data. Add new entries here - never in systems/.
 """
 
 from systems.rarity import rarity_epic, rarity_legendary, rarity_rare, roll_item, roll_rarity
-from systems.items import make_item
-from systems.drops import DropEntry, DropPool, active_gem_group
-from .items import roll_swarmcaller
+from systems.items import make_item, make_unique
+from systems.drops import DropEntry, DropPool, active_gem_group, pet_group
 
 support_gem_group = [
     DropEntry(lambda: make_item("support_projectiles", rarity=roll_rarity()), weight=5),
@@ -53,18 +52,15 @@ low_level_jewelry_group = [
 
 unique_group = [
     #Omega god tier 0.1 weighting!
-    DropEntry(lambda: roll_swarmcaller(), weight=0.1),
+    DropEntry(lambda: make_unique("swarmcaller"), weight=0.1),
 ]
 
 wand_group = [
-    DropEntry(lambda: roll_swarmcaller(),          weight=25),
+    DropEntry(lambda: make_unique("swarmcaller"),          weight=25),
     DropEntry(lambda: roll_item("twig_wand"),      weight=25),
 ]
 
-pet_group = [
-    DropEntry(lambda: make_item("spider_pet", rarity=rarity_legendary),    weight=0.1),
-    DropEntry(lambda: make_item("bing_bong_pet", rarity=rarity_legendary), weight=0.1),
-]
+# pet_group is filled by register_pet() in content/pets/
 
 example_drop_pool = DropPool([
     # Currency 

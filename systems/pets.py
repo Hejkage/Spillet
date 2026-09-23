@@ -50,6 +50,50 @@ def make_pet_projectile_ability(sprite_name, effects=None):
         pet.ability_timer = pet.ability_cooldown
     return ability
 
+# ---------------------------------------------------------------
+# MOVEMENT - how a pet travels towards its spot next to the player.
+# A pet picks one with "movement": "walk" in its stats.
+#
+# register_pet_movement(name, move, setup=None)
+#   move(pet, dt, target_x, target_y, dx, dy, distance)
+#       called every frame while the pet is too far from its spot
+#   setup(pet)
+#       optional, runs once when the pet is created (for timers etc.)
+#
+# A movement reads its settings with pet.get_stat("name", default), so new
+# settings never need changes to the Pet class.
+# ---------------------------------------------------------------
+pet_movements = {}
+
+def register_pet_movement(name, move, setup=None):
+    if name in pet_movements:
+        raise ValueError(f"Pet movement '{name}' is registered twice")
+    pet_movements[name] = {"move": move, "setup": setup}
+
+def walk_move(pet, dt, target_x, target_y, dx, dy, distance):
+    move_dir = pygame.Vector2(dx, dy).normalize()
+    speed = pet.get_stat("speed", 300)
+    pet.x += move_dir.x * speed * dt
+    pet.y += move_dir.y * speed * dt
+
+def leap_setup(pet):
+    pet.leap_timer = 0.0
+
+def leap_move(pet, dt, target_x, target_y, dx, dy, distance):
+    from systems.player import begin_leap
+    pet.leap_timer -= dt
+    if pet.leap_timer <= 0:
+        begin_leap(pet, target_x, target_y,
+                   pet.get_stat("leap_height", 100),
+                   pet.get_stat("leap_time_per_unit", 0.002),
+                   pet.get_stat("leap_max_distance", 700),
+                   min_distance=pet.get_stat("leap_min_distance", 0),
+                   scatter=pet.get_stat("leap_scatter", 0))
+        pet.leap_timer = pet.get_stat("leap_cooldown", 0.0)
+
+register_pet_movement("walk", walk_move)
+register_pet_movement("leap", leap_move, setup=leap_setup)
+
 class Pet:
     def __init__(self, pet_type, x, y):
         config = pet_configs[pet_type]
@@ -64,22 +108,19 @@ class Pet:
         self.ability_range = self.get_stat("ability_range", 500)
         self.ability_damage = self.get_stat("ability_damage", 10)
         self.ability_projectile_speed = self.get_stat("ability_projectile_speed", 600)
-        self.ability_slow_amount = self.get_stat("ability_slow_amount", 0.3)
-        self.ability_slow_duration = self.get_stat("ability_slow_duration", 2.0)
         self.ability_timer = 0
         self.sound_name = self.get_stat("sound")
         self.sound_interval = self.get_stat("sound_interval", 5.0)
         self.sound_volume = self.get_stat("sound_volume", 1.0)
         self.sound_timer = random.uniform(0, self.sound_interval)
-        self.leap = None
+        self.leap = None                       # used by the shared leap code in player.py
         self.movement = self.get_stat("movement", "walk")
-        self.leap_height = self.get_stat("leap_height", 100)
-        self.leap_time_per_unit = self.get_stat("leap_time_per_unit", 0.002)
-        self.leap_max_distance = self.get_stat("leap_max_distance", 700)
-        self.leap_cooldown = self.get_stat("leap_cooldown", 0.0)
-        self.leap_timer = 0.0
-        self.leap_min_distance = self.get_stat("leap_min_distance", 0)
-        self.leap_scatter = self.get_stat("leap_scatter", 0)
+        if self.movement not in pet_movements:
+            raise KeyError(f"Pet '{pet_type}' uses unknown movement '{self.movement}'. "
+                           f"Known: {sorted(pet_movements)}")
+        setup = pet_movements[self.movement]["setup"]
+        if setup:
+            setup(self)
 
         sprite = scaled_sprites[self.sprite_name]
         self.rect = sprite.get_rect()
@@ -94,7 +135,7 @@ class Pet:
         return self.stats.get(stat_name, default)
     
     def pet_update(self, player, dt):
-        from systems.player import begin_leap, update_leap
+        from systems.player import update_leap
         if self.sound_name:
             self.sound_timer -= dt
             if self.sound_timer <= 0:
@@ -123,19 +164,7 @@ class Pet:
         distance = (dx * dx + dy * dy) ** 0.5
 
         if distance > self.follow_distance:
-            if self.movement == "leap":
-                self.leap_timer -= dt
-                if self.leap_timer <= 0:
-                    begin_leap(self, target_x, target_y, self.leap_height,
-                               self.leap_time_per_unit, self.leap_max_distance,
-                               min_distance=self.leap_min_distance,
-                               scatter=self.leap_scatter)
-                    self.leap_timer = self.leap_cooldown
-            else:
-                move_dir = pygame.Vector2(dx, dy).normalize()
-                speed = self.get_stat("speed", 300)
-                self.x += move_dir.x * speed * dt
-                self.y += move_dir.y * speed * dt
+            pet_movements[self.movement]["move"](self, dt, target_x, target_y, dx, dy, distance)
         
         ability = self.get_stat("ability")
         if ability:
@@ -157,6 +186,53 @@ class Pet:
 # A system must NEVER import from content/.
 # ---------------------------------------------------------------
 pet_configs = {}
+
+def register_pet(key, name, sprite, stats, name_plural=None,
+                 item_name=None, item_sprite=None, item_rarity=None,
+                 drop_weight=0.1, drop_rarity=None):
+    """Define a pet, the item that equips it, and its drop entry in one call.
+
+    key            - internal name, e.g. "spider"
+    stats          - everything the pet does (ability, speed, movement, sound...)
+    item_name      - name of the pet ITEM (default: "<name> Pet"). Its item key is "<key>_pet".
+    item_sprite    - inventory icon (default: same as the pet sprite)
+    item_rarity    - the item's default rarity (default: common)
+    drop_weight    - how often the item drops (0 = never, shop-only)
+    drop_rarity    - rarity the item has when it DROPS (default: its item_rarity)
+    """
+    from systems.items import item_templates, make_item
+    from systems.rarity import rarity_common
+    from systems.drops import DropEntry, pet_group
+
+    if key in pet_configs:
+        raise ValueError(f"Pet '{key}' is registered twice")
+    pet_configs[key] = {
+        "sprite": sprite,
+        "name": name,
+        "name_plural": name_plural or name,
+        "stats": stats,
+    }
+
+    item_key = key + "_pet"
+    item_templates[item_key] = {
+        "kind": "pet",
+        "name": item_name or name + " Pet",
+        "sprite": item_sprite or sprite,
+        "pet_type": key,
+        "rarity": item_rarity or rarity_common,
+    }
+
+    if drop_weight:
+        pet_group.append(DropEntry(lambda k=item_key: make_item(k, rarity=drop_rarity), weight=drop_weight))
+    return key
+
+def roll_pets(weights, count):
+    """Pick `count` pet types from a {pet_type: weight} dict, e.g. {"spider": 10, "ghost": 5}."""
+    unknown = [k for k in weights if k not in pet_configs]
+    if unknown:
+        raise KeyError(f"Unknown pet(s) {unknown} in weights. Known pets: {sorted(pet_configs)}")
+    return random.choices(list(weights), weights=list(weights.values()), k=count)
+
 def pet_display_name(pet_type, count=1):
     config = pet_configs.get(pet_type, {})
     name = config.get("name", pet_type)

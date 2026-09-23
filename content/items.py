@@ -3,34 +3,9 @@
 Pure data. Add new entries here - never in systems/.
 """
 
-import random
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
 from systems.weapons import weapon_class_configs
-from systems.items import UniqueItem, affix_count_by_rarity, affix_pool, base_items, item_templates
-
-swarmcaller_pet_count = (1, 8)
-
-#pet: Weight
-swarmcaller_pet_pool = {
-    "spider": 1,
-    "bing_bong": 1
-}
-
-def roll_swarmcaller():
-    lo, hi = swarmcaller_pet_count
-    count = random.randint(lo, hi)
-
-    types = list(swarmcaller_pet_pool.keys())
-    weights = list(swarmcaller_pet_pool.values())
-    summon = random.choices(types, weights=weights, k=count)
-
-    return UniqueItem(
-        "Swarmcaller",    
-        "wand_item_sprite",
-        slot_type="weapon",
-        weapon_class="wand",
-        summon_pets=summon,
-    )
+from systems.items import affix_count_by_rarity, affix_pool, base_items, item_templates
 
 affix_pool.update({
     "spell_damage": {
@@ -434,22 +409,7 @@ item_templates.update({
     "support_crit_damage": {"kind": "support_gem", "gem_type": "crit_damage", "rarity": rarity_common},
     "support_attack_speed":{"kind": "support_gem", "gem_type": "attack_speed","rarity": rarity_common},
 
-    # Pets ITEMS ITEMS THESE ARE ITEMS NOT PETS!!!! NAME IS FOR THE ITEM
-    "spider_pet": {
-        "kind": "pet",
-        "name": "Spider Pet",
-        "sprite": "spider_pet_sprite",
-        "pet_type": "spider",
-        "rarity": rarity_common,
-    },
-    
-    "bing_bong_pet": {
-        "kind": "pet",
-        "name": "Bing Bong Pet",
-        "sprite": "bing_bong_pet_sprite",
-        "pet_type": "bing_bong",
-        "rarity": rarity_rare,
-    },
+    # Pet items are made by register_pet() in content/pets/
 
     # Currency
     "gold_coin": {

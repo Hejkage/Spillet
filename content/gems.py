@@ -8,6 +8,10 @@ from systems.supports import add_crit_damage, add_increased_attack_speed, add_in
 from systems.melee import cast_melee_attack
 from systems.abilities import active_gem_templates, basic_attack_templates, basic_attacks_by_weapon, basic_attacks_by_weapon_key, build_active_gem, cast_projectile_spell, shoot_projectile_gun
 
+from core.assets import configure_sprite
+
+configure_sprite("gun_basic_attack_sprite", scale=1, anchor="top_left", position=(1, 1), pre_scale=4, scale_with_screen=True)
+
 basic_attack_templates.update({
     "wand_attack": {
         "name": "Wand attack",

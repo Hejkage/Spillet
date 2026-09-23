@@ -49,7 +49,8 @@ ui/
 content/                 THE FOLDER YOU ACTUALLY EDIT - pure data
   gems.py                active gems, basic attacks, support gems
   items.py               affixes, weapon classes, base items, item templates
-  pets.py                pet definitions
+  pets/                  ONE FILE PER PET - loaded automatically (see _example_pet.py)
+  uniques/               ONE FILE PER UNIQUE - loaded automatically (see swarmcaller.py)
   enemies.py             enemy abilities and enemy definitions
   world_objects.py       trees, chests, shop buildings
   drops.py               drop groups and drop pools
@@ -126,6 +127,32 @@ register_active_gem(
     },
 )
 ```
+
+**A new pet** — one new file in `content/pets/` plus its sprite. Copy
+`content/pets/_example_pet.py`, rename it, and edit it. `register_pet` creates the pet,
+the pet item (`<key>_pet`) and its drop entry. No other file needs touching.
+(To let Swarmcaller summon it, add it to `swarmcaller_pet_weights` in
+`content/uniques/swarmcaller.py`.)
+
+**A new effect** — `register_status(...)` (lasts a while: burn, slow, stun) or
+`register_hit_effect(...)` (happens once: explode, spawn). Call it from any file, even a
+single pet's file. Anything that hits (projectiles, melee, pet shots) then uses it by name:
+`{"name": "ember_burn", "duration": 3, "dps": 4}`. A status can stop the target acting
+with `blocks={"attacking"}` (that's how silence works now; it also stops contact damage).
+
+**A new pet movement** — `register_pet_movement("dash", move, setup=None)`, then
+`"movement": "dash"` in the pet's stats.
+
+**A sprite that needs a different size** — `configure_sprite("name", pre_scale=2)` in the
+content file that uses it. `core/assets.py` only keeps settings for UI sprites.
+
+**A new unique** — one new file in `content/uniques/` (copy `swarmcaller.py`).
+`register_unique(key, roll=fn, name=..., ...)`: the base is fixed, and `roll()` returns
+the random parts, e.g. `{"summon_pets": [...]}`. Every copy made with `make_unique(key)`
+(drop / shop) is rolled once and is completely separate from every other copy: it has its
+own stats and rolled values, is saved on its own, and only changes through
+`reroll_unique(item)` (the hook for a Divine Orb-style currency) or code that edits that
+one item. Normal items work the same way: every item has its own copy of its stats.
 
 **A new area** — `content/areas.py`: a `build_*` function plus one `register_area`.
 

@@ -23,7 +23,8 @@ def get_ui_scaled(sprite_name, width, height):
         _ui_scaled_cache[key] = surface
     return surface
 
-#Sprite configs
+# Sprite configs for UI sprites. Game sprites (characters, items, skills...)
+# are set from their content file with configure_sprite() instead.
 sprite_configs = {
 "gear_sprite":  {
     "scale": 1,
@@ -31,22 +32,6 @@ sprite_configs = {
     "position": (1, 1),
     "pre_scale": 1,
     "scale_with_screen": True
-},
-
-"gun_basic_attack_sprite":  {
-    "scale": 1,
-    "anchor": "top_left",
-    "position": (1, 1),
-    "pre_scale": 4,
-    "scale_with_screen": True
-},
-
-"chest_sprite":  {
-    "scale": 1,
-    "anchor": "center",
-    "position": (1, 1),
-    "pre_scale": 2,
-    "scale_with_screen": False
 },
 
 "button_sprite": {
@@ -122,9 +107,12 @@ def load_sprites(dir):
                 sprite_configs[sprite_name] = dict(default_config)
             load_one_sprite(sub / file, file)
 
+sprite_paths = {}   # sprite name -> file path, so a sprite can be reloaded later
+
 def load_one_sprite(path, file):
     sprite = pygame.image.load(path).convert_alpha()
     sprite_name = file.replace(".png", "")
+    sprite_paths[sprite_name] = path
 
     config = sprite_configs.get(sprite_name, {})
     pre_scale = config.get("pre_scale", 1)
@@ -160,54 +148,77 @@ def update_screen_data():
     scale_factor = min(app.screen_width / base_width, app.screen_height / base_height)
     app.ui_scale = scale_factor
     
-    for sprite_name, sprite in sprites.items():
-
-        sprite_width, sprite_height = sprite.get_size()
-
-        config = sprite_configs.get(sprite_name, {
-            "scale": 1,
-            "anchor": "center",
-            "position": (None, None)   
-        })
-
-        if not config.get("scale_with_screen", True):
-            local_scale = config.get("scale", 1)
-            scaled_sprite = pygame.transform.scale(sprite, (int(sprite_width * local_scale), int(sprite_height * local_scale)))
-            scaled_sprites[sprite_name] = scaled_sprite
-            sprite_rects[sprite_name] = scaled_sprite.get_rect()
-            continue
-        
-        scaled_sprite = pygame.transform.scale(sprite, (int(sprite_width * scale_factor * config["scale"]), int(sprite_height * scale_factor * config["scale"])))
-        
-        scaled_sprites[sprite_name] = scaled_sprite
-
-        sprite_rect = scaled_sprite.get_rect()
-      
-        if config["anchor"] == "center":
-            if config["position"] != (None, None):
-                sprite_rect.center = config["position"]
-
-        elif config["anchor"] == "top_left":
-            if config["position"] != (None, None):
-                sprite_rect.topleft = config["position"]
-        
-        elif config["anchor"] == "top_right":
-            if config["position"] != (None, None):
-                sprite_rect.topright = config["position"]
-
-        elif config["anchor"] == "bottom_right":
-            if config["position"] != (None, None):
-                sprite_rect.bottomright = config["position"]
-
-        elif config["anchor"] == "bottom_left":
-            if config["position"] != (None, None):
-                sprite_rect.bottomleft = config["position"]
-        
-        sprite_rects[sprite_name] = sprite_rect
+    for sprite_name in sprites:
+        scale_one_sprite(sprite_name)
 
     app.label_font = None
 
     _ui_scaled_cache.clear()
+
+def scale_one_sprite(sprite_name):
+    """Build the on-screen version of one sprite from its config."""
+    sprite = sprites[sprite_name]
+    scale_factor = app.ui_scale
+    sprite_width, sprite_height = sprite.get_size()
+
+    config = sprite_configs.get(sprite_name, {
+        "scale": 1,
+        "anchor": "center",
+        "position": (None, None)   
+    })
+
+    if not config.get("scale_with_screen", True):
+        local_scale = config.get("scale", 1)
+        scaled_sprite = pygame.transform.scale(sprite, (int(sprite_width * local_scale), int(sprite_height * local_scale)))
+        scaled_sprites[sprite_name] = scaled_sprite
+        sprite_rects[sprite_name] = scaled_sprite.get_rect()
+        return
+    
+    scaled_sprite = pygame.transform.scale(sprite, (int(sprite_width * scale_factor * config["scale"]), int(sprite_height * scale_factor * config["scale"])))
+    
+    scaled_sprites[sprite_name] = scaled_sprite
+
+    sprite_rect = scaled_sprite.get_rect()
+  
+    if config["anchor"] == "center":
+        if config["position"] != (None, None):
+            sprite_rect.center = config["position"]
+
+    elif config["anchor"] == "top_left":
+        if config["position"] != (None, None):
+            sprite_rect.topleft = config["position"]
+    
+    elif config["anchor"] == "top_right":
+        if config["position"] != (None, None):
+            sprite_rect.topright = config["position"]
+
+    elif config["anchor"] == "bottom_right":
+        if config["position"] != (None, None):
+            sprite_rect.bottomright = config["position"]
+
+    elif config["anchor"] == "bottom_left":
+        if config["position"] != (None, None):
+            sprite_rect.bottomleft = config["position"]
+    
+    sprite_rects[sprite_name] = sprite_rect
+
+def configure_sprite(sprite_name, **settings):
+    """Change how one sprite is sized/placed. Call it from the content file
+    that uses the sprite, so you never have to edit this file:
+
+        configure_sprite("ember_fox_sprite", pre_scale=2)
+
+    Settings are the same keys as in folder_configs below (pre_scale, scale,
+    anchor, position, scale_with_screen). Anything you leave out keeps the
+    default for the sprite's folder.
+    """
+    if sprite_name not in sprite_paths:
+        raise KeyError(f"configure_sprite: no file named '{sprite_name}.png' in assets/sprites/")
+    sprite_configs[sprite_name] = {**sprite_configs.get(sprite_name, {}), **settings}
+    load_one_sprite(sprite_paths[sprite_name], sprite_name + ".png")
+    scale_one_sprite(sprite_name)
+    for key in [k for k in _ui_scaled_cache if k[0] == sprite_name]:
+        del _ui_scaled_cache[key]
         
 update_screen_data()
 

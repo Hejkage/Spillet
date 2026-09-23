@@ -107,7 +107,7 @@ class MeleeSwing:
                 continue
 
             self.hit_enemies.add(enemy)
-            apply_player_hit(enemy, self.damage, self.effects, self.hit_stats)
+            apply_player_hit(enemy, self.damage, self.effects, self.hit_stats, source=self)
 
             if self.max_targets and len(self.hit_enemies) >= self.max_targets:
                 return

@@ -2,7 +2,7 @@ import pygame
 import random
 from core.state import app, world
 from core.assets import scaled_sprites
-from systems.status import status_effect_types
+from systems.status import apply_hit_effects, status_blocks, status_effect_types
 from systems.projectiles import Projectile, orbit_rehit_cooldown
 from systems.drops import DropPool
 from systems.ground import spawn_drops
@@ -197,6 +197,10 @@ class Enemy:
 
     def has_status(self, name):
         return name in self.statuses
+
+    def is_blocked(self, action):
+        """True if a status (silence, stun...) stops this action. See systems/status.py."""
+        return status_blocks(self.statuses, action)
     
     def enemy_update_hitbox(self, camera):
         screen_pos = camera.apply_camera(self.x, self.y)
@@ -236,7 +240,7 @@ class Enemy:
         else:
             self.update_idle(dt)
 
-        if self.has_status("silence"):
+        if self.is_blocked("attacking"):
             self.casting = False
             self.pending_cast = None
         else:
@@ -351,12 +355,10 @@ class Enemy:
 
         if self.rect.colliderect(p.rect):
             if p.from_player:
-                apply_player_hit(self, p.damage, p.effects, p.hit_stats)
+                apply_player_hit(self, p.damage, p.effects, p.hit_stats, source=p)
             else:
                 self.enemy_take_damage(p.damage)
-                for effect in p.effects:
-                    params = {k: v for k, v in effect.items() if k not in ("name", "duration")}
-                    self.apply_status(effect["name"], effect["duration"], **params)
+                apply_hit_effects(self, p.effects, source=p)
 
             if p.orbit:
                 if p.pierce > 0:
@@ -403,7 +405,7 @@ register_behavior("melee",  melee_behavior)
 register_behavior("caster", caster_behavior)
 register_behavior("leaper", leaper_behavior)
 
-def apply_player_hit(enemy, damage, effects=(), hit_stats=None):
+def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None):
     chance, crit_multiplier = player.crit_stats(hit_stats)
 
     if chance > 0 and random.uniform(0, 100) < chance:
@@ -414,9 +416,7 @@ def apply_player_hit(enemy, damage, effects=(), hit_stats=None):
     if player.lifesteal > 0:
         player.heal(damage * player.lifesteal / 100)
 
-    for effect in effects:
-        params = {k: v for k, v in effect.items() if k not in ("name", "duration")}
-        enemy.apply_status(effect["name"], effect["duration"], **params)
+    apply_hit_effects(enemy, effects, source=source)
 
     return damage
 

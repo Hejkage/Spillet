@@ -61,3 +61,4 @@ generic_drop_pool = DropPool(drop_count=(1, 1))
 # appends to it automatically.
 # ---------------------------------------------------------------
 active_gem_group = []
+pet_group = []          # filled by register_pet()

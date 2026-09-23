@@ -179,7 +179,7 @@ class Player:
 
         signature = (
             tuple(id(item) if item else None for item in equipped),
-            id(weapon) if summon_types else None,
+            (id(weapon), tuple(summon_types)) if summon_types else None,   # tuple: a reroll changes it
         )
         if signature == self.pet_signature:
             return
@@ -201,7 +201,7 @@ class Player:
 
         summon_existing = {id(p.summon_key): p for p in self.pets if getattr(p, "summon_key", None) is not None}
         for i, pet_type in enumerate(summon_types):
-            key = (weapon, i)
+            key = (weapon, i, pet_type)
             found = None
             for p in self.pets:
                 if getattr(p, "summon_key", None) == key:

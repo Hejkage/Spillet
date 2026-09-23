@@ -1,5 +1,9 @@
 from systems.world_objects import world_object_configs
 
+from core.assets import configure_sprite
+
+configure_sprite("chest_sprite", scale=1, anchor="center", position=(1, 1), pre_scale=2, scale_with_screen=False)
+
 world_object_configs.update({
     "tree": {
         "sprite": "tree_sprite",

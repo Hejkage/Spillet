@@ -1,3 +1,4 @@
+import copy
 import pygame
 import random
 from collections import Counter
@@ -114,7 +115,9 @@ class Item:
     def __init__(self, name, sprite_name, stats=None, category=item_category_generic, rarity=rarity_common):
         self.name = name
         self.sprite_name = sprite_name
-        self.stats = stats or {}
+        # deepcopy: every item gets its OWN stats, never shared with its
+        # template or with other copies. Changing one item never changes another.
+        self.stats = copy.deepcopy(stats) if stats else {}
         self.category = category
         self.rarity = rarity
 
@@ -215,21 +218,79 @@ class PetItem(Item):
         return cls(d["name"], d["sprite_name"], d["pet_type"], rarity=d.get("rarity", rarity_common))
 
 class UniqueItem(EquippableItem):
+    """A unique item. Its random parts are rolled ONCE when the item is made
+    (dropped / put in a shop) and stored in self.rolled, which is saved with the
+    item. They never change again unless reroll_unique() is called on it
+    (e.g. by a Divine Orb-style currency). See register_unique() below."""
     save_kind = "unique"
 
-    def __init__(self, name, sprite_name, slot_type, layer_sprite_name=None, stats=None, weapon_class=None, summon_pets=None, swing_sprite_name=None):
+    def __init__(self, name, sprite_name, slot_type, layer_sprite_name=None, stats=None, weapon_class=None, summon_pets=None, swing_sprite_name=None, unique_key=None):
         super().__init__(name, sprite_name, slot_type, layer_sprite_name=layer_sprite_name, stats=stats, rarity=rarity_common, weapon_class=weapon_class, swing_sprite_name=swing_sprite_name)
-        self.summon_pets = summon_pets or []
+        self.summon_pets = list(summon_pets) if summon_pets else []
         self.is_unique = True
+        self.unique_key = unique_key
+        self.rolled = {}
+
+    def apply_rolled(self, rolled):
+        """Store rolled values and put them on the item (rolled["summon_pets"] -> self.summon_pets)."""
+        self.rolled = copy.deepcopy(rolled)
+        for attr, value in self.rolled.items():
+            setattr(self, attr, copy.deepcopy(value))
 
     def to_dict(self):
         d = super().to_dict()
         d["summon_pets"] = self.summon_pets
+        d["unique_key"] = self.unique_key
+        # Save what the item has NOW (not the original roll), so later changes
+        # to e.g. item.summon_pets are saved too.
+        d["rolled"] = {attr: getattr(self, attr) for attr in self.rolled}
         return d
 
     @classmethod
     def from_dict(cls, d):
-        return cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", {}), weapon_class=d.get("weapon_class"), summon_pets=d.get("summon_pets", []), swing_sprite_name=d.get("swing_sprite"))
+        item = cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", {}), weapon_class=d.get("weapon_class"), summon_pets=d.get("summon_pets", []), swing_sprite_name=d.get("swing_sprite"), unique_key=d.get("unique_key"))
+        if item.unique_key is None:
+            # Saves from before unique_key existed: find the template by name.
+            item.unique_key = next((k for k, t in unique_templates.items() if t["name"] == item.name), None)
+        if d.get("rolled"):
+            item.apply_rolled(d["rolled"])
+        return item
+
+# ---------------------------------------------------------------
+# UNIQUES - fixed base + a roll function for the random parts.
+#
+#   register_unique("swarmcaller", roll=roll_swarmcaller_pets,
+#                   name="Swarmcaller", sprite_name="wand_item_sprite",
+#                   slot_type="weapon", weapon_class="wand")
+#
+# roll() returns a dict of the random parts, e.g. {"summon_pets": [...]}.
+# Each key becomes an attribute on the item and is saved with it.
+# ---------------------------------------------------------------
+unique_templates = {}
+
+def register_unique(key, roll=None, **base):
+    """base = everything UniqueItem takes (name, sprite_name, slot_type, stats...)."""
+    if key in unique_templates:
+        raise ValueError(f"Unique '{key}' is registered twice")
+    unique_templates[key] = {"roll": roll, **base}
+    return key
+
+def make_unique(key):
+    """Create a new copy of a unique and roll its random parts."""
+    t = {k: copy.deepcopy(v) for k, v in unique_templates[key].items() if k != "roll"}
+    roll = unique_templates[key]["roll"]
+    item = UniqueItem(unique_key=key, **t)
+    if roll:
+        item.apply_rolled(roll())
+    return item
+
+def reroll_unique(item):
+    """Re-roll the random parts of an existing unique (Divine Orb). Returns True if it worked."""
+    t = unique_templates.get(getattr(item, "unique_key", None))
+    if not t or not t["roll"]:
+        return False
+    item.apply_rolled(t["roll"]())
+    return True
 
 class Equipment:
     def __init__(self):

@@ -1,0 +1,691 @@
+{
+  "level": 1,
+  "xp": 75,
+  "xp_to_next_level": 100,
+  "coins": 99999999440,
+  "current_health": 1000.0,
+  "equipment": {
+    "main": {
+      "ring1": null,
+      "ring2": null,
+      "neck": null,
+      "head": null,
+      "body": null,
+      "gloves": null,
+      "belt": null,
+      "pants": null,
+      "boots": null,
+      "weapon": {
+        "kind": "unique",
+        "name": "Swarmcaller",
+        "sprite_name": "wand_item_sprite",
+        "rarity": "common",
+        "category": "equipment",
+        "slot_type": "weapon",
+        "layer_sprite_name": null,
+        "stats": {},
+        "weapon_class": "wand",
+        "swing_sprite": null,
+        "summon_pets": [
+          "spider",
+          "spider",
+          "bing_bong",
+          "bing_bong",
+          "spider",
+          "spider"
+        ],
+        "unique_key": "swarmcaller",
+        "rolled": {
+          "summon_pets": [
+            "spider",
+            "spider",
+            "bing_bong",
+            "bing_bong",
+            "spider",
+            "spider"
+          ]
+        }
+      },
+      "offhand": null
+    },
+    "extra": {
+      "gem_active": null,
+      "gem_support1": null,
+      "gem_support2": null,
+      "gem_support3": null,
+      "gem_support4": null
+    },
+    "pets": {
+      "pet1": null,
+      "pet2": null,
+      "pet3": null
+    }
+  },
+  "inventory": [
+    {
+      "kind": "support_gem",
+      "name": "Multiple Projectiles",
+      "sprite_name": "gold_coin_sprite",
+      "rarity": "common",
+      "category": "equipment",
+      "gem_type": "projectiles",
+      "value": 1
+    },
+    {
+      "kind": "active_gem",
+      "name": "Fireball",
+      "sprite_name": "fireball_item_sprite",
+      "rarity": "common",
+      "category": "equipment",
+      "template_key": "fireball",
+      "gem_stats": {
+        "damage": 70,
+        "cooldown": 1,
+        "crit_chance": 3
+      }
+    },
+    {
+      "kind": "equippable",
+      "name": "Baby witch wand",
+      "sprite_name": "wand_item_sprite",
+      "rarity": "common",
+      "category": "equipment",
+      "slot_type": "weapon",
+      "layer_sprite_name": null,
+      "stats": {
+        "Just a name": {
+          "stat": "spell_damage",
+          "type": "increased",
+          "amount": 5
+        },
+        "elemental_damage": {
+          "stat": "elemental_damage",
+          "type": "increased",
+          "amount": 5
+        }
+      },
+      "weapon_class": "wand",
+      "swing_sprite": null
+    },
+    {
+      "kind": "unique",
+      "name": "Swarmcaller",
+      "sprite_name": "wand_item_sprite",
+      "rarity": "common",
+      "category": "equipment",
+      "slot_type": "weapon",
+      "layer_sprite_name": null,
+      "stats": {},
+      "weapon_class": "wand",
+      "swing_sprite": null,
+      "summon_pets": [
+        "spider",
+        "bing_bong",
+        "spider",
+        "spider",
+        "bing_bong",
+        "bing_bong",
+        "spider"
+      ],
+      "unique_key": "swarmcaller",
+      "rolled": {
+        "summon_pets": [
+          "spider",
+          "bing_bong",
+          "spider",
+          "spider",
+          "bing_bong",
+          "bing_bong",
+          "spider"
+        ]
+      }
+    },
+    {
+      "kind": "unique",
+      "name": "Swarmcaller",
+      "sprite_name": "wand_item_sprite",
+      "rarity": "common",
+      "category": "equipment",
+      "slot_type": "weapon",
+      "layer_sprite_name": null,
+      "stats": {},
+      "weapon_class": "wand",
+      "swing_sprite": null,
+      "summon_pets": [
+        "bing_bong",
+        "spider",
+        "spider",
+        "bing_bong",
+        "spider"
+      ],
+      "unique_key": "swarmcaller",
+      "rolled": {
+        "summon_pets": [
+          "bing_bong",
+          "spider",
+          "spider",
+          "bing_bong",
+          "spider"
+        ]
+      }
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "chest": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "shops": {
+    "blacksmith": {
+      "stocked": true,
+      "slots": [
+        null,
+        {
+          "kind": "equippable",
+          "name": "Twig wand",
+          "sprite_name": "wand_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "cooldown": {
+              "stat": "cooldown",
+              "type": "flat",
+              "amount": 2,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "wand",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Leather pants",
+          "sprite_name": "pants_item_sprite",
+          "rarity": "uncommon",
+          "category": "equipment",
+          "slot_type": "pants",
+          "layer_sprite_name": null,
+          "stats": {
+            "health_regen": {
+              "stat": "health_regen",
+              "type": "flat",
+              "amount": 4,
+              "tier": "uncommon"
+            },
+            "max_health": {
+              "stat": "max_health",
+              "type": "flat",
+              "amount": 60,
+              "tier": "common"
+            }
+          },
+          "weapon_class": null,
+          "swing_sprite": null
+        },
+        {
+          "kind": "pet",
+          "name": "Bing Bong Pet",
+          "sprite_name": "bing_bong_pet_sprite",
+          "rarity": "rare",
+          "category": "generic",
+          "pet_type": "bing_bong"
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 18,
+              "tier": "common"
+            },
+            "crit_damage": {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 5,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "legendary",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "lifesteal": {
+              "stat": "lifesteal",
+              "type": "flat",
+              "amount": 3,
+              "tier": "uncommon"
+            },
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 44,
+              "tier": "rare"
+            },
+            "crit_damage": {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 54,
+              "tier": "epic"
+            },
+            "cooldown": {
+              "stat": "cooldown",
+              "type": "flat",
+              "amount": 9,
+              "tier": "legendary"
+            },
+            "physical_damage": {
+              "stat": "physical_damage",
+              "type": "increased",
+              "amount": 49,
+              "tier": "legendary"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "crit_damage": {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 5,
+              "tier": "common"
+            },
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 19,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 17,
+              "tier": "common"
+            },
+            "physical_damage": {
+              "stat": "physical_damage",
+              "type": "increased",
+              "amount": 9,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 11,
+              "tier": "common"
+            },
+            "physical_damage": {
+              "stat": "physical_damage",
+              "type": "increased",
+              "amount": 9,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 14,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "uncommon",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "crit_damage": {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 6,
+              "tier": "common"
+            },
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 12,
+              "tier": "common"
+            },
+            "physical_damage": {
+              "stat": "physical_damage",
+              "type": "increased",
+              "amount": 16,
+              "tier": "uncommon"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "rare",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "crit_damage": {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 31,
+              "tier": "rare"
+            },
+            "lifesteal": {
+              "stat": "lifesteal",
+              "type": "flat",
+              "amount": 4,
+              "tier": "uncommon"
+            },
+            "cooldown": {
+              "stat": "cooldown",
+              "type": "flat",
+              "amount": 3,
+              "tier": "uncommon"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "lifesteal": {
+              "stat": "lifesteal",
+              "type": "flat",
+              "amount": 1,
+              "tier": "common"
+            },
+            "physical_damage": {
+              "stat": "physical_damage",
+              "type": "increased",
+              "amount": 6,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "crit_damage": {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 6,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "lifesteal": {
+              "stat": "lifesteal",
+              "type": "flat",
+              "amount": 3,
+              "tier": "common"
+            },
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 18,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
+          "layer_sprite_name": null,
+          "stats": {
+            "physical_damage": {
+              "stat": "physical_damage",
+              "type": "increased",
+              "amount": 8,
+              "tier": "common"
+            },
+            "increased_crit_chance": {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 13,
+              "tier": "common"
+            }
+          },
+          "weapon_class": "gun",
+          "swing_sprite": null
+        }
+      ],
+      "prices": [
+        0,
+        50,
+        100,
+        200,
+        50,
+        1000,
+        50,
+        50,
+        50,
+        50,
+        100,
+        200,
+        50,
+        50,
+        50,
+        50
+      ]
+    },
+    "gemsmith": {
+      "stocked": true,
+      "slots": [
+        {
+          "kind": "active_gem",
+          "name": "Shotgun Blast",
+          "sprite_name": "gun_basic_attack_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "template_key": "shotgun_blast",
+          "gem_stats": {
+            "damage": 25
+          }
+        },
+        {
+          "kind": "active_gem",
+          "name": "Shotgun Blast",
+          "sprite_name": "gun_basic_attack_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "template_key": "shotgun_blast",
+          "gem_stats": {
+            "damage": 25
+          }
+        },
+        {
+          "kind": "active_gem",
+          "name": "Shotgun Blast",
+          "sprite_name": "gun_basic_attack_sprite",
+          "rarity": "rare",
+          "category": "equipment",
+          "template_key": "shotgun_blast",
+          "gem_stats": {
+            "damage": 65
+          }
+        },
+        {
+          "kind": "active_gem",
+          "name": "Shotgun Blast",
+          "sprite_name": "gun_basic_attack_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "template_key": "shotgun_blast",
+          "gem_stats": {
+            "damage": 25
+          }
+        }
+      ],
+      "prices": [
+        50,
+        50,
+        200,
+        50
+      ]
+    }
+  },
+  "settings": {
+    "loot_filter_index": 0,
+    "loot_filter_enabled": false,
+    "show_all_labels": false,
+    "start_completed": true
+  }
+}
