@@ -4,7 +4,7 @@ import random
 from collections import Counter
 from core.state import app, world
 from core.screen import camera, get_font
-from core.assets import sprites
+from core.assets import get_ui_scaled, scaled_sprites
 from systems.rarity import rarity_colors, rarity_common, unique_color
 from systems.weapons import get_weapon_geometry, player_body_radius, weapon_class_tags
 from systems.supports import SupportGem, roll_support_value, support_gem_types
@@ -337,7 +337,7 @@ class Equipment:
         panel_y = app.screen_height // 2 - panel_height // 2
         self.rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
 
-        bg_surface = pygame.transform.scale(scaled_sprites["inventory_background_sprite"], (panel_width, panel_height))
+        bg_surface = get_ui_scaled("inventory_background_sprite", panel_width, panel_height)
         app.screen.blit(bg_surface, (panel_x, panel_y))
 
         self.draw_stat_panel(scaled_sprites, player, panel_x, panel_y, panel_height, scale)
@@ -403,7 +403,7 @@ class Equipment:
         panel_width = int(350 * scale)
         stats_x = panel_x - panel_width - int(10 * scale)
 
-        bg_surface = pygame.transform.scale(scaled_sprites["inventory_background_sprite"], (panel_width, panel_height))
+        bg_surface = get_ui_scaled("inventory_background_sprite", panel_width, panel_height)
         app.screen.blit(bg_surface, (stats_x, panel_y))
 
         font_size = max(15, int(25 * scale))

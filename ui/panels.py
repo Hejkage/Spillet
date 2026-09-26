@@ -2,7 +2,7 @@ import pygame
 import random
 from core.state import app
 from core.screen import get_font
-from core.assets import scaled_sprites
+from core.assets import get_ui_scaled, scaled_sprites
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
 from systems.items import equipment, hover_state, scale_item_sprite
 from systems.player import player
@@ -126,7 +126,7 @@ class GridContainer:
         self.panel_padding = max(1, int(16 * scale))
         self.row_extra = max(0, int(self.base_row_extra * scale))             
 
-        slot_sprite = pygame.transform.scale(scaled_sprites[self.slot_sprite_name], (self.slot_size, self.slot_size))
+        slot_sprite = get_ui_scaled(self.slot_sprite_name, self.slot_size, self.slot_size)
         bag = self.bags[0]
 
         grid_width = bag.cols * (self.slot_size + self.padding) - self.padding
@@ -140,7 +140,7 @@ class GridContainer:
         bg_x, bg_y = self.compute_panel_position(bg_width, bg_height, scale)
         self.rect = pygame.Rect(bg_x, bg_y, bg_width, bg_height)
 
-        bg_surface = pygame.transform.scale(scaled_sprites[self.bg_sprite_name], (bg_width, bg_height))
+        bg_surface = get_ui_scaled(self.bg_sprite_name, bg_width, bg_height)
         app.screen.blit(bg_surface, (bg_x, bg_y))
 
         ox = bg_x + self.panel_padding

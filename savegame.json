@@ -683,7 +683,7 @@
     }
   },
   "settings": {
-    "loot_filter_index": 0,
+    "loot_filter_index": 1,
     "loot_filter_enabled": false,
     "show_all_labels": false,
     "start_completed": true

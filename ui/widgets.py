@@ -1,8 +1,9 @@
 import pygame
 from core.state import app
 from core.screen import get_font
-from core.assets import scaled_sprites
+from core.assets import scaled_sprites, get_ui_scaled
 from systems.ground import assign_label_slots, loot_filter_levels
+
 
 # region Buttons
 
@@ -47,7 +48,9 @@ class Button:
         app.screen.blit(text, text_rect)
 
 class Dropdown:
-    def __init__(self, position, options, anchor="center", on_select=None, get_label=None, header_label = None):
+    all_dropdowns = []
+
+    def __init__(self, position, options, anchor="center", on_select=None, get_label=None, header_label=None):
         self.position = position
         self.anchor = anchor
         self.options = options
@@ -58,6 +61,16 @@ class Dropdown:
         self.open = False
         self.rect = None
         self.option_rects = []
+        Dropdown.all_dropdowns.append(self)
+
+    @classmethod
+    def close_open(cls):
+        closed_one = False
+        for d in cls.all_dropdowns:
+            if d.open:
+                d.open = False
+                closed_one = True
+        return closed_one
     
     def current_value(self):
         return self.options[self.selected_index]
@@ -72,8 +85,14 @@ class Dropdown:
         return rect
     
     def draw(self):
-        sprite = scaled_sprites["button_sprite"]
+        sprite = scaled_sprites["dropdown_background_sprite"]
         self.rect = self.header_rect(sprite)
+
+        if self.open:
+            overlay = pygame.Surface((app.screen_width, app.screen_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 140))
+            app.screen.blit(overlay, (0, 0))
+
         app.screen.blit(sprite, self.rect)
 
         font = get_font(int(min(app.screen_width, app.screen_height) * 0.03))
@@ -90,13 +109,29 @@ class Dropdown:
 
         self.option_rects = []
         if self.open:
-            for i, value in enumerate(self.options):
-                opt_rect = self.rect.copy()
-                opt_rect.y = self.rect.bottom + i * self.rect.height
-                self.option_rects.append(opt_rect)
-                app.screen.blit(sprite, opt_rect)
-                opt_text = font.render(self.get_label(value), True, (255, 255, 255))
-                app.screen.blit(opt_text, opt_text.get_rect(center=opt_rect.center))
+            self._draw_option_list(font)
+
+    def _draw_option_list(self, font):
+        row_h = int(self.rect.height * 0.8)
+        list_rect = pygame.Rect(self.rect.left, self.rect.bottom, self.rect.width, row_h * len(self.options))
+        list_sprite = get_ui_scaled("button_sprite", list_rect.width, list_rect.height)
+        app.screen.blit(list_sprite, list_rect)
+
+        mouse_pos = pygame.mouse.get_pos()
+        for i, value in enumerate(self.options):
+            opt_rect = pygame.Rect(list_rect.left, list_rect.top + i * row_h, list_rect.width, row_h)
+            self.option_rects.append(opt_rect)
+
+            if i == self.selected_index:
+                pygame.draw.rect(app.screen, (90, 130, 90), opt_rect)
+            elif opt_rect.collidepoint(mouse_pos):
+                pygame.draw.rect(app.screen, (70, 70, 70), opt_rect)
+
+            if i > 0:
+                pygame.draw.line(app.screen, (200, 200, 200), opt_rect.topleft, opt_rect.topright, 1)
+
+            opt_text = font.render(self.get_label(value), True, (255, 255, 255))
+            app.screen.blit(opt_text, opt_text.get_rect(center=opt_rect.center))
     
     def handle_click(self, pos):
         if self.open:

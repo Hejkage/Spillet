@@ -7,9 +7,10 @@ from systems.melee import melee_swings
 from systems.ground import assign_label_slots, drop_item_on_ground, try_pickup_ground_item_click, try_pickup_ground_label_click
 from systems.player import player
 from systems.areas import areas, switch_area, try_click_portal
-from ui.widgets import buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons
+from ui.widgets import Dropdown, buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons
 from ui.panels import attack_blocking_panel_open, grid_containers, open_center_panel
 from ui.chest import try_click_container_object, try_shift_transfer
+
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -25,7 +26,9 @@ def handle_events():
         
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE and app.game_state != "menu":
-                if app.game_state == "settings":
+                if Dropdown.close_open():
+                    pass
+                elif app.game_state == "settings":
                     toggle_settings()
                 elif equipment.open or any(c.open for c in grid_containers):
                     equipment.open = False
@@ -89,6 +92,7 @@ def handle_mouse(pos, button):
                     restart_game()
 
                 elif b.action == "menu":
+                    Dropdown.close_open()
                     app.game_state = "menu"
         return
 
@@ -153,6 +157,7 @@ app.debug_hitboxes = False
 def toggle_settings():
 
     if app.game_state == "settings":
+        Dropdown.close_open()
         app.game_state = app.previous_game_state
     else:
         app.previous_game_state = app.game_state
