@@ -45,17 +45,17 @@ def roll_item(base_key, rarity=None):
     count = random.randint(lo, hi)
 
     available = list(base["affixes"])
-    count = min(count, len(available))
-    chosen = random.sample(available, count)
+    weights = [affix_pool[key].get("weight", 1) for key in available]
 
     allowed_tiers = roll_rarity_tier_range(rarity)
 
-    stats = {}
-    for affix_key in chosen:
+    stats = []
+    for _ in range(count):
+        affix_key = random.choices(available, weights=weights, k=1)[0]
         affix = affix_pool[affix_key]
         tier = random.choice(allowed_tiers)
         amount = roll_affix_value(affix, tier)
-        stats[affix_key] = {"stat": affix["stat"], "type": affix["type"], "amount": amount, "tier": tier}
+        stats.append({"stat": affix["stat"], "type": affix["type"], "amount": amount, "tier": tier})
 
     return EquippableItem(base["name"], base["sprite"], base["slot"], stats=stats, rarity=rarity, weapon_class=base.get("weapon_class"), swing_sprite_name=base.get("swing_sprite"))
 

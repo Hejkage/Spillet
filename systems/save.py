@@ -5,6 +5,7 @@ from systems.player import player
 from ui.widgets import loot_filter_dropdown
 from ui.panels import shops
 from ui.chest import chest
+from systems.skilltree import allocated_nodes
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -49,8 +50,10 @@ def save_game():
             "loot_filter_enabled": app.loot_filter_enabled,
             "show_all_labels": app.show_all_labels,
             "start_completed": app.start_completed,
-        }
+        },
+        "skilltree":  list(allocated_nodes),
     }
+
     with open(save_path, "w") as f:
         json.dump(data, f, indent=2)
     print("Game saved.")
@@ -102,6 +105,9 @@ def load_game():
         for i in range(len(shop.prices)):
             shop.prices[i] = saved_prices[i] if i < len(saved_prices) else 0
         shop.stocked = sdata.get("stocked", True)
+
+    allocated_nodes.clear()
+    allocated_nodes.update(data.get("skilltree", []))
 
     player.gem_signature = None
     player.pet_signature = None

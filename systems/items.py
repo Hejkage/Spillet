@@ -9,7 +9,7 @@ from systems.rarity import rarity_colors, rarity_common, unique_color
 from systems.weapons import get_weapon_geometry, player_body_radius, weapon_class_tags
 from systems.supports import SupportGem, roll_support_value, support_gem_types
 from core.assets import scaled_sprites
-from systems.rarity import rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, roll_rarity
+from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, roll_rarity, rarity_colors, rarity_order, unique_color
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -41,33 +41,32 @@ def accepts_gem(kind):
     return lambda item: getattr(item, "gem_slot", None) == kind
 
 
-register_equip_slot("ring1",   "main", accepts_slot_type("ring"),    "inventory_slot_sprite")
-register_equip_slot("ring2",   "main", accepts_slot_type("ring"),    "inventory_slot_sprite")
-register_equip_slot("neck",    "main", accepts_slot_type("neck"),    "inventory_slot_sprite")
-register_equip_slot("head",    "main", accepts_slot_type("head"),    "inventory_slot_helmet_sprite")
-register_equip_slot("body",    "main", accepts_slot_type("body"),    "inventory_slot_body_sprite")
-register_equip_slot("gloves",  "main", accepts_slot_type("gloves"),  "inventory_slot_sprite")
-register_equip_slot("belt",    "main", accepts_slot_type("belt"),    "inventory_slot_sprite")
-register_equip_slot("pants",   "main", accepts_slot_type("pants"),   "inventory_slot_pants_sprite")
-register_equip_slot("boots",   "main", accepts_slot_type("boots"),   "inventory_slot_boots_sprite")
-register_equip_slot("weapon",  "main", accepts_slot_type("weapon"),  "inventory_slot_sprite")
-register_equip_slot("offhand", "main", accepts_slot_type("offhand"), "inventory_slot_sprite")
+register_equip_slot("ring1",        "main", accepts_slot_type("ring"),      "inventory_slot_sprite")
+register_equip_slot("ring2",        "main", accepts_slot_type("ring"),      "inventory_slot_sprite")
+register_equip_slot("neck",         "main", accepts_slot_type("neck"),      "inventory_slot_sprite")
+register_equip_slot("head",         "main", accepts_slot_type("head"),      "inventory_slot_helmet_sprite")
+register_equip_slot("body",         "main", accepts_slot_type("body"),      "inventory_slot_body_sprite")
+register_equip_slot("gloves",       "main", accepts_slot_type("gloves"),    "inventory_slot_sprite")
+register_equip_slot("belt",         "main", accepts_slot_type("belt"),      "inventory_slot_sprite")
+register_equip_slot("pants",        "main", accepts_slot_type("pants"),     "inventory_slot_pants_sprite")
+register_equip_slot("boots",        "main", accepts_slot_type("boots"),     "inventory_slot_boots_sprite")
+register_equip_slot("weapon",       "main", accepts_slot_type("weapon"),    "inventory_slot_sprite")
+register_equip_slot("offhand",      "main", accepts_slot_type("offhand"),   "inventory_slot_sprite")
 
-register_equip_slot("gem_active",   "extra", accepts_gem(gem_slot_active),  "inventory_slot_sprite")
-register_equip_slot("gem_support1", "extra", accepts_gem(gem_slot_support), "inventory_slot_sprite")
-register_equip_slot("gem_support2", "extra", accepts_gem(gem_slot_support), "inventory_slot_sprite")
-register_equip_slot("gem_support3", "extra", accepts_gem(gem_slot_support), "inventory_slot_sprite")
-register_equip_slot("gem_support4", "extra", accepts_gem(gem_slot_support), "inventory_slot_sprite")
+register_equip_slot("gem_active1", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
+register_equip_slot("gem_active2", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
+register_equip_slot("gem_active3", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
+register_equip_slot("gem_active4", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
+register_equip_slot("gem_active5", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
 
-register_equip_slot("pet1", "pet", lambda i: getattr(i, "is_pet", False), "inventory_slot_sprite")
-register_equip_slot("pet2", "pet", lambda i: getattr(i, "is_pet", False), "inventory_slot_sprite")
-register_equip_slot("pet3", "pet", lambda i: getattr(i, "is_pet", False), "inventory_slot_sprite")
+register_equip_slot("pet1", "pet", lambda i: getattr(i, "is_pet", False),   "inventory_slot_sprite")
+register_equip_slot("pet2", "pet", lambda i: getattr(i, "is_pet", False),   "inventory_slot_sprite")
+register_equip_slot("pet3", "pet", lambda i: getattr(i, "is_pet", False),   "inventory_slot_sprite")
 
 main_equip_slots  = slots_in_group("main")
 extra_equip_slots = slots_in_group("extra")
 pet_equip_slots   = slots_in_group("pet")
-active_gem_slot   = "gem_active"
-support_gem_slots = [s for s in extra_equip_slots if s.startswith("gem_support")]
+active_gem_slots = [s for s in extra_equip_slots if s.startswith("gem_active")]
 
 stat_defs = {}
 
@@ -81,21 +80,23 @@ def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_l
     }
     return key
 
-register_stat("movement_speed",     "Movement Speed",           base=350)
-register_stat("projectile_speed",   "Projectile Speed",         base=100, panel_label="Increased Projectile Speed")
-register_stat("spell_damage",       "Spell Damage",             base=100, panel_label="Increased Spell Damage")
-register_stat("attack_damage",      "Attack Damage",            base=100, panel_label="Increased Attack Damage")
-register_stat("cooldown",           "Cooldown Reduction",       base=0,   percent=True)
-register_stat("max_health",         "Health",                   base=1000)
-register_stat("health_regen",       "Health Regen per Second",  base=5)
-register_stat("lifesteal",          "Lifesteal",                base=0,   percent=True)
-register_stat("crit_chance",        "Critical Strike Chance",   base=0,   percent=True)
-register_stat("crit_damage",        "Critical Strike Damage",   base=150, percent=True)
-register_stat("aoe",                "Area of Effect",           base=100, panel_label="Increased Area of Effect")
-register_stat("physical_damage",    "Physical Damage",          base=100, show_in_panel=False)
-register_stat("elemental_damage",   "Elemental Damage",         base=100, show_in_panel=False)
-register_stat("attack_speed",       "Attack Speed",             base=100, panel_label="Increased Attack Speed")
-register_stat("attack_range",       "Attack Range",             base=0,   show_in_panel=False)
+register_stat("movement_speed",     "Movement Speed",                   base=350)
+register_stat("projectile_speed",   "Projectile Speed",                 base=100,   panel_label="Increased Projectile Speed")
+register_stat("spell_damage",       "Spell Damage",                     base=100,   panel_label="Increased Spell Damage")
+register_stat("attack_damage",      "Attack Damage",                    base=100,   panel_label="Increased Attack Damage")
+register_stat("cooldown",           "Cooldown Reduction",               base=0,     percent=True)
+register_stat("max_health",         "Health",                           base=1000)
+register_stat("health_regen",       "Health Regen per Second",          base=5)
+register_stat("lifesteal",          "Lifesteal",                        base=0,     percent=True)
+register_stat("attack_crit_chance", "Attack Critical Strike Chance",    base=0,     percent=True)
+register_stat("spell_crit_chance",  "Spell Critical Strike Chance",     base=0,     percent=True)
+register_stat("crit_chance",        "Critical Strike Chance",           base=5,     percent=True)
+register_stat("crit_damage",        "Critical Strike Damage",           base=150,   percent=True)
+register_stat("aoe",                "Area of Effect",                   base=100,   panel_label="Increased Area of Effect")
+register_stat("physical_damage",    "Physical Damage",                  base=100,   show_in_panel=False)
+register_stat("elemental_damage",   "Elemental Damage",                 base=100,   show_in_panel=False)
+register_stat("attack_speed",       "Attack Speed",                     base=100,   panel_label="Increased Attack Speed")
+register_stat("attack_range",       "Attack Range",                     base=0,     show_in_panel=False)
 
 def stat_label(key):
     return stat_defs[key]["label"] if key in stat_defs else key
@@ -117,7 +118,7 @@ class Item:
         self.sprite_name = sprite_name
         # deepcopy: every item gets its OWN stats, never shared with its
         # template or with other copies. Changing one item never changes another.
-        self.stats = copy.deepcopy(stats) if stats else {}
+        self.stats = copy.deepcopy(stats) if stats else []
         self.category = category
         self.rarity = rarity
 
@@ -145,7 +146,7 @@ class EquippableItem(Item):
 
     @classmethod
     def from_dict(cls, d):
-        return cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", {}), rarity=d.get("rarity", rarity_common), weapon_class=d.get("weapon_class"), swing_sprite_name=d.get("swing_sprite"))
+        return cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", []), rarity=d.get("rarity", rarity_common), weapon_class=d.get("weapon_class"), swing_sprite_name=d.get("swing_sprite"))
 
 class GemItem(Item):
     def __init__(self, name, sprite_name, gem_slot, rarity=rarity_common):
@@ -160,6 +161,13 @@ class ActiveGemItem(GemItem):
         self.template_key = template_key
         self.gem_stats = gem_stats if gem_stats is not None else {}
         self.built_in_support = built_in_support
+        self.kills = 0
+        self.allocated = set()
+        self.sockets = {}
+
+    def gem_level(self):
+        from systems.gemtree import level_from_kills
+        return level_from_kills(self.kills)
 
     def to_dict(self):
         d = super().to_dict()
@@ -171,6 +179,9 @@ class ActiveGemItem(GemItem):
                 "value": self.built_in_support.value,
                 "rarity": self.built_in_support.rarity,
             }
+        d["kills"] = self.kills
+        d["allocated"] = list(self.allocated)
+        d["sockets"] = {k: (v.to_dict() if v is not None else None) for k, v in self.sockets.items()}
         return d
 
     @classmethod
@@ -179,7 +190,13 @@ class ActiveGemItem(GemItem):
         bi = d.get("built_in_support")
         if bi is not None:
             built_in = SupportGem(bi["gem_type"], bi["value"], bi["rarity"])
-        return cls(d["name"], d["sprite_name"], d["template_key"], rarity=d.get("rarity", rarity_common), gem_stats=d.get("gem_stats", {}), built_in_support=built_in)
+        item = cls(d["name"], d["sprite_name"], d["template_key"], rarity=d.get("rarity", rarity_common), gem_stats=d.get("gem_stats", {}), built_in_support=built_in)
+        item.kills = d.get("kills", 0)
+        item.allocated = set(d.get("allocated", []))
+        item.sockets = {}
+        for k, sd in d.get("sockets", {}).items():
+            item.sockets[k] = item_kinds[sd["kind"]].from_dict(sd) if sd else None
+        return item
 
 class SupportGemItem(GemItem):
     save_kind = "support_gem"
@@ -248,7 +265,7 @@ class UniqueItem(EquippableItem):
 
     @classmethod
     def from_dict(cls, d):
-        item = cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", {}), weapon_class=d.get("weapon_class"), summon_pets=d.get("summon_pets", []), swing_sprite_name=d.get("swing_sprite"), unique_key=d.get("unique_key"))
+        item = cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", []), weapon_class=d.get("weapon_class"), summon_pets=d.get("summon_pets", []), swing_sprite_name=d.get("swing_sprite"), unique_key=d.get("unique_key"))
         if item.unique_key is None:
             # Saves from before unique_key existed: find the template by name.
             item.unique_key = next((k for k, t in unique_templates.items() if t["name"] == item.name), None)
@@ -413,17 +430,21 @@ class Equipment:
         text_x = stats_x + row_padding
 
         i = 0
+
+        level_font = get_font(max(20, int(34 * scale)))  # bigger than the normal stat font
+        label_surf = level_font.render("Level: ", True, (200, 200, 200))
+        value_surf = level_font.render(str(player.level), True, (255, 255, 255))
+
+        app.screen.blit(label_surf, (text_x, panel_y + row_padding))
+        app.screen.blit(value_surf, (text_x + label_surf.get_width(), panel_y + row_padding))
+
+        level_row_height = level_font.get_height()
+
         for stat, d in stat_defs.items():
             if not d["show_in_panel"]:
                 continue
-
             label = d["panel_label"]
             value = getattr(player, stat, 0)
-
-            if stat == "crit_chance":
-                value = player.increased["crit_chance"] * 100
-                label = "Increased critical strike chance"
-
             if d["base"] == 100:
                 value -= 100
 
@@ -432,7 +453,7 @@ class Equipment:
 
             suffix = "%" if (d["percent"] or d["base"] == 100) else ""
             text = font.render(f"{label}: {display_value}{suffix}", True, (255, 255, 255))
-            app.screen.blit(text, (text_x, panel_y + row_padding + i * font_size))
+            app.screen.blit(text, (text_x, panel_y + row_padding + level_row_height + i * font_size))
             i += 1
                             
     def handle_click(self, pos, button, drag_state, player):
@@ -500,23 +521,41 @@ def tooltip_section(fn):
 _WHITE = (255, 255, 255)
 _GRAY  = (200, 200, 200)
 
+def _format_mod_line(mod):
+    stat = mod.get("stat")
+    label = stat_label(stat)
+    amount = mod.get("amount", 0)
+    mod_type = mod.get("type")
+    if mod_type == "flat":
+        suffix = "%" if stat_is_percent(stat) else ""
+        return f"+{amount}{suffix} {label}"
+    elif mod_type == "increased":
+        return f"+{int(amount)}% increased {label}"
+    return f"{amount} {label}"
+
 @tooltip_section
 def _tt_stats(item, lines):
-    for mod in item.stats.values():
-        stat = mod.get("stat")
-        label = stat_label(stat)              
-        amount = mod.get("amount", 0)
-        color = rarity_colors.get(mod.get("tier"), _WHITE)
-        mod_type = mod.get("type")
-        if mod_type == "flat":
-            suffix = "%" if stat_is_percent(stat) else ""  
-            lines.append((f"+{amount}{suffix} {label}", color))
-        elif mod_type == "increased":
-            lines.append((f"+{int(amount)}% increased {label}", color))
-        elif mod_type == "more":
-            lines.append((f"+{amount}% {label}", color))
-        else:
-            lines.append((f"{amount} {label}", color))
+    if pygame.key.get_mods() & pygame.KMOD_ALT:
+        for mod in item.stats:
+            color = rarity_colors.get(mod.get("tier"), _WHITE)
+            lines.append((_format_mod_line(mod), color))
+        return
+
+    grouped = {}
+    for mod in item.stats:
+        key = (mod.get("stat"), mod.get("type"))
+        g = grouped.setdefault(key, {"amount": 0, "count": 0, "tier": mod.get("tier")})
+        g["amount"] += mod.get("amount", 0)
+        g["count"] += 1
+        if rarity_order.index(mod.get("tier", rarity_common)) > rarity_order.index(g["tier"] or rarity_common):
+            g["tier"] = mod.get("tier")
+
+    for (stat, mod_type), g in grouped.items():
+        color = rarity_colors.get(g["tier"], _WHITE)
+        text = _format_mod_line({"stat": stat, "type": mod_type, "amount": g["amount"]})
+        if g["count"] > 1:
+            text = f"({g['count']}) {text}"
+        lines.append((text, color))
 
 @tooltip_section
 def _tt_attack_range(item, lines):

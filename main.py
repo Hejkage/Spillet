@@ -11,13 +11,15 @@ from systems.ground import item_passes_filter, try_pickup_coins
 from systems.player import player
 from systems.enemies import enemy_grid, process_projectile_hits
 from systems.areas import areas, switch_area
-from ui.widgets import buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons
+from ui.skilltree import skill_tree_panel
+from ui.widgets import buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons, skill_tree_button
 from ui.panels import attack_blocking_panel_open, grid_containers, shop_containers
 from ui.hotbar import ability_keybinds, draw_ability_tooltip, draw_hotbar
 from ui.menus import draw_fps, draw_health_bar, draw_main_menu, draw_settings_menu, draw_xp_bar
 from core.events import handle_events
 from systems.save import load_game
 from content import inventory
+from ui.gemtree import gem_tree_panel
 
 # region Main game loop
 
@@ -125,7 +127,7 @@ while app.running:
         player.rebuild_pets()
 
     #Game function stuff
-        if app.game_state != "settings":
+        if app.game_state != "settings" and not skill_tree_panel.open and not gem_tree_panel.open:
             for _, fn in update_systems:
                 fn(dt)
     #Drawing
@@ -161,6 +163,8 @@ while app.running:
         draw_health_bar(player)
         draw_hotbar(player)
 
+    if app.game_state == "": skill_tree_button.draw_button()
+
     if app.game_state == "settings" and app.previous_game_state != "menu":
         draw_settings_menu()
 
@@ -172,9 +176,13 @@ while app.running:
     
     draw_all_ground_labels()
     draw_ground_item_label()
+
+    gem_tree_panel.draw()
+
     for c in grid_containers:
         c.draw()
     equipment.draw(scaled_sprites, player)
+    skill_tree_panel.draw()
     draw_dragged_item()
     draw_item_tooltip()
     draw_ability_tooltip(player)

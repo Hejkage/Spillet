@@ -2,15 +2,16 @@ import pygame
 from core.state import app, world
 from core.screen import camera
 from core.assets import sprite_rects, update_screen_data
-from systems.items import drag_state, equipment
+from systems.items import drag_state, equipment, hover_state
 from systems.melee import melee_swings
 from systems.ground import assign_label_slots, drop_item_on_ground, try_pickup_ground_item_click, try_pickup_ground_label_click
 from systems.player import player
 from systems.areas import areas, switch_area, try_click_portal
-from ui.widgets import Dropdown, buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons
+from ui.skilltree import skill_tree_panel
+from ui.widgets import Dropdown, buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons, skill_tree_button
 from ui.panels import attack_blocking_panel_open, grid_containers, open_center_panel
 from ui.chest import try_click_container_object, try_shift_transfer
-
+from ui.gemtree import gem_tree_panel
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -30,6 +31,10 @@ def handle_events():
                     pass
                 elif app.game_state == "settings":
                     toggle_settings()
+                elif gem_tree_panel.open:
+                    gem_tree_panel.close()
+                elif skill_tree_panel.open:
+                    skill_tree_panel.open = False
                 elif equipment.open or any(c.open for c in grid_containers):
                     equipment.open = False
                     for c in grid_containers:
@@ -38,11 +43,11 @@ def handle_events():
                     toggle_settings()
         
             elif event.key == pygame.K_i:
-                if app.game_state == "":
+                if app.game_state == "" and not skill_tree_panel.open:
                     inventory.toggle()
 
             elif event.key == pygame.K_e:
-                if app.game_state == "":
+                if app.game_state == "" and not skill_tree_panel.open:
                     if equipment.open:
                         open_center_panel(None)
                     else:
@@ -112,6 +117,26 @@ def handle_mouse(pos, button):
 
     if sprite_rects["gear_sprite"].collidepoint(pos):
         toggle_settings()
+        return
+
+    if button == 3:
+        hovered = hover_state.item
+        if hovered is not None and hasattr(hovered, "template_key"):
+            if gem_tree_panel.open_for(hovered):
+                return
+
+    if gem_tree_panel.open and button == 1:
+        for c in grid_containers:
+            if c.handle_click(pos, button, drag_state):
+                return
+        gem_tree_panel.handle_click(pos, button, drag_state)
+        return
+    
+    if app.game_state == "" and skill_tree_button.rect and skill_tree_button.rect.collidepoint(pos):
+        skill_tree_panel.toggle()
+        return
+
+    if skill_tree_panel.handle_click(pos, button):
         return
     
     if button == 1:

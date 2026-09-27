@@ -6,14 +6,24 @@ projectile_spread_angle = 15 #Projectiles support
 
 support_gem_types = {}
 
-def register_support_gem(gem_type, name, tiers, apply, describe, tags=None):
+def register_support_gem(gem_type, name, tiers, apply, describe, tags=None, combine="add"):
     support_gem_types[gem_type] = {
         "name": name,
         "tiers": tiers,
         "apply": apply,
         "describe": describe,
         "tags": set(tags) if tags else set(),
+        "combine": combine,
     }
+
+def combine_support_values(gem_type, values):
+    mode = support_gem_types[gem_type].get("combine", "add")
+    if mode == "mul":
+        total = 1.0
+        for v in values:
+            total *= v
+        return round(total, 3)
+    return sum(values)
 
 class SupportGem:
     def __init__(self, gem_type, value, rarity):
@@ -93,7 +103,8 @@ def add_crit_damage(gem, projectile_list):
 
 def add_increased_crit_chance(gem, projectile_list):
     for p in projectile_list:
-        p["crit_chance_increase"] = p.get("crit_chance_increase", 0) + gem.value
+        key = "spell_crit_chance_increase" if p.get("crit_type", "attack") == "spell" else "attack_crit_chance_increase"
+        p[key] = p.get(key, 0) + gem.value
     return projectile_list
 
 def add_increased_attack_speed(gem, projectile_list):

@@ -2,21 +2,15 @@ import pygame
 from core.state import app
 from core.screen import get_font
 from core.assets import get_ui_scaled
-from systems.items import active_gem_slot, equipment, hover_state
+from systems.items import active_gem_slots, equipment, hover_state
 
 # region Hotbar
 
 hotbar_slot_size = 56
 hotbar_padding = 8
 
-hotbar_slots = [
-    ("primary", "MB1"),
-    ("main", "1"),
-]
-
-ability_keybinds = {
-    "main": pygame.K_1,
-}
+hotbar_slots = [("primary", "MB1")] + [(slot, str(i + 1)) for i, slot in enumerate(active_gem_slots)]
+ability_keybinds = {slot: getattr(pygame, f"K_{i + 1}") for i, slot in enumerate(active_gem_slots)}
 
 app.hotbar_rects = {}
 
@@ -43,8 +37,8 @@ def draw_hotbar(player):
         icon_name = None
         if ability:
             icon_name = ability.icon_name
-            if icon_name is None and ability_key == "main":
-                gem_item = equipment.extra_slots.get(active_gem_slot)
+            if icon_name is None and ability_key != "primary":
+                gem_item = equipment.extra_slots.get(ability_key)
                 icon_name = gem_item.sprite_name if gem_item else None
 
         art = get_ui_scaled(icon_name, slot_size, slot_size) if icon_name else None
@@ -113,9 +107,10 @@ def draw_ability_tooltip(player):
         lines.append(f"DoT: {stats['dot_damage']:.0f} /s")
         lines.append(f"DoT duration: {stats['dot_duration']:.0f}s")
 
-    if ability.support_gems:
+    real_supports = [g for g in ability.support_gems if not getattr(g, "from_tree", False)]
+    if real_supports:
         lines.append("")
-        for gem in ability.support_gems:
+        for gem in real_supports:
             lines.append(f"- {gem.gem_name}: {gem.describe()}")
 
     rendered = [font.render(line, True, (255, 255, 255) if i else (255, 220, 120)) for i, line in enumerate(lines)]

@@ -26,23 +26,24 @@ active_gem_group.extend([
     DropEntry(lambda: make_item("shadow_bolt_gem", rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("cleave_gem",      rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("spin_attack_gem", rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("shotgun_blast_gem", rarity=roll_rarity()), weight=5000),
+    DropEntry(lambda: make_item("shotgun_blast_gem", rarity=roll_rarity()), weight=5),
 ])
 
 leather_armor_group = [
-    DropEntry(lambda: roll_item("leather_helmet"), weight=25),
-    DropEntry(lambda: roll_item("leather_body"),   weight=25),
-    DropEntry(lambda: roll_item("leather_pants"),  weight=25),
-    DropEntry(lambda: roll_item("leather_boots"),  weight=25),
-    DropEntry(lambda: roll_item("leather_gloves"), weight=25),
-    DropEntry(lambda: roll_item("leather_belt"),   weight=25),
-    DropEntry(lambda: roll_item("wooden_shield"),  weight=25),
+    DropEntry(lambda: roll_item("leather_helmet"),      weight=25),
+    DropEntry(lambda: roll_item("leather_body"),        weight=25),
+    DropEntry(lambda: roll_item("leather_pants"),       weight=25),
+    DropEntry(lambda: roll_item("leather_boots"),       weight=25),
+    DropEntry(lambda: roll_item("leather_gloves"),      weight=25),
+    DropEntry(lambda: roll_item("leather_belt"),        weight=25),
+    DropEntry(lambda: roll_item("wooden_shield"),       weight=25),
+    DropEntry(lambda: make_item("unique_item_test"),    weight=25000000),
 ]
 
 low_level_weapons_group = [
     DropEntry(lambda: roll_item("twig_wand"),   weight=25),
     DropEntry(lambda: roll_item("short_sword"), weight=25),
-    DropEntry(lambda: roll_item("basic_gun"),   weight=500000),
+    DropEntry(lambda: roll_item("basic_gun"),   weight=25),
 ]
 
 low_level_jewelry_group = [
@@ -56,8 +57,8 @@ unique_group = [
 ]
 
 wand_group = [
-    DropEntry(lambda: make_unique("swarmcaller"),          weight=25),
-    DropEntry(lambda: roll_item("twig_wand"),      weight=25),
+    DropEntry(lambda: make_unique("swarmcaller"),   weight=25),
+    DropEntry(lambda: roll_item("twig_wand"),       weight=25),
 ]
 
 # pet_group is filled by register_pet() in content/pets/

@@ -5,8 +5,12 @@ from systems.supports import apply_support_gems
 from systems.projectiles import Projectile
 
 # region Active Gems
-standard_gem_fields = {"name", "cooldown", "attack_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "support_tags", "damage_scaling", "rarity_stats", "speed_stat", "hit_kind",
+standard_gem_fields = {"name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "support_tags", "damage_scaling", "rarity_stats", "speed_stat", "hit_kind",
                     "locks_movement", "lock_duration", "uses_aoe", "action_group", "icon"}
+
+global_action_lockout = 0.2
+
+
 class ActiveGem:
     def __init__(self, name, base_cooldown, base_damage, base_aoe, base_projectile_speed, gem_function, sprite_name, extra=None, support_gems=None, weapon_class=None):
         self.name = name
@@ -92,7 +96,7 @@ class ActiveGem:
         cooldown_mult = min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
         self.timer = base["cooldown"] * cooldown_mult
 
-        player.begin_action(self.action_group, self.timer)
+        player.begin_action(self.action_group, max(global_action_lockout, self.action_time))
 
         if self.locks_movement:
             player.begin_action_lock(self.timer * self.lock_duration)
@@ -111,6 +115,7 @@ def template_uses_aoe(t):
 
 def build_active_gem(t, supports, gem_stats=None):
         extra = {k: v for k, v in t.items() if k not in standard_gem_fields}
+        extra["crit_type"] = t.get("crit_type") or ("spell" if "spell_damage" in t.get("damage_scaling", set()) else "attack")
 
         rolled = gem_stats or {}
 
@@ -132,7 +137,8 @@ def build_active_gem(t, supports, gem_stats=None):
         if "dot_duration" in rolled:
             extra["dot_duration"] = rolled["dot_duration"]
         if "crit_chance" in rolled:
-            extra["crit_chance"] = rolled["crit_chance"]
+            key = "spell_crit_chance" if extra["crit_type"] == "spell" else "attack_crit_chance"
+            extra[key] = rolled["crit_chance"]
         if "crit_damage" in rolled:
             extra["crit_damage"] = rolled["crit_damage"]
 
@@ -151,6 +157,7 @@ def build_active_gem(t, supports, gem_stats=None):
         gem.weapon_classes = t.get("weapon_classes")
         gem.weapon_tags = t.get("weapon_tags")
         gem.icon_name = t.get("icon")
+        gem.action_time = t.get("action_time", t.get("swing_time", 0))
         return gem
 
 pending_bursts = []

@@ -4,25 +4,36 @@ from core.screen import get_font
 from core.assets import scaled_sprites, get_ui_scaled
 from systems.ground import assign_label_slots, loot_filter_levels
 
+BUTTON_SIZE = (256, 128)   # design-resolution size for every button-shaped UI element
 
 # region Buttons
 
 class Button:
-    def __init__(self, sprite_name, text, position, anchor="center", action=None):
+    def __init__(self, sprite_name, text, position, anchor="center", action=None, scale=1.0):
         self.sprite_name = sprite_name
         self.text = text
         self.position = position
         self.anchor = anchor
         self.action = action
+        self.scale = scale
         self.rect = None
+
+    def get_sprite(self):
+        sprite = scaled_sprites[self.sprite_name]
+        if self.scale == 1.0:
+            return sprite
+        w, h = sprite.get_size()
+        return pygame.transform.scale(sprite, (max(1, int(w * self.scale)), max(1, int(h * self.scale))))
     
     def get_pixel_pos(self):
         return (int(self.position[0] * app.screen_width), int(self.position[1] * app.screen_height))
 
     def update(self):
-        sprite = scaled_sprites[self.sprite_name]
+        w = int(BUTTON_SIZE[0] * app.ui_scale)
+        h = int(BUTTON_SIZE[1] * app.ui_scale)
+        self.sprite = get_ui_scaled(self.sprite_name, w, h)
         pos = self.get_pixel_pos()
-        self.rect = sprite.get_rect()
+        self.rect = self.sprite.get_rect()
 
         if self.anchor == "center":
             self.rect.center = pos
@@ -37,8 +48,7 @@ class Button:
 
     def draw_button(self):
         self.update()
-        sprite = scaled_sprites[self.sprite_name]
-        app.screen.blit(sprite, self.rect)
+        app.screen.blit(self.sprite, self.rect)
 
         font_scale = min(app.screen_width, app.screen_height)
         font = get_font(int(font_scale * 0.04))
@@ -85,7 +95,9 @@ class Dropdown:
         return rect
     
     def draw(self):
-        sprite = scaled_sprites["dropdown_background_sprite"]
+        w = int(BUTTON_SIZE[0] * app.ui_scale)
+        h = int(BUTTON_SIZE[1] * app.ui_scale)
+        sprite = get_ui_scaled("dropdown_background_sprite", w, h)
         self.rect = self.header_rect(sprite)
 
         if self.open:
@@ -114,7 +126,7 @@ class Dropdown:
     def _draw_option_list(self, font):
         row_h = int(self.rect.height * 0.8)
         list_rect = pygame.Rect(self.rect.left, self.rect.bottom, self.rect.width, row_h * len(self.options))
-        list_sprite = get_ui_scaled("button_sprite", list_rect.width, list_rect.height)
+        list_sprite = get_ui_scaled("dropdown_background_sprite", list_rect.width, list_rect.height)
         app.screen.blit(list_sprite, list_rect)
 
         mouse_pos = pygame.mouse.get_pos()
@@ -202,6 +214,9 @@ menu_buttons = [
     Button("button_sprite", "Settings", (0.5, 0.62), action="settings")
 ]
 
+skill_tree_button = Button("button_sprite", "Skills", (0.02, 0.98), anchor="bottom_left", action="skilltree", scale=0.5)
+skill_tree_button.update()
+
 def set_loot_filter(value):
     app.loot_filter_index = loot_filter_levels.index(value)
     if app.show_all_labels:
@@ -218,3 +233,5 @@ loot_filter_checkbox = Checkbox(position=(0.28, 0.20), anchor="center", get_stat
 
 for b in menu_buttons:
     b.update()
+
+

@@ -4,7 +4,7 @@ from core.state import app, world
 from core.assets import scaled_sprites
 from systems.weapons import weapon_class_tags
 from systems.supports import support_gem_types
-from systems.items import active_gem_slot, equipment, pet_equip_slots, stat_defs, support_gem_slots
+from systems.items import active_gem_slots, equipment, pet_equip_slots, stat_defs
 from systems.abilities import active_gem_templates, basic_attacks_by_weapon, build_active_gem
 from systems.world_objects import world_rect_at
 from systems.pets import Pet
@@ -30,12 +30,11 @@ class Player:
         self.coins = 0
         self.xp = 0
         self.level = 1
-        self.xp_to_next_level = 100
+        self.xp_to_next_level = 1000
         self.move_target = None
-        self.abilities = {
-            "primary": None,
-            "main": None
-        }
+        self.abilities = {"primary": None}
+        for slot in active_gem_slots:
+            self.abilities[slot] = None
         self.basic_attack_signature = object()
         self.gem_signature = None
         self.pets = []
@@ -54,7 +53,6 @@ class Player:
         self.base_stats   = {k: d["base"] for k, d in stat_defs.items()}
         self.added_flat = {stat: 0 for stat in self.base_stats}
         self.increased = {stat: 0 for stat in self.base_stats}
-        self.more_multipliers = {stat: 1 for stat in self.base_stats}
 
         self.recalculate_stats()
         self.current_health = self.max_health
@@ -81,7 +79,7 @@ class Player:
         while self.xp >= self.xp_to_next_level:
             self.xp -= self.xp_to_next_level
             self.level += 1
-            self.xp_to_next_level = int(self.xp_to_next_level * 1.25)
+            self.xp_to_next_level = int(self.xp_to_next_level * 1.25 * (1 + self.level / 100))
 
     def take_damage(self, amount):
         if self.current_health <= 0:
@@ -106,34 +104,44 @@ class Player:
     def resolve_stat(self, key, hit_stats=None):
         s = hit_stats or {}
         flat = self.base_stats[key] + self.added_flat[key] + s.get(key, 0)
-        inc  = 1 + self.increased[key] + s.get(key + "_increase", 0) / 100
-        more = self.more_multipliers[key] * s.get(key + "_more", 1.0)
-        return flat * inc * more
+        inc = 1 + self.increased[key] + s.get(key + "_increase", 0) / 100
+        return flat * inc
 
     def crit_stats(self, hit_stats=None):
-        return (self.resolve_stat("crit_chance", hit_stats),
-                self.resolve_stat("crit_damage", hit_stats))
+        s = hit_stats or {}
+        crit_type = s.get("crit_type", "attack")
+        chance_stat = "spell_crit_chance" if crit_type == "spell" else "attack_crit_chance"
+
+        flat = (self.base_stats[chance_stat] + self.added_flat[chance_stat]
+                + self.base_stats["crit_chance"] + self.added_flat["crit_chance"]
+                + s.get(chance_stat, 0) + s.get("crit_chance", 0))
+
+        inc = (1 + self.increased[chance_stat] + self.increased["crit_chance"]
+               + s.get(chance_stat + "_increase", 0) / 100
+               + s.get("crit_chance_increase", 0) / 100)
+
+        return (flat * inc, self.resolve_stat("crit_damage", hit_stats))
 
     def recalculate_stats(self, force=False):
-        signature = tuple(id(i) if i else None for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()))
+        from systems.skilltree import allocated_nodes, skill_nodes
+        equip_signature = tuple(id(i) if i else None for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()))
+        signature = (equip_signature, frozenset(allocated_nodes))
         if not force and signature == getattr(self, "_stat_signature", None):
             return
         self._stat_signature = signature
-
         for stat in self.base_stats:
             self.added_flat[stat] = 0
             self.increased[stat] = 0
-            self.more_multipliers[stat] = 1.0
-
         for item in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()):
             if not item:
                 continue
-            for mod in item.stats.values():
+            for mod in item.stats:
                 self.apply_modifier(mod)
-
+        for key in allocated_nodes:
+            for mod in skill_nodes[key]["stats"]:
+                self.apply_modifier(mod)
         for stat in self.base_stats:
             setattr(self, stat, self.resolve_stat(stat))
-
         if hasattr(self, "current_health"):
             self.current_health = min(self.current_health, self.max_health)
 
@@ -148,28 +156,30 @@ class Player:
         )
 
     def rebuild_gem_ability(self):
-        active_item = equipment.extra_slots.get(active_gem_slot)
-        supports = [equipment.extra_slots[s].support_gem for s in support_gem_slots if equipment.extra_slots[s] is not None]
-
-        built_in = getattr(active_item, "built_in_support", None) if active_item else None
-        if built_in is not None:
-            supports = [built_in] + supports
-
-        signature = (id(active_item), tuple(id(s) for s in supports))
+        from systems.gemtree import tree_supports
+        signature = []
+        for slot in active_gem_slots:
+            item = equipment.extra_slots.get(slot)
+            socket_ids = tuple(sorted((k, id(v)) for k, v in getattr(item, "sockets", {}).items())) if item else ()
+            signature.append((id(item), frozenset(getattr(item, "allocated", ())), socket_ids))
+        signature = tuple(signature)
         if signature == self.gem_signature:
             return
         self.gem_signature = signature
 
-        if active_item is None:
-            self.abilities["main"] = None
-            return
-
-        t = active_gem_templates[active_item.template_key]
-        allowed_tags = t.get("support_tags", set())
-        supports = [s for s in supports if support_gem_types[s.gem_type]["tags"] & allowed_tags]
-
-        gem_stats = getattr(active_item, "gem_stats", None)
-        self.abilities["main"] = build_active_gem(t, supports, gem_stats=gem_stats)
+        for slot in active_gem_slots:
+            active_item = equipment.extra_slots.get(slot)
+            if active_item is None:
+                self.abilities[slot] = None
+                continue
+            supports = list(tree_supports(active_item))
+            built_in = getattr(active_item, "built_in_support", None)
+            if built_in is not None:
+                supports = [built_in] + supports
+            t = active_gem_templates[active_item.template_key]
+            allowed_tags = t.get("support_tags", set())
+            supports = [s for s in supports if support_gem_types[s.gem_type]["tags"] & allowed_tags]
+            self.abilities[slot] = build_active_gem(t, supports, gem_stats=getattr(active_item, "gem_stats", None))
 
     def rebuild_pets(self):
         equipped = [equipment.pet_slots[s] for s in pet_equip_slots]
@@ -229,8 +239,6 @@ class Player:
             self.added_flat[stat] += amount
         elif mod_type == "increased":
             self.increased[stat] += amount / 100
-        elif mod_type == "more":
-            self.more_multipliers[stat] += amount / 100
     
     def begin_action_lock(self, duration):
         self.action_lock_timer = max(self.action_lock_timer, duration)

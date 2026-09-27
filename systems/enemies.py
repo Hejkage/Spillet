@@ -156,6 +156,7 @@ class Enemy:
         if self.health <= 0:
             self.alive = False
             player.gain_xp(self.xp_value)
+            credit_gem_kill()
             spawn_drops(self)
             if self.enemy_type == "baby_witch":
                 app.start_completed = True
@@ -404,6 +405,13 @@ def leaper_behavior(e, player, dt, dx, dy, dist):
 register_behavior("melee",  melee_behavior)
 register_behavior("caster", caster_behavior)
 register_behavior("leaper", leaper_behavior)
+
+def credit_gem_kill():
+    from systems.items import active_gem_slots, equipment
+    for slot in active_gem_slots:
+        gem = equipment.extra_slots.get(slot)
+        if gem is not None and hasattr(gem, "kills"):
+            gem.kills += 1
 
 def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None):
     chance, crit_multiplier = player.crit_stats(hit_stats)

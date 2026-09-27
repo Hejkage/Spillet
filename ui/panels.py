@@ -6,7 +6,8 @@ from core.assets import get_ui_scaled, scaled_sprites
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
 from systems.items import equipment, hover_state, scale_item_sprite
 from systems.player import player
-
+from ui.skilltree import skill_tree_panel
+from ui.gemtree import gem_tree_panel
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -45,6 +46,10 @@ def open_center_panel(panel):
 
 def attack_blocking_panel_open():
     if equipment.open:
+        return True
+    if skill_tree_panel.open:
+        return True
+    if gem_tree_panel.open:
         return True
     return any(c.open and c.is_center_panel for c in grid_containers)
 

@@ -318,11 +318,10 @@ item_templates.update({
     "sprite": "wand_item_sprite",
     "slot": "weapon",
     "weapon_class": "wand",
-    "stats": {
-        #First is just a name
-        "Just a name": {"stat": "spell_damage", "type": "increased", "amount": 5},
-        "elemental_damage": {"stat": "elemental_damage", "type": "increased", "amount": 5},
-    },
+    "stats": [
+        {"stat": "spell_damage", "type": "increased", "amount": 5},
+        {"stat": "elemental_damage", "type": "increased", "amount": 5},
+    ],
     "rarity": rarity_common,
     },
 
@@ -333,25 +332,25 @@ item_templates.update({
         "swing_sprite": "melee_attack_sprite",
         "slot": "weapon",
         "weapon_class": "sword",
-        "stats": {
-            "increased_spell_damage": {"stat": "spell_damage", "type": "increased", "amount": 10},
-        },
+        "stats": [
+            {"stat": "spell_damage", "type": "increased", "amount": 10},
+        ],
         "rarity": rarity_common,
     },
 
-    "Unique_item_test": {
+    "unique_item_test": {
         "kind": "equippable",
         "name": "Helmet",
         "sprite": "helmet_item_sprite",
-        "slot": "helmet",
-        "stats": {
-            "increased_spell_damage": {"stat": "max_health", "type": "increased", "amount": 1000},
-            "increased_spell_damage": {"stat": "max_health", "type": "increased", "amount": 1000},
-            "increased_spell_damage": {"stat": "max_health", "type": "increased", "amount": 1000},
-            "increased_spell_damage": {"stat": "max_health", "type": "increased", "amount": 1000},
-            "increased_spell_damage": {"stat": "max_health", "type": "increased", "amount": 1000},
-            "increased_spell_damage": {"stat": "max_health", "type": "increased", "amount": 1000},
-        },
+        "slot": "head",
+        "stats": [
+            {"stat": "max_health", "type": "increased", "amount": 1000},
+            {"stat": "max_health", "type": "increased", "amount": 1000},
+            {"stat": "max_health", "type": "increased", "amount": 1000},
+            {"stat": "max_health", "type": "increased", "amount": 1000},
+            {"stat": "max_health", "type": "increased", "amount": 1000},
+            {"stat": "max_health", "type": "increased", "amount": 1000},
+        ],
         "rarity": rarity_legendary,
     },
 

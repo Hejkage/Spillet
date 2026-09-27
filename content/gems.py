@@ -49,9 +49,9 @@ basic_attack_templates.update({
         "attack_time": 1,
         "projectile_speed": 0,
         "range_mult": 1.0,
-        "arc": 0,              # over 360 bliver til en slags spin, kinda cool til cyclone agtige ting
+        "arc": 0,                       # over 360 bliver til en slags spin, kinda cool til cyclone agtige ting
         "swing_time": 0.7,
-        "sprite_angle_offset": 0.0,   # sat til 100 eller over bliver nærmest en slags blade storm
+        "sprite_angle_offset": 0.0,     # sat til 100 eller over bliver nærmest en slags blade storm
     },
 })
 
@@ -82,11 +82,11 @@ active_gem_templates.update({
         "aoe": 1,
         "projectile_speed": 600,
         "rarity_stats": {
-            rarity_common:    {"damage": 70,  "cooldown": 1,    "crit_chance": 3,},
-            rarity_uncommon:  {"damage": 95,  "cooldown": 0.90, "crit_chance": 4,},
-            rarity_rare:      {"damage": 130, "cooldown": 0.85, "crit_chance": 5,},
-            rarity_epic:      {"damage": 175, "cooldown": 0.80, "crit_chance": 6,},
-            rarity_legendary: {"damage": 240, "cooldown": 0.75, "crit_chance": 7,},
+        rarity_common:    {"damage": 70,  "cooldown": 1},
+        rarity_uncommon:  {"damage": 95,  "cooldown": 0.90},
+        rarity_rare:      {"damage": 130, "cooldown": 0.85},
+        rarity_epic:      {"damage": 175, "cooldown": 0.80},
+        rarity_legendary: {"damage": 240, "cooldown": 0.75},
         },
     },
 
@@ -128,11 +128,11 @@ active_gem_templates.update({
         "locks_movement": True,
         "lock_duration": 0.6,
         "rarity_stats": {
-            rarity_common:    {"damage": 60,  "attack_time": 0.60, "crit_chance": 4, "crit_damage": 10},
-            rarity_uncommon:  {"damage": 85,  "attack_time": 0.56, "crit_chance": 5, "crit_damage": 20},
-            rarity_rare:      {"damage": 120, "attack_time": 0.52, "crit_chance": 6, "crit_damage": 30},
-            rarity_epic:      {"damage": 165, "attack_time": 0.48, "crit_chance": 7, "crit_damage": 40},
-            rarity_legendary: {"damage": 225, "attack_time": 0.44, "crit_chance": 8, "crit_damage": 50},
+        rarity_common:    {"damage": 60,  "attack_time": 0.60, "crit_damage": 10},
+        rarity_uncommon:  {"damage": 85,  "attack_time": 0.56, "crit_damage": 20},
+        rarity_rare:      {"damage": 120, "attack_time": 0.52, "crit_damage": 30},
+        rarity_epic:      {"damage": 165, "attack_time": 0.48, "crit_damage": 40},
+        rarity_legendary: {"damage": 225, "attack_time": 0.44, "crit_damage": 50},
         },
     },
 
@@ -155,11 +155,11 @@ active_gem_templates.update({
             "locks_movement": False,
             "lock_duration": 0.0,
             "rarity_stats": {
-                rarity_common:    {"damage": 60,  "attack_time": 0.60, "crit_chance": 4, "crit_damage": 10},
-                rarity_uncommon:  {"damage": 85,  "attack_time": 0.56, "crit_chance": 5, "crit_damage": 20},
-                rarity_rare:      {"damage": 120, "attack_time": 0.52, "crit_chance": 6, "crit_damage": 30},
-                rarity_epic:      {"damage": 165, "attack_time": 0.48, "crit_chance": 7, "crit_damage": 40},
-                rarity_legendary: {"damage": 225, "attack_time": 0.44, "crit_chance": 8, "crit_damage": 50},
+                rarity_common:    {"damage": 60,  "attack_time": 0.60, "crit_damage": 10},
+                rarity_uncommon:  {"damage": 85,  "attack_time": 0.56, "crit_damage": 20},
+                rarity_rare:      {"damage": 120, "attack_time": 0.52, "crit_damage": 30},
+                rarity_epic:      {"damage": 165, "attack_time": 0.48, "crit_damage": 40},
+                rarity_legendary: {"damage": 225, "attack_time": 0.44, "crit_damage": 50},
             },
         },
 
@@ -209,6 +209,7 @@ register_support_gem(
     apply=scale_key("speed"),
     describe=lambda gem: f"x{gem.value:.2f} projectile speed",
     tags=["projectile"],
+    combine="mul"
 )
 
 register_support_gem(
@@ -223,6 +224,7 @@ register_support_gem(
     apply=scale_key("aoe"),
     describe=lambda gem: f"x{gem.value:.2f} area of effect",
     tags=["aoe"],
+    combine="mul"
 )
 
 register_support_gem(
@@ -236,7 +238,8 @@ register_support_gem(
     },
     apply=scale_key("damage"),
     describe=lambda gem: f"x{gem.value:.2f} damage",
-    tags=["damage"]
+    tags=["damage"],
+    combine="mul"
 )
 
 register_support_gem(
@@ -250,7 +253,8 @@ register_support_gem(
     },
     apply=scale_key("dot_damage"),
     describe=lambda gem: f"x{gem.value:.2f} damage over time",
-    tags=["dot"]
+    tags=["dot"],
+    combine="mul"
 )
 
 register_support_gem(

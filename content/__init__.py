@@ -23,6 +23,7 @@ def load_folder(folder):
             importlib.import_module(f"{__name__}.{folder}.{mod.name}")
 
 from . import gems
+from . import gem_trees
 from . import items
 load_folder("pets")
 load_folder("uniques")
@@ -32,3 +33,4 @@ from . import enemies
 from . import shops
 from . import areas
 from .shops import inventory
+from . import skilltree
