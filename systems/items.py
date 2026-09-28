@@ -4,11 +4,9 @@ import random
 from collections import Counter
 from core.state import app, world
 from core.screen import camera, get_font
-from core.assets import get_ui_scaled, scaled_sprites
-from systems.rarity import rarity_colors, rarity_common, unique_color
 from systems.weapons import get_weapon_geometry, player_body_radius, weapon_class_tags
 from systems.supports import SupportGem, roll_support_value, support_gem_types
-from core.assets import scaled_sprites
+from core.assets import get_ui_scaled, scaled_sprites, sprites
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, roll_rarity, rarity_colors, rarity_order, unique_color
 
 # NOTE: imports for the modules below are done inside the functions that

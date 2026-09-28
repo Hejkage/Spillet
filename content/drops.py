@@ -37,7 +37,7 @@ leather_armor_group = [
     DropEntry(lambda: roll_item("leather_gloves"),      weight=25),
     DropEntry(lambda: roll_item("leather_belt"),        weight=25),
     DropEntry(lambda: roll_item("wooden_shield"),       weight=25),
-    DropEntry(lambda: make_item("unique_item_test"),    weight=25000000),
+    DropEntry(lambda: make_item("unique_item_test"),    weight=25),        # TEST ITEM TEST ITEM TEST ITEM TEST ITEM!!!!!!!!!!!!
 ]
 
 low_level_weapons_group = [

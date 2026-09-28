@@ -94,3 +94,11 @@ def tree_supports(item):
             gem.node_name = data["name"]
             supports.append(gem)
     return supports
+
+def supports_gem(support_item, gem_item):
+    """True hvis support gem'ens tags overlapper med hvad gemmen accepterer."""
+    from systems.abilities import active_gem_templates
+    from systems.supports import support_gem_types
+    t = active_gem_templates[gem_item.template_key]
+    allowed = t.get("support_tags", set())
+    return bool(support_gem_types[support_item.gem_type]["tags"] & allowed)

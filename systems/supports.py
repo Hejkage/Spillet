@@ -45,7 +45,15 @@ def roll_support_value(gem_type, rarity):
         return random.randint(low, high)
     return round(random.uniform(low, high), 2)
 
-def apply_support_gems(base_direction, base_speed, base_damage, base_aoe, sprite_name, support_gems, extra=None):
+def spread_projectiles(base, count):
+    if count <= 1:
+        return [base]
+    base_dir = base["base_direction"]
+    start = -(count - 1) / 2
+    return [{**base, "direction": base_dir.rotate((start + i) * projectile_spread_angle)}
+            for i in range(count)]
+
+def apply_support_gems(base_direction, base_speed, base_damage, base_aoe, sprite_name, support_gems, extra=None, count=1):
     packet = {
         "direction": base_direction,
         "base_direction": base_direction,
@@ -57,7 +65,7 @@ def apply_support_gems(base_direction, base_speed, base_damage, base_aoe, sprite
     if extra:
         packet.update(extra)
 
-    projectile_list = [packet]
+    projectile_list = spread_projectiles(packet, extra.get("_count", count) if extra else count)
 
     for gem in support_gems:
         projectile_list = gem.apply_gem(projectile_list)
@@ -71,16 +79,7 @@ def scale_key(key):
     return apply
 
 def multiply_projectiles(gem, projectile_list):
-    count = len(projectile_list) + gem.value
-    base = projectile_list[0]
-    base_dir = base["base_direction"]
-
-    start = -(count - 1) / 2
-    result = []
-    for i in range(count):
-        angle = (start + i) * projectile_spread_angle
-        result.append({**base, "direction": base_dir.rotate(angle)})
-    return result
+    return spread_projectiles(projectile_list[0], len(projectile_list) + gem.value)
 
 def burst_fire(gem, projectile_list):
     extra = int(gem.value)

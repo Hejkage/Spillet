@@ -19,3 +19,9 @@ register_gem_edge("fireball", "aoe_2", "proj_1")
 register_gem_edge("fireball", "start", "crit_1")
 register_gem_edge("fireball", "start", "socket_1")
 register_gem_edge("fireball", "start", "socket_2")
+###################################################################################################################################
+
+register_gem_node("shotgun_blast", "start", "Test socket", position=(800, 800), is_root=True)
+register_gem_node("shotgun_blast", "dmg_1", "Kindling", position=(600, 620), is_socket=True)
+
+register_gem_edge("shotgun_blast", "start", "dmg_1")

@@ -4,7 +4,7 @@ from core.screen import get_font
 from core.assets import scaled_sprites
 from systems.items import scale_item_sprite, draw_tooltip_box, gem_slot_support
 from systems.supports import support_gem_types
-from systems.gemtree import (gem_tree_edges, nodes_for, allocate, can_allocate, points_available, reset_gem_tree, max_gem_level, kills_into_current_level, kills_needed_for_next)
+from systems.gemtree import (gem_tree_edges, nodes_for, allocate, can_allocate, points_available, reset_gem_tree, max_gem_level, kills_into_current_level, kills_needed_for_next, supports_gem)
 
 canvas_width = 1600
 canvas_height = 1000
@@ -139,19 +139,24 @@ class GemTreePanel:
     def draw_node_tooltip(self, key):
         data = nodes_for(self.item)[key]
         lines = [(data["name"], _WHITE)]
-        support_type = data["support_type"]
+
         if data.get("is_socket"):
             socketed = self.item.sockets.get(key)
             if socketed is not None:
                 lines.append((socketed.support_gem.describe(), _GRAY))
             else:
                 lines.append(("Empty socket", _GRAY))
-        if support_type:
+                from systems.items import drag_state
+                held = drag_state.item
+                if held is not None and getattr(held, "gem_slot", None) == gem_slot_support and not supports_gem(held, self.item):
+                    lines.append((f"{self.item.name} cannot be supported by this gem", (200, 80, 80)))
+        elif data["support_type"]:
             from systems.supports import SupportGem
             from systems.rarity import rarity_common
-            lines.append((SupportGem(support_type, data["value"], rarity_common).describe(), _GRAY))
+            lines.append((SupportGem(data["support_type"], data["value"], rarity_common).describe(), _GRAY))
         else:
             lines.append(("No effect", _GRAY))
+
         if key in self.item.allocated:
             lines.append(("Allocated", (240, 200, 60)))
         elif can_allocate(self.item, key):
@@ -185,7 +190,9 @@ class GemTreePanel:
                         drag_state.source = ("gem_socket", key)
                     elif key not in item.allocated:
                         allocate(item, key)
-                elif getattr(drag_state.item, "gem_slot", None) == gem_slot_support and key in item.allocated:
+                elif (getattr(drag_state.item, "gem_slot", None) == gem_slot_support
+                      and key in item.allocated
+                      and supports_gem(drag_state.item, item)):
                     item.sockets[key] = drag_state.item
                     drag_state.item = current
                     drag_state.source = None

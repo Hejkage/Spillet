@@ -77,7 +77,7 @@ active_gem_templates.update({
         "function": cast_projectile_spell,
         "sprite_name": "fireball_sprite",
         "weapon_tags": {"caster"},
-        "support_tags": {"projectile", "damage", "aoe", "crit"},
+        "support_tags": {"projectile", "damage", "aoe", "crit", "caster"},
         "damage_scaling": {"elemental_damage", "spell_damage"},
         "aoe": 1,
         "projectile_speed": 600,
@@ -167,18 +167,18 @@ active_gem_templates.update({
             "name": "Shotgun Blast",
             "function": shoot_projectile_gun,
             "sprite_name": "gun_basic_attack_sprite",
-            "weapon_tags": {"gun"},
+            "weapon_tags": {"ranged"},
             "support_tags": {"projectile", "damage", "crit"},
             "damage_scaling": {"physical_damage"},
             "cooldown": 0.05,
             "aoe": 0.2,
             "projectile_speed": 1200,
             "rarity_stats": {
-                rarity_common:    {"damage": 25},
-                rarity_uncommon:  {"damage": 42},
-                rarity_rare:      {"damage": 65},
-                rarity_epic:      {"damage": 90},
-                rarity_legendary: {"damage": 112},
+                rarity_common:    {"damage": 25,    "projectiles": 5},
+                rarity_uncommon:  {"damage": 42,    "projectiles": 5},
+                rarity_rare:      {"damage": 65,    "projectiles": 5},
+                rarity_epic:      {"damage": 90,    "projectiles": 5},
+                rarity_legendary: {"damage": 112,   "projectiles": 5},
             },
         },
 })
@@ -324,7 +324,7 @@ register_support_gem(
     },
     apply=apply_orbit,
     describe=lambda gem: f"Projectiles orbit at {gem.value:.0f} range",
-    tags=["projectile"],
+    tags=["caster"],
 )
 
 register_support_gem(

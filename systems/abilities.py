@@ -33,7 +33,8 @@ class ActiveGem:
         self.lock_duration = 1.0
         self.action_group = None
         self.weapon_tags = None
-        self.icon_name = None 
+        self.icon_name = None     
+        self.base_projectiles = 1
 
     def active_gem_update(self, dt):
         if self.timer > 0:
@@ -53,12 +54,13 @@ class ActiveGem:
             "aoe": self.base_aoe * (player.aoe / 100),
             "speed": self.base_projectile_speed * (player.projectile_speed / 100),
             "cooldown": cooldown,
+            "count": self.base_projectiles,
         }
 
     def get_effective_stats(self, player):
         base = self.get_base_effective(player)
 
-        probe = apply_support_gems(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.extra)
+        probe = apply_support_gems(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.extra, count=base["count"])
 
         per_hit = probe[0]["damage"]
         count = len(probe)
@@ -103,6 +105,7 @@ class ActiveGem:
 
         extra = dict(self.extra)
         extra["_interval"] = self.timer
+        extra["_count"] = base["count"]
 
         self.gem_function(player, target_pos, camera, base["damage"], base["aoe"], base["speed"], self.sprite_name, self.support_gems, extra=extra, facing_flip=self.facing_flip)
 
@@ -158,6 +161,7 @@ def build_active_gem(t, supports, gem_stats=None):
         gem.weapon_tags = t.get("weapon_tags")
         gem.icon_name = t.get("icon")
         gem.action_time = t.get("action_time", t.get("swing_time", 0))
+        gem.base_projectiles = int(val("projectiles", 1))
         return gem
 
 pending_bursts = []
