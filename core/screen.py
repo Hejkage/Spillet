@@ -38,4 +38,16 @@ class Camera:
         
         return screen_x, screen_y
 
+def view_radius():
+    """Half the screen's diagonal: the furthest the player can see from the centre."""
+    return (app.screen_width ** 2 + app.screen_height ** 2) ** 0.5 / 2
+
+def is_near_view(x, y, scale=1.5, pad=0):
+    """True if the world point (x, y) is inside `scale` screens around the view."""
+    half_w = app.screen_width * scale / 2 + pad
+    half_h = app.screen_height * scale / 2 + pad
+    center_x = camera.x + app.screen_width / 2
+    center_y = camera.y + app.screen_height / 2
+    return abs(x - center_x) <= half_w and abs(y - center_y) <= half_h
+
 camera = Camera()

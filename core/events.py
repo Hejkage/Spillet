@@ -212,11 +212,7 @@ def restart_game():
     for name, area in areas.items():
         if name == "start":
             continue
-        area.generated = False
-        area.world_objects = []
-        area.enemies = []
-        area.ground_items = []
-        area.portals = []
+        area.reset()
 
     world.ground_items.clear()
     world.projectiles.clear()
@@ -225,4 +221,3 @@ def restart_game():
 
     switch_area(areas["home"])
     app.game_state = ""
-
