@@ -1,6 +1,6 @@
 import pygame
 from core.state import app, world
-from core.screen import camera
+from core.screen import camera, is_near_view
 from core.assets import draw_background, draw_sprite, scaled_sprites, update_screen_data
 from systems.projectiles import update_orbit_ring
 from systems.items import draw_all_ground_labels, draw_dragged_item, draw_ground_item_label, draw_item_tooltip, equipment, hover_state
@@ -28,6 +28,8 @@ app.fullscreen = True
 app.game_state = "menu"
 app.running = True
 clock = pygame.time.Clock()
+draw_view_scale = 1.5          # draw this many screens around the player
+world_object_draw_pad = 200    # extra room so tall sprites (trees) don't pop in
 
 def update_player_input(dt):
     if pygame.mouse.get_pressed()[0] and not app.attack_input_blocked and not attack_blocking_panel_open():
@@ -140,23 +142,26 @@ while app.running:
             portal.portal_draw()
         
         for g in world.ground_items:
-            g.ground_item_draw()
+            if is_near_view(g.x, g.y, draw_view_scale):
+                g.ground_item_draw()
 
-        for p in world.projectiles:
-            p.projectile_draw(camera)
-
-        for p in world.enemy_projectiles:
-            p.projectile_draw(camera)
-
-        depth_entities = [(o, o.world_object_draw) for o in world.world_objects]
+        depth_entities = [(o, o.world_object_draw) for o in world.world_objects if is_near_view(o.x, o.y, draw_view_scale, pad=world_object_draw_pad)]
         depth_entities.append((player, lambda: player.draw_player(camera)))
         for pet in player.pets:
             depth_entities.append((pet, lambda pet=pet: pet.draw_pet(camera)))
 
         for e in world.enemies:
-            if e.enemy_is_on_screen(camera):
+            if is_near_view(e.x, e.y, draw_view_scale):
                 depth_entities.append((e, e.enemy_draw))
         draw_depth_sorted(depth_entities)
+
+        for p in world.projectiles:
+                    if is_near_view(p.x, p.y, draw_view_scale):
+                        p.projectile_draw(camera)
+        
+        for p in world.enemy_projectiles:
+            if is_near_view(p.x, p.y, draw_view_scale):
+                p.projectile_draw(camera)
 
         draw_floating_texts(camera)
 
@@ -166,6 +171,9 @@ while app.running:
         draw_xp_bar(player)
         draw_health_bar(player)
         draw_hotbar(player)
+
+        draw_all_ground_labels()
+        draw_ground_item_label()
 
     if app.game_state == "": skill_tree_button.draw_button()
 
@@ -178,9 +186,6 @@ while app.running:
         loot_filter_dropdown.draw()
         loot_filter_checkbox.draw()
     
-    draw_all_ground_labels()
-    draw_ground_item_label()
-
     gem_tree_panel.draw()
 
     for c in grid_containers:
