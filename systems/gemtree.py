@@ -1,11 +1,12 @@
 from systems.supports import SupportGem
 from systems.rarity import rarity_common
 
-gem_tree_nodes = {}   # template_key -> {node_key: data}
-gem_tree_edges = {}   # template_key -> {node_key: [connected node keys]}
+gem_tree_nodes = {}
+gem_tree_edges = {}
 
 max_gem_level = 10
 base_kills_for_level = 100
+respec_cost_per_node = 25   # gold to unallocate one node
 
 def register_gem_node(template_key, key, name, position, support_type=None, value=None, is_root=False, is_socket=False, sprite_name=None):
     gem_tree_nodes.setdefault(template_key, {})[key] = {
@@ -31,7 +32,6 @@ def neighbors(template_key, key):
     return gem_tree_edges.get(template_key, {}).get(key, [])
 
 def kills_for_level(level):
-    """Hvad DET level koster: level 1 = 100, level 2 = 200, level 3 = 400..."""
     return base_kills_for_level * (2 ** (level - 1))
 
 def level_from_kills(kills):
@@ -56,31 +56,85 @@ def kills_needed_for_next(item):
         return 0
     return kills_for_level(level + 1)
 
+def enter_tree(item):
+    """Call when the gem tree panel opens for this item."""
+    item.pending_allocated = set(item.allocated)
+
 def points_available(item):
-    return item.gem_level() - len(item.allocated)
+    return item.gem_level() - len(item.pending_allocated)
 
 def prereqs_met(item, key):
     template_key = item.template_key
     if nodes_for(item)[key]["is_root"]:
         return True
-    return any(n in item.allocated for n in neighbors(template_key, key))
+    return any(n in item.pending_allocated for n in neighbors(template_key, key))
 
 def can_allocate(item, key):
-    return key not in item.allocated and prereqs_met(item, key) and points_available(item) > 0
+    return key not in item.pending_allocated and prereqs_met(item, key) and points_available(item) > 0
 
 def allocate(item, key):
     if not can_allocate(item, key):
         return False
-    item.allocated.add(key)
+    item.pending_allocated.add(key)
     return True
 
-def reset_gem_tree(item):
-    item.allocated.clear()
+def can_deallocate(item, key):
+    if key not in item.pending_allocated:
+        return False
+    nodes = nodes_for(item)
+    if nodes[key].get("is_socket") and item.sockets.get(key) is not None:
+        return False   # unsocket the support gem first
+    remaining = item.pending_allocated - {key}
+    roots = {n for n in remaining if nodes[n]["is_root"]}
+    reached = set(roots)
+    frontier = list(roots)
+    template_key = item.template_key
+    while frontier:
+        n = frontier.pop()
+        for nb in neighbors(template_key, n):
+            if nb in remaining and nb not in reached:
+                reached.add(nb)
+                frontier.append(nb)
+    return reached == remaining
 
-def tree_supports(item):
+def deallocate(item, key):
+    if not can_deallocate(item, key):
+        return False
+    item.pending_allocated.discard(key)
+    return True
+
+def pending_removed(item):
+    return item.allocated - item.pending_allocated
+
+def pending_respec_cost(item):
+    return len(pending_removed(item)) * respec_cost_per_node
+
+def has_pending_changes(item):
+    return item.pending_allocated != item.allocated
+
+def commit_changes(item, player):
+    cost = pending_respec_cost(item)
+    if player.coins < cost:
+        return False
+    player.coins -= cost
+    item.allocated = set(item.pending_allocated)
+    player.gem_signature = None   # forces rebuild_gem_ability to pick up the change
+    return True
+
+def discard_changes(item):
+    item.pending_allocated = set(item.allocated)
+
+def reset_gem_tree(item):
+    """Dev/testing tool — stays instant and free."""
+    item.allocated.clear()
+    item.pending_allocated.clear()
+
+def tree_supports(item, allocated=None):
+    if allocated is None:
+        allocated = item.allocated
     supports = []
     nodes = nodes_for(item)
-    for key in item.allocated:
+    for key in allocated:
         data = nodes.get(key)
         if not data:
             continue
@@ -96,7 +150,6 @@ def tree_supports(item):
     return supports
 
 def supports_gem(support_item, gem_item):
-    """True hvis support gem'ens tags overlapper med hvad gemmen accepterer."""
     from systems.abilities import active_gem_templates
     from systems.supports import support_gem_types
     t = active_gem_templates[gem_item.template_key]

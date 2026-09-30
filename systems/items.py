@@ -90,7 +90,7 @@ register_stat("attack_crit_chance", "Attack Critical Strike Chance",    base=0, 
 register_stat("spell_crit_chance",  "Spell Critical Strike Chance",     base=0,     percent=True)
 register_stat("crit_chance",        "Critical Strike Chance",           base=5,     percent=True)
 register_stat("crit_damage",        "Critical Strike Damage",           base=150,   percent=True)
-register_stat("aoe",                "Area of Effect",                   base=100,   panel_label="Increased Area of Effect")
+register_stat("aoe",                "Area of Effect",                   base=100,   panel_label="Increased Area of Effect", percent=True)
 register_stat("physical_damage",    "Physical Damage",                  base=100,   show_in_panel=False)
 register_stat("elemental_damage",   "Elemental Damage",                 base=100,   show_in_panel=False)
 register_stat("attack_speed",       "Attack Speed",                     base=100,   panel_label="Increased Attack Speed")
@@ -161,6 +161,7 @@ class ActiveGemItem(GemItem):
         self.built_in_support = built_in_support
         self.kills = 0
         self.allocated = set()
+        self.pending_allocated = set()
         self.sockets = {}
 
     def gem_level(self):
@@ -577,6 +578,17 @@ def _tt_summons(item, lines):
 def _tt_support_gem(item, lines):
     if hasattr(item, "support_gem"):
         lines.append((item.support_gem.describe(), _WHITE))
+
+@tooltip_section
+def _tt_gem_level(item, lines):
+    if not hasattr(item, "template_key"):
+        return
+    from systems.gemtree import max_gem_level, kills_into_current_level, kills_needed_for_next
+    level = item.gem_level()
+    if level < max_gem_level:
+        lines.append((f"Level {level}/{max_gem_level}  ({kills_into_current_level(item)}/{kills_needed_for_next(item)} kills)", _GRAY))
+    else:
+        lines.append((f"Level {level}/{max_gem_level} (max)", _GRAY))
 
 @tooltip_section
 def _tt_active_gem(item, lines):

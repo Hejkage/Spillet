@@ -4,7 +4,7 @@ from core.state import app, world
 from core.screen import get_font
 from core.assets import scaled_sprites
 from systems.rarity import rarity_colors, rarity_common, rarity_epic, rarity_legendary, rarity_order, rarity_rare, rarity_uncommon, unique_color
-from systems.items import item_category_currency
+from systems.items import item_category_currency, scale_item_sprite
 from systems.drops import generic_drop_pool
 
 # NOTE: imports for the modules below are done inside the functions that
@@ -14,6 +14,21 @@ from systems.drops import generic_drop_pool
 
 world.ground_items = []
 app.ground_label_rects = []
+ground_item_sprite_size = 32   # every ground item is drawn at this size (px, before ui_scale)
+_ground_sprite_cache = {}
+
+def ground_item_sprite(item):
+    key = (item.sprite_name, app.ui_scale)
+    cached = _ground_sprite_cache.get(key)
+    if cached:
+        return cached
+    base = scaled_sprites.get(item.sprite_name)
+    if not base:
+        return None
+    box = max(1, int(ground_item_sprite_size * app.ui_scale))
+    fitted = scale_item_sprite(base, box)
+    _ground_sprite_cache[key] = fitted
+    return fitted
 
 loot_filter_levels = [rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary]
 app.loot_filter_index = 0
@@ -108,21 +123,21 @@ class GroundItem:
         self.x = x
         self.y = y
         self.stack_count = 1
-        sprite = scaled_sprites.get(item.sprite_name)
+        sprite = ground_item_sprite(item)
         self.rect = sprite.get_rect() if sprite else pygame.Rect(0, 0, 0, 0)
         self.label_offset = None
         self.label_anchor = None
         self.label_col_w = 0
 
     def ground_item_update_hitbox(self, camera):
-        sprite = scaled_sprites.get(self.item.sprite_name)
+        sprite = ground_item_sprite(self.item)
         if sprite:
             self.rect = sprite.get_rect(center=camera.apply_camera(self.x, self.y))
-    
+
     def ground_item_draw(self):
         if not item_passes_filter(self.item):
             return
-        sprite = scaled_sprites.get(self.item.sprite_name)
+        sprite = ground_item_sprite(self.item)
         if sprite:
             app.screen.blit(sprite, self.rect)
 

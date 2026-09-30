@@ -9,6 +9,7 @@ from systems.abilities import active_gem_templates, basic_attacks_by_weapon, bui
 from systems.world_objects import world_rect_at
 from systems.pets import Pet
 from core.screen import camera
+from systems.facing import face_direction, facing_sprite_name, facing_surface
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -24,9 +25,11 @@ class MoveOrder:
 class Player:
     def __init__(self, sprite_name, player_x, player_y):
         self.sprite_name = sprite_name
+        self.back_sprite_name = "witch_back_sprite"
         self.x = player_x
         self.y = player_y
         self.facing = 1
+        self.facing_y = 1 
         self.coins = 0
         self.xp = 0
         self.level = 1
@@ -60,16 +63,17 @@ class Player:
     def try_dash(self):
         if self.dash_timer > 0:
             return
-        
+
         mouse_pos = pygame.mouse.get_pos()
         player_screen_pos = pygame.Vector2(camera.apply_camera(self.x, self.y))
         direction = pygame.Vector2(mouse_pos) - player_screen_pos
-        
+
         if direction.length() > 0:
             self.dash_direction = direction.normalize()
             self.dash_time_remaining = self.dash_duration
             self.dash_timer = self.dash_cooldown
             self.action_lock_timer = 0
+            face_direction(self, direction.x, direction.y)
     
     def use_dash(self):
         self.try_dash()
@@ -80,6 +84,8 @@ class Player:
             self.xp -= self.xp_to_next_level
             self.level += 1
             self.xp_to_next_level = int(self.xp_to_next_level * 1.25 * (1 + self.level / 100))
+            from systems.popups import spawn_floating_text
+            spawn_floating_text("Level Up! +1 Skill Point", self.x, self.y - 40, color=(255, 230, 120))
 
     def take_damage(self, amount):
         if self.current_health <= 0:
@@ -283,12 +289,11 @@ class Player:
             direction.y += 1
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             direction.x -= 1
-            self.facing = 1
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             direction.x += 1
-            self.facing = -1
 
         if direction.length() > 0:
+            face_direction(self, direction.x, direction.y)
             self.move_target = None
             direction = direction.normalize()
             self.try_move(direction.x * self.movement_speed * dt, direction.y * self.movement_speed * dt)
@@ -326,14 +331,11 @@ class Player:
             return
 
         move_dir = pygame.Vector2(dx, dy).normalize()
-        self.facing = 1 if move_dir.x < 0 else -1
+        face_direction(self, move_dir.x, move_dir.y)
         self.try_move(move_dir.x * self.movement_speed * dt, move_dir.y * self.movement_speed * dt)
 
     def draw_player(self, camera):
-        sprite = scaled_sprites[self.sprite_name]
-
-        if self.facing == -1:
-            sprite = pygame.transform.flip(sprite, True, False)
+        sprite = facing_surface(self, scaled_sprites[facing_sprite_name(self)])
 
         pos = camera.apply_camera(self.x, self.y)
         rect = sprite.get_rect(center=pos)

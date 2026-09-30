@@ -8,6 +8,7 @@ from systems.drops import DropPool
 from systems.ground import spawn_drops
 from systems.player import begin_leap, leap_height_offset, update_leap
 from systems.player import player
+from systems.facing import face_direction, facing_sprite_name, facing_surface
 
 # region Enemies
 
@@ -82,10 +83,13 @@ class EnemyAbility():
             return
         if dist > self.ability_range:
             return
-        enemy.begin_cast(self)
+        if enemy.begin_cast(self):
+            face_direction(enemy, player.x - enemy.x, player.y - enemy.y)
 
     def fire(self, enemy, player, dist):
-        pass
+        direction = pygame.Vector2(player.x - enemy.x, player.y - enemy.y)
+        face_direction(enemy, direction.x, direction.y)
+        world.enemy_projectiles.append(Projectile(self.sprite_name, enemy.x, enemy.y, direction, speed=self.speed, damage=self.damage, aoe=self.aoe))
 
 class EnemyProjectileAbility(EnemyAbility):
     def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0):
@@ -100,10 +104,12 @@ class EnemyProjectileAbility(EnemyAbility):
         world.enemy_projectiles.append(Projectile(self.sprite_name, enemy.x, enemy.y, direction, speed=self.speed, damage=self.damage, aoe=self.aoe))
 
 enemy_defaults = {
-    "base_sprite": None, "sprite_scale": 1.0, "health": 100, "xp_value": 10,
+     "base_sprite": None, "back_sprite": None, "sprite_scale": 1.0, "health": 100, "xp_value": 10,
     "move_speed": 120, "contact_damage": 0, "behavior": "melee",
     "attack_range": 400, "cast_cooldown": enemy_global_cast_cooldown,
     "cast_time": enemy_cast_time, "skip_generic_drops": False,
+    "retreat_range": 150,          # add — how close the player has to get before it backs away
+    "retreat_speed_mult": 0.65,    # add — retreat is slower than its chase speed
     "leap_range": 500, "leap_height": 120, "leap_time_per_unit": 0.0015,
     "leap_max_distance": 500, "leap_cooldown": 2.5,
     "leap_min_distance": 0, "leap_scatter": 0,
@@ -123,6 +129,7 @@ class Enemy:
         self.x, self.y = x, y
         self.enemy_type = enemy_type
         self.sprite_name = cfg["base_sprite"]
+        self.back_sprite_name = cfg["back_sprite"]
         self.max_health = self.health
         self.drop_pool = cfg.get("drop_pool") or DropPool()
         self.guaranteed_drops = cfg.get("guaranteed_drops", [])
@@ -130,7 +137,8 @@ class Enemy:
         self.alive = True
         self.slow_multiplier = 1.0
         self.statuses = {}
-        self.sprite = self.build_scaled_sprite()
+        self.sprites = {name: self.build_scaled_sprite(name) for name in (self.sprite_name, self.back_sprite_name) if name}
+        self.sprite = self.sprites[self.sprite_name]
         self.rect = self.sprite.get_rect()
         self.leap = None
         self.leap_timer = random.uniform(0, self.leap_cooldown)
@@ -142,8 +150,8 @@ class Enemy:
         self.global_cast_timer = 0
         self.pending_cast = None
     
-    def build_scaled_sprite(self):
-        base = scaled_sprites[self.sprite_name]
+    def build_scaled_sprite(self, sprite_name):
+        base = scaled_sprites[sprite_name]
         if self.sprite_scale == 1.0:
             return base
         w, h = base.get_size()
@@ -295,7 +303,7 @@ class Enemy:
         if length > 0:
             self.x += (move_x / length) * self.current_speed() * dt
             self.y += (move_y / length) * self.current_speed() * dt
-            self.facing = 1 if move_x < 0 else -1
+            face_direction(self, move_x, move_y)
 
     def update_idle(self, dt):
         pass
@@ -332,7 +340,8 @@ class Enemy:
             self.global_cast_timer = self.cast_cooldown
 
     def enemy_draw(self):
-        app.screen.blit(self.sprite, self.rect)
+        sprite = self.sprites.get(facing_sprite_name(self), self.sprite)
+        app.screen.blit(facing_surface(self, sprite), self.rect)
 
         #Temporary health bar
         bar_width = self.rect.width
@@ -388,8 +397,9 @@ def caster_behavior(e, player, dt, dx, dy, dist):
     ux, uy = dx / dist, dy / dist
     if dist > e.attack_range * 1.1:
         return ux, uy
-    if dist < e.attack_range * 0.8:
-        return -ux, -uy
+    if dist < e.retreat_range:
+        depth = (e.retreat_range - dist) / max(1.0, e.retreat_range * 0.5)
+        return -ux * min(1.0, depth) * e.retreat_speed_mult, -uy * min(1.0, depth) * e.retreat_speed_mult
     return 0, 0
 
 def leaper_behavior(e, player, dt, dx, dy, dist):
@@ -408,10 +418,16 @@ register_behavior("leaper", leaper_behavior)
 
 def credit_gem_kill():
     from systems.items import active_gem_slots, equipment
+    from systems.gemtree import level_from_kills
+    from systems.popups import spawn_floating_text
     for slot in active_gem_slots:
         gem = equipment.extra_slots.get(slot)
         if gem is not None and hasattr(gem, "kills"):
+            before = level_from_kills(gem.kills)
             gem.kills += 1
+            after = level_from_kills(gem.kills)
+            if after > before:
+                spawn_floating_text(f"{gem.name} +1 Point", player.x, player.y - 40, color=(120, 200, 255))
 
 def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None):
     chance, crit_multiplier = player.crit_stats(hit_stats)

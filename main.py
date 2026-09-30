@@ -20,6 +20,7 @@ from core.events import handle_events
 from systems.save import load_game
 from content import inventory
 from ui.gemtree import gem_tree_panel
+from systems.popups import draw_floating_texts, update_floating_texts
 
 # region Main game loop
 
@@ -93,6 +94,7 @@ register_update(30, update_projectiles)
 register_update(35, update_melee_swings)   # update_melee_swings already takes dt
 register_update(40, update_enemies)
 register_update(50, update_world)
+register_update(29, lambda dt: update_floating_texts(dt))
 
 update_screen_data()
 
@@ -155,6 +157,8 @@ while app.running:
             if e.enemy_is_on_screen(camera):
                 depth_entities.append((e, e.enemy_draw))
         draw_depth_sorted(depth_entities)
+
+        draw_floating_texts(camera)
 
         draw_melee_swings(camera)
 

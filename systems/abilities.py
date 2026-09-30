@@ -3,6 +3,7 @@ from core.state import world
 from systems.weapons import melee_reach, melee_weapon_sprite
 from systems.supports import apply_support_gems
 from systems.projectiles import Projectile
+from systems.facing import face_direction
 
 # region Active Gems
 standard_gem_fields = {"name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "support_tags", "damage_scaling", "rarity_stats", "speed_stat", "hit_kind",
@@ -51,7 +52,7 @@ class ActiveGem:
 
         return {
             "damage": self.base_damage * damage_mult,
-            "aoe": self.base_aoe * (player.aoe / 100),
+            "aoe": self.base_aoe * (player.aoe / 100) if self.uses_aoe else self.base_aoe,
             "speed": self.base_projectile_speed * (player.projectile_speed / 100),
             "cooldown": cooldown,
             "count": self.base_projectiles,
@@ -134,7 +135,6 @@ def build_active_gem(t, supports, gem_stats=None):
 
         if "attack_time" in t and "cooldown" in t:
             print(f"Warning: gem template '{t.get('name')}' sets both attack_time and cooldown")
-
         if "dot_damage" in rolled:
             extra["dot_damage"] = rolled["dot_damage"]
         if "dot_duration" in rolled:
@@ -214,10 +214,7 @@ def cast_projectile_spell(player, target_pos, camera, damage, aoe, speed, sprite
     player_screen_pos = pygame.Vector2(camera.apply_camera(player.x, player.y))
     base_direction = pygame.Vector2(target_pos) - player_screen_pos
 
-    if base_direction.x > 0:
-        player.facing = -1 * facing_flip
-    elif base_direction.x < 0:
-        player.facing = 1 * facing_flip
+    face_direction(player, base_direction.x, base_direction.y, flip=facing_flip)
 
     projectile_data = apply_support_gems(base_direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)
     spawn_projectiles(player, projectile_data)
@@ -231,10 +228,7 @@ def shoot_projectile_gun(player, target_pos, camera, damage, aoe, speed, sprite_
     player_screen_pos = pygame.Vector2(camera.apply_camera(player.x, player.y))
     base_direction = pygame.Vector2(target_pos) - player_screen_pos
 
-    if base_direction.x > 0:
-        player.facing = -1 * facing_flip
-    elif base_direction.x < 0:
-        player.facing = 1 * facing_flip
+    face_direction(player, base_direction.x, base_direction.y, flip=facing_flip)
 
     projectile_data = apply_support_gems(base_direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)
     spawn_projectiles(player, projectile_data)

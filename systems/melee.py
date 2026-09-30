@@ -3,6 +3,7 @@ import math
 from core.state import app
 from systems.weapons import get_swing_sprite, get_weapon_geometry, melee_reach, melee_weapon_sprite, player_body_radius
 from systems.supports import apply_support_gems
+from systems.facing import face_direction
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -184,10 +185,7 @@ def cast_melee_attack(player, target_pos, camera, damage, aoe, speed, sprite_nam
 
     aim_angle = math.degrees(math.atan2(direction.y, direction.x))
 
-    if direction.x > 0:
-        player.facing = -1 * facing_flip
-    elif direction.x < 0:
-        player.facing = 1 * facing_flip
+    face_direction(player, direction.x, direction.y, flip=facing_flip)
 
     data = apply_support_gems(direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)[0]
 

@@ -4,7 +4,10 @@ from core.screen import get_font
 from core.assets import scaled_sprites
 from systems.items import scale_item_sprite, draw_tooltip_box, gem_slot_support
 from systems.supports import support_gem_types
-from systems.gemtree import (gem_tree_edges, nodes_for, allocate, can_allocate, points_available, reset_gem_tree, max_gem_level, kills_into_current_level, kills_needed_for_next, supports_gem)
+from systems.gemtree import (gem_tree_edges, nodes_for, allocate, can_allocate, points_available, reset_gem_tree,
+                              max_gem_level, kills_into_current_level, kills_needed_for_next, supports_gem,
+                              enter_tree, has_pending_changes, pending_respec_cost, commit_changes,
+                              discard_changes, respec_cost_per_node, can_deallocate, deallocate)
 
 canvas_width = 1600
 canvas_height = 1000
@@ -19,6 +22,11 @@ class GemTreePanel:
         self.item = None
         self.node_rects = {}
         self.reset_rect = None
+        self.respec_rect = None
+        self.respec_mode = False
+        self.confirm_open = False
+        self.confirm_keep_rect = None
+        self.confirm_discard_rect = None
 
     def open_for(self, item):
         if not nodes_for(item):
@@ -26,12 +34,22 @@ class GemTreePanel:
         from ui.panels import open_center_panel
         open_center_panel(None)
         self.item = item
+        enter_tree(item)
+        self.respec_mode = False
+        self.confirm_open = False
         self.open = True
         return True
 
     def close(self):
-        self.open = False
-        self.item = None
+        self.request_close()
+
+    def request_close(self):
+        if self.item is not None and has_pending_changes(self.item):
+            self.confirm_open = True
+        else:
+            self.open = False
+            self.item = None
+            self.respec_mode = False
 
     def canvas_to_screen(self, x, y):
         scale = min(app.screen_width / canvas_width, app.screen_height / canvas_height)
@@ -68,7 +86,7 @@ class GemTreePanel:
         from systems.rarity import rarity_common
 
         grouped = {}
-        for gem in tree_supports(item):
+        for gem in tree_supports(item, item.pending_allocated):
             grouped.setdefault(gem.gem_type, []).append(gem.value)
 
         if grouped:
@@ -88,7 +106,7 @@ class GemTreePanel:
                 drawn.add(edge)
                 x1, y1, _ = self.canvas_to_screen(*nodes[key]["position"])
                 x2, y2, _ = self.canvas_to_screen(*nodes[other]["position"])
-                both = key in item.allocated and other in item.allocated
+                both = key in item.pending_allocated and other in item.pending_allocated
                 pygame.draw.line(app.screen, (120, 200, 120) if both else (80, 80, 90), (x1, y1), (x2, y2), 4)
 
         self.node_rects = {}
@@ -97,14 +115,15 @@ class GemTreePanel:
         for key, data in nodes.items():
             x, y, scale = self.canvas_to_screen(*data["position"])
             radius = max(10, int(base_node_radius * scale))
-            if key in item.allocated:
+            if key in item.pending_allocated:
                 color = (240, 200, 60)
             elif can_allocate(item, key):
                 color = (140, 140, 255)
             else:
                 color = (70, 70, 75)
             pygame.draw.circle(app.screen, color, (x, y), radius)
-            pygame.draw.circle(app.screen, _WHITE, (x, y), radius, 3)
+            border_color = (255, 120, 90) if (self.respec_mode and key in item.pending_allocated and can_deallocate(item, key)) else _WHITE
+            pygame.draw.circle(app.screen, border_color, (x, y), radius, 3)
 
             sprite_name = data.get("sprite_name")
             if sprite_name and sprite_name in scaled_sprites:
@@ -133,8 +152,50 @@ class GemTreePanel:
         pygame.draw.rect(app.screen, (220, 220, 220), self.reset_rect, width=2, border_radius=8)
         app.screen.blit(font.render("Reset All", True, _WHITE), font.render("Reset All", True, _WHITE).get_rect(center=self.reset_rect.center))
 
-        if hovered:
+        self.respec_rect = pygame.Rect(self.reset_rect.left - btn_w - 20, self.reset_rect.top, btn_w, btn_h)
+        respec_fill = (60, 110, 60) if self.respec_mode else (60, 60, 90)
+        pygame.draw.rect(app.screen, respec_fill, self.respec_rect, border_radius=8)
+        pygame.draw.rect(app.screen, (220, 220, 220), self.respec_rect, width=2, border_radius=8)
+        respec_label = font.render(f"Respec ({respec_cost_per_node}G/node)", True, _WHITE)
+        app.screen.blit(respec_label, respec_label.get_rect(center=self.respec_rect.center))
+
+        if hovered and not self.confirm_open:
             self.draw_node_tooltip(hovered)
+
+        if self.confirm_open:
+            self.draw_confirm_prompt()
+
+    def draw_confirm_prompt(self):
+        font = get_font(max(16, int(22 * app.ui_scale)))
+        cost = pending_respec_cost(self.item)
+        message = f"Keep these changes? It will cost you {cost} gold." if cost > 0 else "Keep these changes?"
+
+        box_w, box_h = 540, 160
+        box_x = app.screen_width // 2 - box_w // 2
+        box_y = app.screen_height // 2 - box_h // 2
+        box = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        box.fill((20, 20, 25, 245))
+        app.screen.blit(box, (box_x, box_y))
+        pygame.draw.rect(app.screen, (220, 220, 220), (box_x, box_y, box_w, box_h), width=2, border_radius=8)
+
+        text = font.render(message, True, _WHITE)
+        app.screen.blit(text, text.get_rect(center=(box_x + box_w // 2, box_y + 45)))
+
+        btn_w, btn_h = 220, 50
+        self.confirm_keep_rect = pygame.Rect(box_x + 20, box_y + box_h - btn_h - 20, btn_w, btn_h)
+        self.confirm_discard_rect = pygame.Rect(box_x + box_w - btn_w - 20, box_y + box_h - btn_h - 20, btn_w, btn_h)
+
+        from systems.player import player
+        affordable = player.coins >= cost
+        pygame.draw.rect(app.screen, (50, 110, 50) if affordable else (60, 45, 45), self.confirm_keep_rect, border_radius=8)
+        pygame.draw.rect(app.screen, (220, 220, 220), self.confirm_keep_rect, width=2, border_radius=8)
+        keep_label = font.render("Keep changes" if affordable else "Not enough gold", True, _WHITE)
+        app.screen.blit(keep_label, keep_label.get_rect(center=self.confirm_keep_rect.center))
+
+        pygame.draw.rect(app.screen, (110, 50, 50), self.confirm_discard_rect, border_radius=8)
+        pygame.draw.rect(app.screen, (220, 220, 220), self.confirm_discard_rect, width=2, border_radius=8)
+        discard_label = font.render("Discard changes", True, _WHITE)
+        app.screen.blit(discard_label, discard_label.get_rect(center=self.confirm_discard_rect.center))
 
     def draw_node_tooltip(self, key):
         data = nodes_for(self.item)[key]
@@ -157,8 +218,14 @@ class GemTreePanel:
         else:
             lines.append(("No effect", _GRAY))
 
-        if key in self.item.allocated:
-            lines.append(("Allocated", (240, 200, 60)))
+        if key in self.item.pending_allocated:
+            if self.respec_mode:
+                if can_deallocate(self.item, key):
+                    lines.append((f"Click to unallocate ({respec_cost_per_node}G)", (255, 120, 90)))
+                else:
+                    lines.append(("Can't unallocate this node", (200, 80, 80)))
+            else:
+                lines.append(("Allocated", (240, 200, 60)))
         elif can_allocate(self.item, key):
             lines.append(("Click to allocate", (140, 140, 255)))
         else:
@@ -172,9 +239,28 @@ class GemTreePanel:
         item = self.item
         nodes = nodes_for(item)
 
+        if self.confirm_open:
+            if self.confirm_keep_rect and self.confirm_keep_rect.collidepoint(pos):
+                if commit_changes(item, player):
+                    self.confirm_open = False
+                    self.open = False
+                    self.respec_mode = False
+                    self.item = None
+            elif self.confirm_discard_rect and self.confirm_discard_rect.collidepoint(pos):
+                discard_changes(item)
+                self.confirm_open = False
+                self.open = False
+                self.respec_mode = False
+                self.item = None
+            return True
+
         if self.reset_rect and self.reset_rect.collidepoint(pos):
             reset_gem_tree(item)
             player.gem_signature = None
+            return True
+
+        if self.respec_rect and self.respec_rect.collidepoint(pos):
+            self.respec_mode = not self.respec_mode
             return True
 
         for key, rect in self.node_rects.items():
@@ -188,18 +274,21 @@ class GemTreePanel:
                         item.sockets[key] = None
                         drag_state.item = current
                         drag_state.source = ("gem_socket", key)
-                    elif key not in item.allocated:
+                    elif self.respec_mode:
+                        deallocate(item, key)
+                    else:
                         allocate(item, key)
                 elif (getattr(drag_state.item, "gem_slot", None) == gem_slot_support
-                      and key in item.allocated
+                      and key in item.pending_allocated
                       and supports_gem(drag_state.item, item)):
                     item.sockets[key] = drag_state.item
                     drag_state.item = current
                     drag_state.source = None
-                player.gem_signature = None
                 return True
-            allocate(item, key)
-            player.gem_signature = None
+            if self.respec_mode:
+                deallocate(item, key)
+            else:
+                allocate(item, key)
             return True
         return True
 
