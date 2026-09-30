@@ -2,7 +2,7 @@ import pygame
 from core.state import world
 from systems.weapons import melee_reach, melee_weapon_sprite
 from systems.supports import apply_support_gems
-from systems.projectiles import Projectile
+from systems.projectiles import Projectile, projectile_default_lifetime
 from systems.facing import face_direction
 
 # region Active Gems
@@ -196,6 +196,7 @@ def spawn_projectiles(player, projectile_data):
             orbit_radius=p.get("orbit_radius", 200),
             orbit_dir=p.get("orbit_dir", 1),
             orbit_player=player,
+            lifetime=p.get("lifetime", projectile_default_lifetime),
         )
 
         if proj.orbit:

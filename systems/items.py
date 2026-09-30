@@ -116,6 +116,8 @@ class Item:
         self.sprite_name = sprite_name
         # deepcopy: every item gets its OWN stats, never shared with its
         # template or with other copies. Changing one item never changes another.
+        if isinstance(stats, dict):          
+            stats = list(stats.values())
         self.stats = copy.deepcopy(stats) if stats else []
         self.category = category
         self.rarity = rarity

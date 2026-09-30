@@ -6,7 +6,7 @@ from systems.weapons import weapon_class_tags
 from systems.supports import support_gem_types
 from systems.items import active_gem_slots, equipment, pet_equip_slots, stat_defs
 from systems.abilities import active_gem_templates, basic_attacks_by_weapon, build_active_gem
-from systems.world_objects import world_rect_at
+from systems.world_objects import world_rect_at, nearest_free_point, move_with_collision
 from systems.pets import Pet
 from core.screen import camera
 from systems.facing import face_direction, facing_sprite_name, facing_surface
@@ -301,17 +301,9 @@ class Player:
             self.move_towards_target(dt)
     
     def try_move(self, dx, dy):
-        player_radius = 20
-
-        new_x = max(0, min(self.x + dx, world.width))
-        player_rect_x = pygame.Rect(new_x - player_radius, self.y - player_radius, player_radius * 2, player_radius * 2)
-        if not any(o.blocks_movement and world_rect_at(o).colliderect(player_rect_x) for o in world.world_objects):
-            self.x = new_x
-
-        new_y = max(0, min(self.y + dy, world.height))
-        player_rect_y = pygame.Rect(self.x - player_radius, new_y - player_radius, player_radius * 2, player_radius * 2)
-        if not any(o.blocks_movement and world_rect_at(o).colliderect(player_rect_y) for o in world.world_objects):
-            self.y = new_y
+        move_with_collision(self, dx, dy, 20)
+        self.x = max(0, min(self.x, world.width))
+        self.y = max(0, min(self.y, world.height))
 
     def move_towards_target(self, dt):
         order = self.move_target
@@ -400,8 +392,7 @@ player = Player("witch_front_sprite", 1500, 1500)
 #region Leaps and jumps (movement)
 
 class LeapMotion:
-    def __init__(self, start_x, start_y, target_x, target_y, height, time_per_unit,
-                 max_distance=None, min_distance=0, scatter=0):
+    def __init__(self, start_x, start_y, target_x, target_y, height, time_per_unit, max_distance=None, min_distance=0, scatter=0, radius=20):
         if scatter > 0:
             target_x += random.uniform(-scatter, scatter)
             target_y += random.uniform(-scatter, scatter)
@@ -430,6 +421,9 @@ class LeapMotion:
             target_y = start_y + dy * scale
             dist = max_distance
 
+        target_x, target_y = nearest_free_point(start_x, start_y, target_x, target_y, radius)
+        dist = ((target_x - start_x) ** 2 + (target_y - start_y) ** 2) ** 0.5
+
         self.start_x = start_x
         self.start_y = start_y
         self.target_x = target_x
@@ -452,7 +446,8 @@ class LeapMotion:
         return x, y
 
 def begin_leap(entity, target_x, target_y, height, time_per_unit, max_distance=None, min_distance=0, scatter=0):
-    entity.leap = LeapMotion(entity.x, entity.y, target_x, target_y, height, time_per_unit, max_distance, min_distance, scatter)
+    radius = getattr(entity, "collision_radius", 20)
+    entity.leap = LeapMotion(entity.x, entity.y, target_x, target_y, height, time_per_unit, max_distance, min_distance, scatter, radius)
 
 def update_leap(entity, dt):
     leap = getattr(entity, "leap", None)

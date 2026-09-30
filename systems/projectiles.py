@@ -2,6 +2,7 @@ import pygame
 import math
 from core.state import app, world
 from core.assets import scaled_sprites
+from core.screen import is_near_view
 
 # region projectiles
 
@@ -9,10 +10,13 @@ world.projectiles = []
 world.enemy_projectiles = []
 orbit_ring_angle = 0.0
 orbit_rehit_cooldown = 0.5
+projectile_default_lifetime = 5.0   # seconds; a gem can override it with "lifetime"
+projectile_view_scale = 1.5         # projectiles die this many screens from the player
+projectile_sprite_angle = {}
 
 class Projectile:
     def __init__(self, sprite_name, x, y, direction, speed, damage=10, aoe=0, hitbox_scale=1, slow_amount=0, slow_duration=0, dot_damage=0, dot_duration=0, effects = None, hit_stats=None, from_player=True, pierce=0,
-                orbit=False, orbit_radius=200, orbit_dir=1, orbit_player=None,):
+                    orbit=False, orbit_radius=200, orbit_dir=1, orbit_player=None, lifetime=projectile_default_lifetime):
         self.x = x
         self.y = y
         self.direction = direction.normalize() if direction.length() > 0 else pygame.Vector2(1, 0)
@@ -22,7 +26,7 @@ class Projectile:
         self.sprite_name = sprite_name
         self.hit_stats = hit_stats or {}
         self.alive = True
-        self.lifetime = 5.0
+        self.lifetime = lifetime
         self.effects = list(effects) if effects else []
         if slow_duration > 0:
             self.effects.append({"name": "slow", "duration": slow_duration, "amount": slow_amount})
@@ -47,6 +51,9 @@ class Projectile:
         target_width = int(base_width * self.aoe)
         target_height = int(base_height * self.aoe)
         self.draw_sprite = pygame.transform.scale(base_sprite, (target_width, target_height))
+        if not self.orbit:      # orbiting projectiles have no travel direction
+            angle = self.direction.as_polar()[1] + projectile_sprite_angle.get(sprite_name, 0)
+            self.draw_sprite = pygame.transform.rotate(self.draw_sprite, -angle)
         self.rect = self.draw_sprite.get_rect()
 
     def projectile_update(self, dt, camera):
@@ -70,6 +77,8 @@ class Projectile:
 
         if not self.orbit:
             if self.x < 0 or self.x > world.width or self.y < 0 or self.y > world.height:
+                self.alive = False
+            if not is_near_view(self.x, self.y, projectile_view_scale):
                 self.alive = False
 
             for o in world.world_objects:

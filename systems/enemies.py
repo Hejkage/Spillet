@@ -2,6 +2,7 @@ import pygame
 import random
 from core.state import app, world
 from core.assets import scaled_sprites
+from core.screen import view_radius
 from systems.status import apply_hit_effects, status_blocks, status_effect_types
 from systems.projectiles import Projectile, orbit_rehit_cooldown
 from systems.drops import DropPool
@@ -9,11 +10,12 @@ from systems.ground import spawn_drops
 from systems.player import begin_leap, leap_height_offset, update_leap
 from systems.player import player
 from systems.facing import face_direction, facing_sprite_name, facing_surface
+from systems.world_objects import move_with_collision
 
 # region Enemies
 
-enemy_agro_radius = 900
-enemy_deagro_radius =1100
+enemy_agro_view_scale = 1.1      # aggro range as a share of the screen's half-diagonal
+enemy_deagro_view_scale = 2   # must be bigger, or they flip in and out of aggro
 enemy_stop_distance = 45
 enemy_seperation_radius = 35
 enemy_seperation_weight = 1.4
@@ -23,6 +25,8 @@ enemy_cast_time = 0.5
 enemy_global_cast_cooldown = 0.4
 
 enemy_grid_cell_size = 128
+
+enemy_collision_ratio = 0.625   # radius = sprite width * this (player: 32px sprite -> 20)
 
 class SpatialGrid:
     def __init__(self, cell_size):
@@ -113,6 +117,7 @@ enemy_defaults = {
     "leap_range": 500, "leap_height": 120, "leap_time_per_unit": 0.0015,
     "leap_max_distance": 500, "leap_cooldown": 2.5,
     "leap_min_distance": 0, "leap_scatter": 0,
+        "collision_radius": None,      # None = worked out from the sprite. Set a number to override.
 }
 
 enemy_behaviors = {}
@@ -140,6 +145,8 @@ class Enemy:
         self.sprites = {name: self.build_scaled_sprite(name) for name in (self.sprite_name, self.back_sprite_name) if name}
         self.sprite = self.sprites[self.sprite_name]
         self.rect = self.sprite.get_rect()
+        if self.collision_radius is None:
+            self.collision_radius = self.rect.width * enemy_collision_ratio
         self.leap = None
         self.leap_timer = random.uniform(0, self.leap_cooldown)
         self.aggroed = False
@@ -233,11 +240,11 @@ class Enemy:
         dist = (dx * dx + dy * dy) ** 0.5
 
         if self.aggroed:
-            if dist > enemy_deagro_radius:
+            if dist > view_radius() * enemy_deagro_view_scale:
                 self.aggroed = False
                 self.state = "idle"
         else:
-            if dist <= enemy_agro_radius:
+            if dist <= view_radius() * enemy_agro_view_scale:
                 self.aggroed = True
                 self.state = "engaged"
                 self.randomize_ability_timers()
@@ -301,8 +308,8 @@ class Enemy:
 
         length = (move_x * move_x + move_y * move_y) ** 0.5
         if length > 0:
-            self.x += (move_x / length) * self.current_speed() * dt
-            self.y += (move_y / length) * self.current_speed() * dt
+            step = self.current_speed() * dt
+            move_with_collision(self, (move_x / length) * step, (move_y / length) * step, self.collision_radius)
             face_direction(self, move_x, move_y)
 
     def update_idle(self, dt):

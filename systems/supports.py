@@ -46,9 +46,15 @@ def roll_support_value(gem_type, rarity):
     return round(random.uniform(low, high), 2)
 
 def spread_projectiles(base, count):
+    base_dir = base["base_direction"]
+
+    cone = base.get("cone_angle")
+    if cone:
+        return [{**base, "direction": base_dir.rotate(random.uniform(-cone / 2, cone / 2))}
+                for _ in range(count)]
+
     if count <= 1:
         return [base]
-    base_dir = base["base_direction"]
     start = -(count - 1) / 2
     return [{**base, "direction": base_dir.rotate((start + i) * projectile_spread_angle)}
             for i in range(count)]
