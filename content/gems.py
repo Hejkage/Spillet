@@ -33,6 +33,7 @@ basic_attack_templates.update({
             "damage": 10,
             "cooldown": 0.05,
             "aoe": 0.2,
+            "uses_aoe": False,
             "projectile_speed": 1200,
         },
 
@@ -123,7 +124,7 @@ active_gem_templates.update({
         "projectile_speed": 0,
         "range_mult": 1.1,
         "arc": 140,
-        "swing_time": 0.9,
+        "swing_time": 0.3,
         "sprite_angle_offset": 0.0,
         "locks_movement": True,
         "lock_duration": 0.6,
@@ -172,6 +173,7 @@ active_gem_templates.update({
             "damage_scaling": {"physical_damage"},
             "cooldown": 0.05,
             "aoe": 0.2,
+            "uses_aoe": False,
             "projectile_speed": 1200,
             "rarity_stats": {
                 rarity_common:    {"damage": 25,    "projectiles": 5},

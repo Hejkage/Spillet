@@ -1,8 +1,3 @@
-"""Enemy abilities and enemy definitions.
-
-Pure data. Add new entries here - never in systems/.
-"""
-
 from systems.rarity import rarity_common
 from systems.items import make_item
 from systems.drops import generic_drop_pool
@@ -21,6 +16,7 @@ def witch_meteor():
 enemy_configs.update({
     "witch": {
         "base_sprite": "witch_front_sprite",
+        "back_sprite": "witch_back_sprite",
         "health": 100,
         "xp_value": 50,
         "move_speed": 150,
@@ -35,6 +31,7 @@ enemy_configs.update({
 
     "baby_witch": {
         "base_sprite": "witch_front_sprite",
+        "back_sprite": "witch_back_sprite",
         "sprite_scale": 0.5,
         "health": 100,
         "xp_value": 25,

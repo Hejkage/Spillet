@@ -34,7 +34,7 @@ def handle_events():
                 elif gem_tree_panel.open:
                     gem_tree_panel.close()
                 elif skill_tree_panel.open:
-                    skill_tree_panel.open = False
+                    skill_tree_panel.request_close()
                 elif equipment.open or any(c.open for c in grid_containers):
                     equipment.open = False
                     for c in grid_containers:

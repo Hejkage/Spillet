@@ -2,6 +2,7 @@ import pygame
 import os
 from core.state import app, sprite_dir, tile_dir, world
 from core.screen import base_height, base_width, camera
+from systems.facing import face_direction, facing_sprite_name, facing_surface
 
 # region Sprites
 sprites = {}
@@ -219,6 +220,13 @@ def configure_sprite(sprite_name, **settings):
     scale_one_sprite(sprite_name)
     for key in [k for k in _ui_scaled_cache if k[0] == sprite_name]:
         del _ui_scaled_cache[key]
+
+def facing_sprite_name(front_name, back_name, facing_y):
+    """Vælg front- eller back-sprite ud fra lodret retning.
+    facing_y < 0 = bevæger sig/vender opad -> brug back-sprite hvis der er en."""
+    if facing_y < 0 and back_name:
+        return back_name
+    return front_name
         
 update_screen_data()
 
