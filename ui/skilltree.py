@@ -2,7 +2,7 @@ import pygame
 from core.state import app
 from core.screen import get_font
 from core.assets import scaled_sprites
-from systems.skilltree import (skill_nodes, adjacency, pending_nodes, can_allocate, allocate, can_deallocate, deallocate, reset_all, points_available, enter_tree, has_pending_changes, pending_respec_cost, commit_changes, discard_changes, respec_cost_per_node)
+from systems.skilltree import (skill_nodes, adjacency, pending_nodes, can_allocate, allocate, can_deallocate, deallocate, reset_all, points_available, enter_tree, has_pending_changes, pending_respec_cost, commit_changes, discard_changes, respec_cost_per_node, node_lines, node_is_on)
 from systems.player import player
 from systems.items import scale_item_sprite, draw_tooltip_box, stat_label, stat_is_percent
 
@@ -84,7 +84,7 @@ class SkillTreePanel:
                 drawn_edges.add(edge)
                 x1, y1, _ = self.canvas_to_screen(*skill_nodes[key]["position"])
                 x2, y2, _ = self.canvas_to_screen(*skill_nodes[other]["position"])
-                both_allocated = key in pending_nodes and other in pending_nodes
+                both_allocated = node_is_on(key) and node_is_on(other)
                 color = (120, 200, 120) if both_allocated else (80, 80, 90)
                 pygame.draw.line(app.screen, color, (x1, y1), (x2, y2), 4)
 
@@ -94,7 +94,7 @@ class SkillTreePanel:
         for key, data in skill_nodes.items():
             x, y, scale = self.canvas_to_screen(*data["position"])
             radius = max(10, int(base_node_radius * scale))
-            if key in pending_nodes:
+            if node_is_on(key):
                 color = (240, 200, 60)
             elif can_allocate(player, key):
                 color = (140, 140, 255)
@@ -203,12 +203,17 @@ class SkillTreePanel:
     def draw_node_tooltip(self, key):
         data = skill_nodes[key]
         lines = [(data["name"], _WHITE)]
-        if data["stats"]:
-            for mod in data["stats"]:
-                lines.append((_mod_line(mod), _GRAY))
-        else:
-            lines.append(("No stats", _GRAY))
-        if key in pending_nodes:
+        if data.get("description"):
+            lines.append((data["description"], (170, 170, 190)))
+        described = node_lines(key)
+        if described:
+            for text in described:
+                lines.append((text, _GRAY))
+        elif not data["is_root"] and not data.get("description"):
+            lines.append(("Does nothing yet", _GRAY))
+        if data["is_root"]:
+            lines.append(("Starting point — always active, costs nothing", (240, 200, 60)))
+        elif key in pending_nodes:
             if self.respec_mode:
                 if can_deallocate(key):
                     lines.append((f"Click to unallocate ({respec_cost_per_node}G)", (255, 120, 90)))
