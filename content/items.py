@@ -5,7 +5,7 @@ Pure data. Add new entries here - never in systems/.
 
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
 from systems.weapons import weapon_class_configs
-from systems.items import affix_count_by_rarity, affix_pool, base_items, item_templates
+from systems.items import (accepts_slot_type, affix_count_by_rarity, affix_pool, base_items, item_templates, register_equip_slot)
 
 affix_pool.update({
     "spell_damage": {
@@ -344,12 +344,12 @@ item_templates.update({
         "sprite": "helmet_item_sprite",
         "slot": "head",
         "stats": [
-            {"stat": "max_health", "type": "increased", "amount": 1000},
-            {"stat": "max_health", "type": "increased", "amount": 1000},
-            {"stat": "max_health", "type": "increased", "amount": 1000},
-            {"stat": "max_health", "type": "increased", "amount": 1000},
-            {"stat": "max_health", "type": "increased", "amount": 1000},
-            {"stat": "max_health", "type": "increased", "amount": 1000},
+            {"stat": "max_health", "type": "increased", "amount": 1},
+            {"stat": "max_health", "type": "increased", "amount": 1},
+            {"stat": "max_health", "type": "increased", "amount": 2},
+            {"stat": "max_health", "type": "increased", "amount": 3},
+            {"stat": "max_health", "type": "increased", "amount": 3},
+            {"stat": "max_health", "type": "increased", "amount": 4},
         ],
         "rarity": rarity_legendary,
     },
@@ -418,3 +418,45 @@ item_templates.update({
     },
 })
 
+# A slot that does nothing until a skill tree node grants "ring_slots".
+register_equip_slot("ring3", "main", accepts_slot_type("ring"), "inventory_slot_sprite", requires_grant="ring_slots")
+
+
+# ============================================================================
+# A BASE ITEM - every setting it understands.
+# Goes in base_items in content/items.py. Rolled randomly when it drops.
+# ============================================================================
+base_items.update({
+    "heavy_golden_armor": {
+        # --- required ---------------------------------------------------
+        "name":   "Heavy golden armor",      # shown in game
+        "sprite": "body_item_sprite",        # a .png anywhere in assets/sprites/
+        "slot":   "body",                    # ring neck head body gloves belt pants boots weapon offhand
+
+        # --- weapons only -----------------------------------------------
+        # "weapon_class": "sword",           # a key in weapon_class_configs
+        # "swing_sprite": "melee_attack_sprite",
+
+        # --- which mods it can roll --------------------------------------
+        # keys from affix_pool. Rolled WITH replacement, so the same affix
+        # can appear twice on one item.
+        "affixes": ["aoe", "cooldown", "max_health", "health_regen"],
+
+        # --- how deep in the game it is ----------------------------------
+        # Which monster tier is needed before it can drop at each rarity.
+        # Write only the steps you care about; the rest use the defaults in
+        # systems/rarity.py (common 1, uncommon 1, rare 2, epic 3, legendary 4).
+        # Keep the numbers ascending.
+        "rarity_tiers": {
+            rarity_common:    1,
+            rarity_uncommon:  3,
+            rarity_rare:      5,
+            rarity_epic:      7,
+            rarity_legendary: 9,
+        },
+
+        # Instead of the table above: move ALL the defaults up by this many
+        # tiers. One number for a whole late-game category.
+        # "tier_shift": 5,
+    },
+})

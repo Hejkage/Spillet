@@ -31,6 +31,7 @@ from . import world_objects
 from . import drops
 from . import enemies
 from . import shops
+from . import monsters
 from . import packs
 load_folder("areas")
 from .shops import inventory

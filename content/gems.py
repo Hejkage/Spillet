@@ -4,7 +4,7 @@ Pure data. Add new entries here - never in systems/.
 """
 
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
-from systems.supports import add_crit_damage, add_increased_attack_speed, add_increased_crit_chance, add_pierce, apply_orbit, burst_fire, multiply_projectiles, register_support_gem, scale_key
+from systems.supports import register_support_gem
 from systems.melee import cast_melee_attack
 from systems.abilities import active_gem_templates, basic_attack_templates, basic_attacks_by_weapon, basic_attacks_by_weapon_key, build_active_gem, cast_projectile_spell, shoot_projectile_gun
 
@@ -15,9 +15,10 @@ configure_sprite("gun_basic_attack_sprite", scale=1, anchor="top_left", position
 basic_attack_templates.update({
     "wand_attack": {
         "name": "Wand attack",
+        "icon": "fireball_sprite",
         "function": cast_projectile_spell,
         "sprite_name": "fireball_sprite",
-        "damage_scaling": {"elemental_damage", "spell_damage"},
+        "damage_scaling": {"elemental_damage", "attack_damage"},
         "damage": 10,
         "cooldown": 0.3,
         "aoe": 0.8,
@@ -196,9 +197,7 @@ register_support_gem(
         rarity_epic:      (7, 8),
         rarity_legendary: (9, 10),
     },
-    apply=multiply_projectiles,
-    describe=lambda gem: f"+{gem.value} projectiles",
-    tags=["projectile"],
+    mod="projectiles",
 )
 
 register_support_gem(
@@ -210,9 +209,7 @@ register_support_gem(
         rarity_epic:      (1.70, 2.00),
         rarity_legendary: (2.00, 2.50),
     },
-    apply=scale_key("speed"),
-    describe=lambda gem: f"x{gem.value:.2f} projectile speed",
-    tags=["projectile"],
+    mod="speed",
     combine="mul"
 )
 
@@ -225,9 +222,7 @@ register_support_gem(
         rarity_epic:      (1.55, 1.80),
         rarity_legendary: (1.80, 2.20),
     },
-    apply=scale_key("aoe"),
-    describe=lambda gem: f"x{gem.value:.2f} area of effect",
-    tags=["aoe"],
+    mod="aoe",
     combine="mul"
 )
 
@@ -240,9 +235,7 @@ register_support_gem(
         rarity_epic:      (1.55, 1.80),
         rarity_legendary: (1.80, 2.20),
     },
-    apply=scale_key("damage"),
-    describe=lambda gem: f"x{gem.value:.2f} damage",
-    tags=["damage"],
+    mod="damage",
     combine="mul"
 )
 
@@ -255,9 +248,7 @@ register_support_gem(
         rarity_epic:      (1.55, 1.80),
         rarity_legendary: (1.80, 2.20),
     },
-    apply=scale_key("dot_damage"),
-    describe=lambda gem: f"x{gem.value:.2f} damage over time",
-    tags=["dot"],
+    mod="dot_damage",
     combine="mul"
 )
 
@@ -270,9 +261,7 @@ register_support_gem(
         rarity_epic:      (131, 150),
         rarity_legendary: (151, 200),
     },
-    apply=add_increased_crit_chance,
-    describe=lambda gem: f"{gem.value:.0f}% increased critical strike chance",
-    tags=["crit"]
+    mod="crit_chance",
 )
 
 register_support_gem(
@@ -284,9 +273,7 @@ register_support_gem(
         rarity_epic:      (65, 90),
         rarity_legendary: (90, 130),
     },
-    apply=add_crit_damage,
-    describe=lambda gem: f"{gem.value:.0f}% increased critical strike damage",
-    tags=["crit"],
+    mod="crit_damage",
 )
 
 register_support_gem(
@@ -298,7 +285,7 @@ register_support_gem(
         rarity_epic:      (4, 4),
         rarity_legendary: (5, 5),
     },
-    apply=burst_fire,
+    mod="burst",
     describe=lambda gem: f"+{int(gem.value)} extra casts, x{1.5 + (int(gem.value) - 1) * 0.25:.2f} cooldown",
     tags=["projectile"],
 )
@@ -312,9 +299,7 @@ register_support_gem(
         rarity_epic:      (4, 4),
         rarity_legendary: (5, 5),
     },
-    apply=add_pierce,
-    describe=lambda gem: f"Pierces {int(gem.value)} enemies",
-    tags=["projectile"],
+    mod="pierce",
 )
 
 register_support_gem(
@@ -326,9 +311,8 @@ register_support_gem(
         rarity_epic:      (270, 330),
         rarity_legendary: (330, 400),
     },
-    apply=apply_orbit,
-    describe=lambda gem: f"Projectiles orbit at {gem.value:.0f} range",
-    tags=["caster"],
+    mod="orbit",
+    tags=["caster"],          # your choice: this one is caster-only
 )
 
 register_support_gem(
@@ -340,9 +324,7 @@ register_support_gem(
         rarity_epic:      (16, 25),
         rarity_legendary: (26, 40),
     },
-    apply=add_increased_attack_speed,
-    describe=lambda gem: f"{gem.value:.0f}% Increased attack speed",
-    tags=["attack"],
+    mod="attack_speed",
 )
 
 

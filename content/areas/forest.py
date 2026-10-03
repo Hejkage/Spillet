@@ -13,5 +13,5 @@ def build_forest(area):
     area.portal(1500, 1000, "home", spawn=(500, 500))
 
 register_area(Area("forest", 5000, 5000, spawn=(200, 200),
-                   level=54, persistent=True,
+                   tier=5, persistent=False,
                    tile="grass_tile_sprite", build=build_forest))

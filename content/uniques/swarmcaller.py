@@ -18,6 +18,7 @@ def roll_swarmcaller():
 
 register_unique(
     "swarmcaller",
+    min_monster_tier=5, 
     roll=roll_swarmcaller,
     name="Swarmcaller",
     sprite_name="wand_item_sprite",

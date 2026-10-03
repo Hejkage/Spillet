@@ -4,7 +4,7 @@ Pure data. Add new entries here - never in systems/.
 """
 
 from systems.rarity import rarity_epic, rarity_legendary, rarity_rare, roll_item, roll_rarity
-from systems.items import make_item, make_unique
+from systems.items import make_item, make_unique, unique_drop
 from systems.drops import DropEntry, DropPool, active_gem_group, pet_group
 
 support_gem_group = [
@@ -37,7 +37,7 @@ leather_armor_group = [
     DropEntry(lambda: roll_item("leather_gloves"),      weight=25),
     DropEntry(lambda: roll_item("leather_belt"),        weight=25),
     DropEntry(lambda: roll_item("wooden_shield"),       weight=25),
-    DropEntry(lambda: make_item("unique_item_test"),    weight=25),        # TEST ITEM TEST ITEM TEST ITEM TEST ITEM!!!!!!!!!!!!
+    DropEntry(lambda: make_item("unique_item_test"),    weight=0.001),        # TEST ITEM TEST ITEM TEST ITEM TEST ITEM!!!!!!!!!!!!
 ]
 
 low_level_weapons_group = [
@@ -53,7 +53,8 @@ low_level_jewelry_group = [
 
 unique_group = [
     #Omega god tier 0.1 weighting!
-    DropEntry(lambda: make_unique("swarmcaller"), weight=0.1),
+    DropEntry(lambda: make_item("unique_item_test"),    weight=1),      # TEST ITEM TEST ITEM TEST ITEM TEST ITEM!!!!!!!!!!!!
+    DropEntry(lambda: make_unique("swarmcaller"),       weight=0.001),
 ]
 
 wand_group = [
@@ -83,3 +84,55 @@ example_drop_pool = DropPool([
     *pet_group,
 ], drop_count = (0 , 2))
 
+legendary_only_pool = DropPool([
+    DropEntry(lambda: roll_item("heavy_golden_armor", rarity=rarity_legendary), weight=60),
+    unique_drop("swarmcaller", weight=40),
+], drop_count=(3, 3))
+
+
+
+
+# ============================================================================
+# A DROP POOL - every setting it understands.
+# Goes in content/drops.py.
+#
+#   DropEntry  one thing that can drop
+#   group      a plain list of entries you can reuse across pools
+#   DropPool   what one monster rolls on when it dies
+# ============================================================================
+
+# A group is just a list, so you can spread it into several pools.
+frost_armour_group = [
+    DropEntry(
+        lambda: roll_item("heavy_golden_armor"),   # what to make. ALWAYS a lambda
+        weight=25,          # picked this often against the other entries
+        min_amount=1,       # how many copies when this entry is picked
+        max_amount=1,
+        min_tier=1,         # lowest monster tier that may drop it at all
+        max_tier=None,      # None = no upper limit. 3 = stops dropping after tier 3
+    ),
+    DropEntry(lambda: roll_item("leather_body"), weight=40),
+    DropEntry(lambda: roll_item("leather_helmet"), weight=40),
+]
+
+# Uniques: unique_drop() reads min_monster_tier from the unique itself,
+# so the rule lives next to the unique and not here.
+frost_unique_group = [
+    unique_drop("swarmcaller", weight=0.5),
+    # unique_drop("swarmcaller", weight=0.5, min_tier=8),   # override it here instead
+]
+
+# A currency entry: one entry, many copies.
+coin_group = [
+    DropEntry(lambda: make_item("gold_coin"), weight=100, min_amount=3, max_amount=12),
+]
+
+frost_pool = DropPool(
+    [
+        *frost_armour_group,
+        *frost_unique_group,
+        *coin_group,
+        DropEntry(lambda: make_item("fireball_gem", rarity=roll_rarity()), weight=5),
+    ],
+    drop_count={0: 60, 1: 20, 2: 12, 3: 6, 4: 2},   # 60% nothing, 2% four items - A monster's RANK adds more rolls on top of this.
+) 
