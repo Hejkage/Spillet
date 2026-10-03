@@ -18,12 +18,18 @@ import random
 # A pack spawns EVERY one of its entries. The pool is what picks WHICH pack.
 
 class PackEntry:
-    def __init__(self, enemy_type, count=(1, 1), level_offset=None, tier_weights=None, extra=None):
+    def __init__(self, enemy_type, count=(1, 1), tier_offset=None,
+                 rank_weights=None, rank_only=None, extra=None):
         self.enemy_type = enemy_type
         self.count = count
         # Leave these out unless this particular monster is special.
-        self.level_offset = level_offset      # e.g. (0, 3) for "runs a bit higher"
-        self.tier_weights = tier_weights      # e.g. {"rare": 20} for "often rare"
+        self.tier_offset = tier_offset        # e.g. (1, 2) for "tougher than the area"
+        # rank_weights CHANGES some odds and keeps the rest:
+        #   {"rare": 900}  -> usually rare, but still sometimes normal
+        # rank_only REPLACES the whole list, so nothing else can be rolled:
+        #   {"rare": 5, "epic": 2}  -> always rare or epic, never normal
+        self.rank_weights = rank_weights
+        self.rank_only = rank_only
         self.extra = extra or {}              # anything else set on the enemy
 
     def roll_count(self):
@@ -65,50 +71,11 @@ class PackPool:
             return None
         return random.choices(names, weights=weights, k=1)[0]
 
-# ---------------------------------------------------------------
-# MONSTER LEVEL
-#
-# Every spawned enemy gets .level. Nothing reads it yet - when you add
-# levels for real, read enemy.level in systems/enemies.py and in
-# spawn_drops(), and everything below already feeds it.
-# ---------------------------------------------------------------
-pack_level_offset = (-2, 1)     # a level 54 area spawns level 52-55 monsters
+pack_tier_offset = (0, 0)       # a tier 5 area spawns tier 5 monsters
 
-def roll_enemy_level(area_level, entry):
-    lo, hi = entry.level_offset if entry.level_offset else pack_level_offset
-    return max(1, area_level + random.randint(lo, hi))
-
-# ---------------------------------------------------------------
-# MONSTER TIER  (normal / rare / epic ... like PoE's blue and yellow packs)
-#
-# Nothing is registered yet, so every monster comes out "normal" and nothing
-# changes. When you add tiers, one call per tier is all this needs:
-#
-#     register_enemy_tier("rare", weight=8, apply=make_rare)
-#
-# `apply(enemy)` is where its stats, size, aura or loot bonus go.
-# ---------------------------------------------------------------
-default_tier = "normal"
-enemy_tiers = {}
-
-def register_enemy_tier(name, weight=1, apply=None, **settings):
-    enemy_tiers[name] = {"weight": weight, "apply": apply, **settings}
-    return name
-
-def roll_enemy_tier(area_level, entry):
-    weights = {name: cfg["weight"] for name, cfg in enemy_tiers.items()}
-    if entry.tier_weights:
-        weights.update(entry.tier_weights)          # this monster's own odds
-    names = [n for n, w in weights.items() if w > 0]
-    if not names:
-        return default_tier
-    return random.choices(names, weights=[weights[n] for n in names], k=1)[0]
-
-def apply_enemy_tier(enemy):
-    """Runs the tier's own code, once, right after the enemy is created."""
-    config = enemy_tiers.get(getattr(enemy, "tier", default_tier))
-    if config and config["apply"]:
-        config["apply"](enemy)
+def roll_enemy_tier(area_tier, entry):
+    lo, hi = entry.tier_offset if entry.tier_offset else pack_tier_offset
+    return area_tier + random.randint(lo, hi)
 
 # ---------------------------------------------------------------
 # HOW SPOTS ARE CHOSEN - swap this later for area level, danger, quests...

@@ -160,12 +160,29 @@ def add_ground_item(item, x, y):
     return g
 
 def spawn_drops(enemy):
-    dropped = []
-    if not enemy.skip_generic_drops:
-        dropped += generic_drop_pool.roll()
-    dropped += enemy.drop_pool.roll()
-    for factory in enemy.guaranteed_drops:
-        dropped.append(factory())
+    """Everything a monster drops. Its TIER limits how good the mods can be,
+    and its RANK decides how many items come out."""
+    from systems.monsters import rank_drop_count, rank_drop_tier_bonus
+    from systems.rarity import drop_context
+
+    rank = getattr(enemy, "rank", None)
+    # drop_tier lets a special monster drop far above the area it spawned in
+    forced = getattr(enemy, "drop_tier", None)
+    tier = forced if forced is not None else getattr(enemy, "tier", 1)
+    tier += rank_drop_tier_bonus(rank)
+    drop_context.set(monster_tier=tier, rank=rank)
+    try:
+        extra = rank_drop_count(rank)
+        dropped = []
+        if not enemy.skip_generic_drops:
+            dropped += generic_drop_pool.roll()
+        dropped += enemy.drop_pool.roll(extra_drops=extra)
+        for factory in enemy.guaranteed_drops:
+            item = factory()
+            if item is not None:
+                dropped.append(item)
+    finally:
+        drop_context.clear()
     for item in dropped:
         offset_x = random.randint(-15, 15)
         offset_y = random.randint(-15, 15)

@@ -10,6 +10,7 @@ from systems.world_objects import world_rect_at, nearest_free_point, move_with_c
 from systems.pets import Pet
 from core.screen import camera
 from systems.facing import face_direction, facing_sprite_name, facing_surface
+from systems.skilltree import (allocated_effects, allocated_grants, allocated_mods, allocated_nodes, skill_nodes)
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -128,8 +129,20 @@ class Player:
 
         return (flat * inc, self.resolve_stat("crit_damage", hit_stats))
 
+    def has_grant(self, name):
+        """True if the tree (or anything else filling grants) allows this."""
+        return bool(getattr(self, "grants", {}).get(name))
+
+    def grant_value(self, name, default=0):
+        """How much of a numeric grant the player has, e.g. extra ring slots."""
+        return getattr(self, "grants", {}).get(name, default)
+
+    def effects_for(self, event):
+        """The effect data the tree attached to this event, e.g. "on_kill"."""
+        return getattr(self, "event_effects", {}).get(event, ())
+
     def recalculate_stats(self, force=False):
-        from systems.skilltree import allocated_nodes, skill_nodes
+        from systems.skilltree import (allocated_effects, allocated_grants, allocated_mods, allocated_nodes, skill_nodes)
         equip_signature = tuple(id(i) if i else None for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()))
         signature = (equip_signature, frozenset(allocated_nodes))
         if not force and signature == getattr(self, "_stat_signature", None):
@@ -151,6 +164,11 @@ class Player:
         if hasattr(self, "current_health"):
             self.current_health = min(self.current_health, self.max_health)
 
+        # what the tree gives besides plain stats
+        self.tree_mods = allocated_mods()
+        self.grants = allocated_grants()
+        self.event_effects = allocated_effects()
+
     def rebuild_basic_attack(self):
         weapon_class = self.equipped_weapon_class()
         if weapon_class == self.basic_attack_signature:
@@ -163,11 +181,12 @@ class Player:
 
     def rebuild_gem_ability(self):
         from systems.gemtree import tree_supports
+        tree_mods = list(getattr(self, "tree_mods", ()))
         signature = []
         for slot in active_gem_slots:
             item = equipment.extra_slots.get(slot)
             socket_ids = tuple(sorted((k, id(v)) for k, v in getattr(item, "sockets", {}).items())) if item else ()
-            signature.append((id(item), frozenset(getattr(item, "allocated", ())), socket_ids))
+            signature.append(tuple(tree_mods))      # the tree is part of the ability
         signature = tuple(signature)
         if signature == self.gem_signature:
             return
@@ -185,7 +204,10 @@ class Player:
             t = active_gem_templates[active_item.template_key]
             allowed_tags = t.get("support_tags", set())
             supports = [s for s in supports if support_gem_types[s.gem_type]["tags"] & allowed_tags]
-            self.abilities[slot] = build_active_gem(t, supports, gem_stats=getattr(active_item, "gem_stats", None))
+            self.abilities[slot] = build_active_gem(
+                t, supports,
+                gem_stats=getattr(active_item, "gem_stats", None),
+                outside_mods=tree_mods)
 
     def rebuild_pets(self):
         equipped = [equipment.pet_slots[s] for s in pet_equip_slots]

@@ -2,7 +2,7 @@ import pygame
 import math
 from core.state import app
 from systems.weapons import get_swing_sprite, get_weapon_geometry, melee_reach, melee_weapon_sprite, player_body_radius
-from systems.supports import apply_support_gems
+from systems.supports import build_hit_packets
 from systems.facing import face_direction
 
 # NOTE: imports for the modules below are done inside the functions that
@@ -187,7 +187,7 @@ def cast_melee_attack(player, target_pos, camera, damage, aoe, speed, sprite_nam
 
     face_direction(player, direction.x, direction.y, flip=facing_flip)
 
-    data = apply_support_gems(direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)[0]
+    data = build_hit_packets(direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)[0]
 
     swing_sprite = sprite_name
     if extra.get("use_weapon_sprite", True):
@@ -195,9 +195,9 @@ def cast_melee_attack(player, target_pos, camera, damage, aoe, speed, sprite_nam
 
     aoe_range = data["aoe"] if extra.get("aoe_scales_range", False) else 1.0
 
-    radius = melee_reach(player, swing_sprite, range_mult=extra.get("range_mult", 1.0), aoe=aoe_range)
+    radius = melee_reach(player, swing_sprite, range_mult=data.get("range_mult", 1.0), aoe=aoe_range)
 
-    arc = extra.get("arc", 110)
+    arc = data.get("arc", 110)
     attack_time = extra.get("_interval", 0.25)
     duration = attack_time * extra.get("swing_time", 0.8)
 
@@ -216,5 +216,5 @@ def cast_melee_attack(player, target_pos, camera, damage, aoe, speed, sprite_nam
         hand_reach=extra.get("hand_reach"),
         hand_offset_y=extra.get("hand_offset_y"),
         sweep_dir=sweep_dir,
-        max_targets=extra.get("max_targets", 0),
+        max_targets=data.get("max_targets", 0),
     ))

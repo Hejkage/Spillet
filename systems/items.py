@@ -26,8 +26,10 @@ gem_slot_support = "support_gem"
 
 equip_slots = {}
 
-def register_equip_slot(name, group, accepts, background=None):
-    equip_slots[name] = {"group": group, "accepts": accepts, "background": background}
+def register_equip_slot(name, group, accepts, background=None, requires_grant=None):
+    """requires_grant names a grant the player must have before the slot works,
+    so a skill tree node can open a third ring or a fourth pet."""
+    equip_slots[name] = {"group": group, "accepts": accepts, "background": background, "requires_grant": requires_grant}
 
 def slots_in_group(group):
     return [n for n, d in equip_slots.items() if d["group"] == group]
@@ -286,16 +288,31 @@ class UniqueItem(EquippableItem):
 # ---------------------------------------------------------------
 unique_templates = {}
 
-def register_unique(key, roll=None, **base):
-    """base = everything UniqueItem takes (name, sprite_name, slot_type, stats...)."""
+unique_template_fields = {"roll", "min_monster_tier"}   # settings, not UniqueItem arguments
+
+def register_unique(key, roll=None, min_monster_tier=0, **base):
+    """base = everything UniqueItem takes (name, sprite_name, slot_type, stats...).
+
+    min_monster_tier  the lowest monster tier that may drop it. unique_drop()
+                      reads this, so the rule lives next to the unique.
+    """
     if key in unique_templates:
         raise ValueError(f"Unique '{key}' is registered twice")
-    unique_templates[key] = {"roll": roll, **base}
+    unique_templates[key] = {"roll": roll, "min_monster_tier": min_monster_tier, **base}
     return key
+
+def unique_min_tier(key):
+    return unique_templates[key].get("min_monster_tier", 0)
+
+def unique_drop(key, weight=1, min_tier=None):
+    """A DropEntry for a unique, already gated by its own min_monster_tier."""
+    from systems.drops import DropEntry
+    return DropEntry(lambda: make_unique(key), weight=weight, min_tier=unique_min_tier(key) if min_tier is None else min_tier)
 
 def make_unique(key):
     """Create a new copy of a unique and roll its random parts."""
-    t = {k: copy.deepcopy(v) for k, v in unique_templates[key].items() if k != "roll"}
+    t = {k: copy.deepcopy(v) for k, v in unique_templates[key].items()
+         if k not in unique_template_fields}
     roll = unique_templates[key]["roll"]
     item = UniqueItem(unique_key=key, **t)
     if roll:
@@ -323,8 +340,12 @@ class Equipment:
         self.open = not self.open
     
     def can_equip(self, item, slot_name):
+        from systems.player import player      # late: player.py imports this file
         d = equip_slots.get(slot_name)
-        return bool(d) and d["accepts"](item)
+        if not d or not d["accepts"](item):
+            return False
+        needed = d.get("requires_grant")
+        return not needed or player.has_grant(needed)
     
     def draw(self, scaled_sprites, player):
         if not self.open:

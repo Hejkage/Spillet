@@ -1,12 +1,12 @@
 import pygame
 from core.state import world
 from systems.weapons import melee_reach, melee_weapon_sprite
-from systems.supports import apply_support_gems
+from systems.supports import build_hit_packets
 from systems.projectiles import Projectile, projectile_default_lifetime
 from systems.facing import face_direction
 
 # region Active Gems
-standard_gem_fields = {"name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "support_tags", "damage_scaling", "rarity_stats", "speed_stat", "hit_kind",
+standard_gem_fields = {"always", "name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "support_tags", "damage_scaling", "rarity_stats", "speed_stat", "hit_kind",
                     "locks_movement", "lock_duration", "uses_aoe", "action_group", "icon"}
 
 global_action_lockout = 0.2
@@ -24,6 +24,10 @@ class ActiveGem:
         self.sprite_name = sprite_name
         self.extra = extra if extra is not None else {}
         self.support_gems = support_gems if support_gems is not None else []
+         # mods this ability always has (systems/mods.py)
+        self.always_mods = []      # from the gem template's "always" list
+        self.outside_mods = []     # from the skill tree, uniques...
+        self.mod_tags = set()      # what it accepts from outside
         self.facing_flip = 1
         self.weapon_classes = None
         self.damage_scaling = []
@@ -61,7 +65,7 @@ class ActiveGem:
     def get_effective_stats(self, player):
         base = self.get_base_effective(player)
 
-        probe = apply_support_gems(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.extra, count=base["count"])
+        probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra(), count=base["count"])
 
         per_hit = probe[0]["damage"]
         count = len(probe)
@@ -87,6 +91,14 @@ class ActiveGem:
             "range": (melee_reach(player, melee_weapon_sprite(self.sprite_name), self.extra.get("range_mult", 1.0), probe[0]["aoe"] if self.extra.get("aoe_scales_range", False) else 1.0) if self.hit_kind == "melee" else 0),
         }
 
+    def mod_extra(self):
+        """self.extra plus the mod lists build_hit_packets() reads."""
+        extra = dict(self.extra)
+        extra["_always"] = self.always_mods
+        extra["_mods"] = self.outside_mods
+        extra["_mod_tags"] = self.mod_tags
+        return extra
+
     def try_cast(self, player, target_pos, camera):
         if self.timer > 0:
             return
@@ -95,7 +107,7 @@ class ActiveGem:
 
         base = self.get_base_effective(player)
 
-        probe = apply_support_gems(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.extra)
+        probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra())
         cooldown_mult = min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
         self.timer = base["cooldown"] * cooldown_mult
 
@@ -104,7 +116,7 @@ class ActiveGem:
         if self.locks_movement:
             player.begin_action_lock(self.timer * self.lock_duration)
 
-        extra = dict(self.extra)
+        extra = self.mod_extra()
         extra["_interval"] = self.timer
         extra["_count"] = base["count"]
 
@@ -117,7 +129,7 @@ def template_uses_aoe(t):
             or t.get("aoe_scales_range", False)
             or t.get("aoe_scales_arc", False))
 
-def build_active_gem(t, supports, gem_stats=None):
+def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         extra = {k: v for k, v in t.items() if k not in standard_gem_fields}
         extra["crit_type"] = t.get("crit_type") or ("spell" if "spell_damage" in t.get("damage_scaling", set()) else "attack")
 
@@ -162,6 +174,10 @@ def build_active_gem(t, supports, gem_stats=None):
         gem.icon_name = t.get("icon")
         gem.action_time = t.get("action_time", t.get("swing_time", 0))
         gem.base_projectiles = int(val("projectiles", 1))
+        gem.always_mods = list(t.get("always", ()))        # what this gem always does
+        gem.outside_mods = list(outside_mods)              # skill tree, uniques
+        gem.mod_tags = set(t.get("support_tags", set()))   # what it accepts from them
+        return gem
         return gem
 
 pending_bursts = []
@@ -190,6 +206,7 @@ def spawn_projectiles(player, projectile_data):
             p["sprite"], player.x, player.y, p["direction"], p["speed"], p["damage"], p["aoe"],
             dot_damage=p.get("dot_damage", 0),
             dot_duration=p.get("dot_duration", 0),
+            effects=p.get("effects", ()),     # effects a mod or a gem attached
             hit_stats=p,
             pierce=p.get("pierce", 0),
             orbit=p.get("orbit", False),
@@ -217,7 +234,7 @@ def cast_projectile_spell(player, target_pos, camera, damage, aoe, speed, sprite
 
     face_direction(player, base_direction.x, base_direction.y, flip=facing_flip)
 
-    projectile_data = apply_support_gems(base_direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)
+    projectile_data = build_hit_packets(base_direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)
     spawn_projectiles(player, projectile_data)
 
     burst_extra = max((p.get("burst_extra", 0) for p in projectile_data), default=0)
@@ -231,7 +248,7 @@ def shoot_projectile_gun(player, target_pos, camera, damage, aoe, speed, sprite_
 
     face_direction(player, base_direction.x, base_direction.y, flip=facing_flip)
 
-    projectile_data = apply_support_gems(base_direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)
+    projectile_data = build_hit_packets(base_direction, speed, damage, aoe, sprite_name, support_gems, extra=extra)
     spawn_projectiles(player, projectile_data)
 
     burst_extra = max((p.get("burst_extra", 0) for p in projectile_data), default=0)

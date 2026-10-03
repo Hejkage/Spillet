@@ -6,7 +6,8 @@ from systems.abilities import pending_bursts
 from systems.player import MoveOrder, player
 from systems.world_objects import WorldObject, formation_shapes, nearest_free_point, world_rect_at
 from systems.enemies import Enemy
-from systems.packs import (PackPool, apply_enemy_tier, pack_configs, roll_enemy_level, roll_enemy_tier, spot_pickers)
+from systems.packs import PackPool, pack_configs, roll_enemy_tier, spot_pickers
+from systems.monsters import build_monster
 
 # region Areas / maps
 class Portal:
@@ -30,10 +31,9 @@ class Portal:
         pygame.draw.rect(app.screen, (230, 200, 255), self.rect, width=3, border_radius=8)
 
 class Area:
-    def __init__(self, name, width, height, spawn, tile="grass_tile_sprite", build=None, level=1,
-                 persistent=True):
+    def __init__(self, name, width, height, spawn, tile="grass_tile_sprite", build=None, tier=0, persistent=True):
         self.name = name
-        self.level = level        # monsters and (later) loot are built from this
+        self.tier = tier          # 0-10, 0 = base. Monster stats and drop quality come from this
         # persistent=True   built once; kills, drops and changes stay until restart
         # persistent=False  rebuilt every time you walk in; dropped loot is lost
         self.persistent = persistent
@@ -79,10 +79,19 @@ class Area:
         self.world_objects.append(obj)
         return obj
 
-    def add_enemy(self, enemy_type, x, y, **extra):
+    def add_enemy(self, enemy_type, x, y, tier=None, rank=None, rank_weights=None,
+                  rank_only=None, **extra):
+        """One monster. It always gets a tier and a rank, so a hand-placed
+        monster behaves exactly like one from a pack.
+        tier defaults to the area's tier; rank is rolled unless you name one."""
         enemy = Enemy(x, y, enemy_type)
         for key, value in extra.items():
             setattr(enemy, key, value)
+        build_monster(enemy,
+                      tier=self.tier if tier is None else tier,
+                      rank=rank,
+                      extra_rank_weights=rank_weights,
+                      rank_only=rank_only)
         self.enemies.append(enemy)
         return enemy
 
@@ -204,7 +213,7 @@ class Area:
         spots  your own list of (x, y); leave out and it finds open ground
         picker how the spots are chosen - "random" for now, see systems/packs.py
 
-        Every monster gets .level and .tier from this area's level.
+        Every monster gets .tier and .rank from this area's tier.
         """
         if not isinstance(pool, PackPool):
             pool = PackPool([(name, 1) for name in pool])
@@ -225,13 +234,11 @@ class Area:
                 ex, ey = x + ox, y + oy
                 if not self.is_free(ex, ey):
                     ex, ey = x, y                 # fall back to the pack's centre
-                enemy = self.add_enemy(
-                    enemy_type, ex, ey,
-                    level=roll_enemy_level(self.level, entry),
-                    tier=roll_enemy_tier(self.level, entry),
-                    pack=name,
-                    **entry.extra)
-                apply_enemy_tier(enemy)
+                self.add_enemy(enemy_type, ex, ey,
+                               tier=roll_enemy_tier(self.tier, entry),
+                               rank_weights=entry.rank_weights,
+                               rank_only=entry.rank_only,
+                               pack=name, **entry.extra)
 
 areas = {}
 world.current_area = None

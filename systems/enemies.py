@@ -73,9 +73,11 @@ class SpatialGrid:
 enemy_grid = SpatialGrid(enemy_grid_cell_size)
 
 class EnemyAbility():
-    def __init__(self, cooldown, ability_range):
+    def __init__(self, cooldown, ability_range, projectiles=1, spread=12):
         self.cooldown = cooldown
         self.ability_range = ability_range
+        self.projectiles = projectiles      # how many it fires at once
+        self.spread = spread                # degrees between them
         self.timer = random.uniform(0.5, 1)
 
     def tick(self, dt):
@@ -91,24 +93,36 @@ class EnemyAbility():
             face_direction(enemy, player.x - enemy.x, player.y - enemy.y)
 
     def fire(self, enemy, player, dist):
+        """Fires `projectiles` shots in an even fan `spread` degrees apart.
+        One projectile (the default) behaves exactly as it always did."""
         direction = pygame.Vector2(player.x - enemy.x, player.y - enemy.y)
+        if direction.length() == 0:
+            direction = pygame.Vector2(1, 0)
         face_direction(enemy, direction.x, direction.y)
-        world.enemy_projectiles.append(Projectile(self.sprite_name, enemy.x, enemy.y, direction, speed=self.speed, damage=self.damage, aoe=self.aoe))
+
+        count = max(1, int(self.projectiles))
+        start = -(count - 1) / 2
+        for i in range(count):
+            shot = direction.rotate((start + i) * self.spread)
+            world.enemy_projectiles.append(Projectile(
+                self.sprite_name, enemy.x, enemy.y, shot,
+                speed=self.speed, damage=self.damage, aoe=self.aoe))
 
 class EnemyProjectileAbility(EnemyAbility):
-    def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0):
-        super().__init__(cooldown, ability_range)
+    def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0,
+                 projectiles=1, spread=12):
+        super().__init__(cooldown, ability_range, projectiles=projectiles, spread=spread)
         self.damage = damage
         self.speed = speed
         self.sprite_name = sprite_name
         self.aoe = aoe
 
-    def fire(self, enemy, player, dist):
-        direction = pygame.Vector2(player.x - enemy.x, player.y - enemy.y)
-        world.enemy_projectiles.append(Projectile(self.sprite_name, enemy.x, enemy.y, direction, speed=self.speed, damage=self.damage, aoe=self.aoe))
-
 enemy_defaults = {
-     "base_sprite": None, "back_sprite": None, "sprite_scale": 1.0, "health": 100, "xp_value": 10,
+    "base_sprite": None, 
+    "back_sprite": None, 
+    "sprite_scale": 1.0, 
+    "health": 100, 
+    "xp_value": 10,
     "move_speed": 120, "contact_damage": 0, "behavior": "melee",
     "attack_range": 400, "cast_cooldown": enemy_global_cast_cooldown,
     "cast_time": enemy_cast_time, "skip_generic_drops": False,
@@ -117,7 +131,11 @@ enemy_defaults = {
     "leap_range": 500, "leap_height": 120, "leap_time_per_unit": 0.0015,
     "leap_max_distance": 500, "leap_cooldown": 2.5,
     "leap_min_distance": 0, "leap_scatter": 0,
-        "collision_radius": None,      # None = worked out from the sprite. Set a number to override.
+    "collision_radius": None,      # None = worked out from the sprite. Set a number to override.
+    "drop_tier": None,             # None = drops at its own tier. A number ignores the tier it spawned at.
+    "tier_scaling": None,          # this monster's own curve, e.g. {"health": 1.8}
+    "tier_stats": None,            # exact values per tier, e.g. {5: {"health": 900}}
+    "tier_stats_sticky": False,    # True = a row applies from its tier UPWARDS
 }
 
 enemy_behaviors = {}
@@ -172,6 +190,9 @@ class Enemy:
             self.alive = False
             player.gain_xp(self.xp_value)
             credit_gem_kill()
+            on_kill = player.effects_for("on_kill")
+            if on_kill:
+                apply_hit_effects(self, on_kill)   # the normal effect pipeline
             spawn_drops(self)
             if self.enemy_type == "baby_witch":
                 app.start_completed = True
@@ -358,6 +379,12 @@ class Enemy:
         health_ratio = self.health / self.max_health
         pygame.draw.rect(app.screen, (180, 0, 0), (bar_x, bar_y, bar_width, bar_height))
         pygame.draw.rect(app.screen, (0, 200, 0), (bar_x, bar_y, int(bar_width * health_ratio), bar_height))
+
+        # a frame in the rank's colour, so you can see what you are fighting
+        from systems.monsters import rank_color
+        color = rank_color(getattr(self, "rank", None))
+        if color:
+            pygame.draw.rect(app.screen, color, (bar_x - 1, bar_y - 1, bar_width + 2, bar_height + 2), width=1)
 
     def try_hit_from_projectile(self, p):
         if not p.alive:
