@@ -25,9 +25,10 @@ def register_status(name, apply=None, tick=None, expire=None, blocks=(), describ
     apply(target, status)       - when applied or refreshed
     tick(target, status, dt)    - every frame while active
     expire(target, status)      - when it runs out
-    blocks                      - actions the target can't do while it has
-                                  this status, e.g. {"attacking"}. Targets ask
-                                  target.is_blocked("attacking") instead of
+    blocks                      - what the target can't use while it has this
+                                  status: {"spell"} (silence), {"attack"}
+                                  (disarm), or both (stun). Targets ask
+                                  target.is_blocked("spell") instead of
                                   checking for specific status names.
     """
     if name in status_effect_types or name in hit_effect_types:
@@ -108,9 +109,9 @@ def heal_caster(target, effect, source):
     healed = player.max_health * effect.get("percent", 0) / 100 + effect.get("amount", 0)
     player.heal(healed)
 
-register_status("slow", apply=slow_apply, expire=slow_expire, describe=lambda e: f"Slows by {e.get('amount', 0) * 100:.0f}% for {e.get('duration', 0):.1f}s")
-register_status("dot", tick=dot_tick, describe=lambda e: f"{e.get('dps', 0):.0f} damage per second for {e.get('duration', 0):.1f}s")
-register_status("silence", blocks={"attacking"}, describe=lambda e: f"Silenced for {e.get('duration', 0):.1f}s")
+register_status("slow", apply=slow_apply, expire=slow_expire, describe=lambda e: f"Slows the target by {e.get('amount', 0) * 100:.0f}% for {e.get('duration', 0):.1f}s")
+register_status("dot", tick=dot_tick, describe=lambda e: f"Deals {e.get('dps', 0):.0f} damage per second to the target for {e.get('duration', 0):.1f}s")
+register_status("silence", blocks={"spell"}, describe=lambda e: f"Silences the target for {e.get('duration', 0):.1f}s")
 
 register_hit_effect("explode", explode, describe=lambda e: f"Explodes for {e.get('damage', 0):.0f} damage in a {e.get('radius', 0):.0f} radius")
 register_hit_effect("heal_caster", heal_caster, describe=lambda e: (f"Heals you for {e.get('percent')}% of maximum life" if e.get("percent") else f"Heals you for {e.get('amount', 0):.0f}"))

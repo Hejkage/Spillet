@@ -161,7 +161,7 @@ def stat_is_percent(key):
 # THE STATS PANEL
 # A new tab is one line here. A stat picks its tab in register_stat(tab=...).
 # ---------------------------------------------------------------
-stat_tabs = [("defence", "Defensive"), ("offence", "Offensive"), ("misc", "Other")]
+stat_tabs = [("defence", "Defensive"), ("offence", "Offensive"), ("misc", "Other"), ("pets", "Pets")]
 
 # Rows a tab shows that are not plain stats (tree mods, on-kill effects...).
 # A source is fn(player) -> [(text, colour), ...]. Add one with @panel_rows("misc").
@@ -284,14 +284,11 @@ class GemItem(Item):
         super().__init__(name, sprite_name, stats={}, category=item_category_equipment, rarity=rarity)
         self.gem_slot = gem_slot
 
-class ActiveGemItem(GemItem):
-    save_kind = "active_gem"
-
-    def __init__(self, name, sprite_name, template_key, rarity=rarity_common, gem_stats=None, built_in_support=None):
-        super().__init__(name, sprite_name, gem_slot_active, rarity)
-        self.template_key = template_key
-        self.gem_stats = gem_stats if gem_stats is not None else {}
-        self.built_in_support = built_in_support
+class LevelsFromKills:
+    """For items that level up from kills and have their own tree (systems/gemtree.py).
+    Used by active gems AND pets, so the tree code works on both."""
+    def init_tree(self, template_key):
+        self.template_key = template_key      # which tree: register_gem_node(template_key, ...)
         self.kills = 0
         self.allocated = set()
         self.pending_allocated = set()
@@ -300,6 +297,27 @@ class ActiveGemItem(GemItem):
     def gem_level(self):
         from systems.gemtree import level_from_kills
         return level_from_kills(self.kills)
+
+    def tree_to_dict(self, d):
+        d["kills"] = self.kills
+        d["allocated"] = list(self.allocated)
+        d["sockets"] = {k: (v.to_dict() if v is not None else None) for k, v in self.sockets.items()}
+
+    def tree_from_dict(self, d):
+        self.kills = d.get("kills", 0)
+        self.allocated = set(d.get("allocated", []))
+        self.sockets = {}
+        for k, sd in d.get("sockets", {}).items():
+            self.sockets[k] = item_kinds[sd["kind"]].from_dict(sd) if sd else None
+
+class ActiveGemItem(GemItem, LevelsFromKills):
+    save_kind = "active_gem"
+
+    def __init__(self, name, sprite_name, template_key, rarity=rarity_common, gem_stats=None, built_in_support=None):
+        super().__init__(name, sprite_name, gem_slot_active, rarity)
+        self.init_tree(template_key)
+        self.gem_stats = gem_stats if gem_stats is not None else {}
+        self.built_in_support = built_in_support
 
     def to_dict(self):
         d = super().to_dict()
@@ -311,9 +329,7 @@ class ActiveGemItem(GemItem):
                 "value": self.built_in_support.value,
                 "rarity": self.built_in_support.rarity,
             }
-        d["kills"] = self.kills
-        d["allocated"] = list(self.allocated)
-        d["sockets"] = {k: (v.to_dict() if v is not None else None) for k, v in self.sockets.items()}
+        self.tree_to_dict(d)
         return d
 
     @classmethod
@@ -323,11 +339,7 @@ class ActiveGemItem(GemItem):
         if bi is not None:
             built_in = SupportGem(bi["gem_type"], bi["value"], bi["rarity"])
         item = cls(d["name"], d["sprite_name"], d["template_key"], rarity=d.get("rarity", rarity_common), gem_stats=d.get("gem_stats", {}), built_in_support=built_in)
-        item.kills = d.get("kills", 0)
-        item.allocated = set(d.get("allocated", []))
-        item.sockets = {}
-        for k, sd in d.get("sockets", {}).items():
-            item.sockets[k] = item_kinds[sd["kind"]].from_dict(sd) if sd else None
+        item.tree_from_dict(d)
         return item
 
 class SupportGemItem(GemItem):
@@ -349,22 +361,27 @@ class SupportGemItem(GemItem):
     def from_dict(cls, d):
         return cls(d["gem_type"], rarity=d.get("rarity", rarity_common), sprite_name=d["sprite_name"], value=d["value"])
 
-class PetItem(Item):
+class PetItem(Item, LevelsFromKills):
     save_kind = "pet"
 
     def __init__(self, name, sprite_name, pet_type, rarity=rarity_common):
+        from systems.pets import pet_item_key
         super().__init__(name, sprite_name, category=item_category_generic, rarity=rarity)
         self.pet_type = pet_type
         self.is_pet = True
+        self.init_tree(pet_item_key(pet_type))     # "spider" -> tree "spider_pet"
 
     def to_dict(self):
         d = super().to_dict()
         d["pet_type"] = self.pet_type
+        self.tree_to_dict(d)
         return d
 
     @classmethod
     def from_dict(cls, d):
-        return cls(d["name"], d["sprite_name"], d["pet_type"], rarity=d.get("rarity", rarity_common))
+        item = cls(d["name"], d["sprite_name"], d["pet_type"], rarity=d.get("rarity", rarity_common))
+        item.tree_from_dict(d)
+        return item
 
 class UniqueItem(EquippableItem):
     """A unique item. Its random parts are rolled ONCE when the item is made
@@ -784,14 +801,8 @@ def _tt_active_gem(item, lines):
 
     damage = gem_val("damage")
     if damage is not None:
-        lines.append((f"{damage:.0f} base damage", _WHITE))
-        parts = damage_split(t)
-        if len(parts) > 1:                  # only worth listing when the gem is mixed
-            for damage_type, share in sorted(parts.items(), key=lambda kv: -kv[1]):
-                lines.append((f"  {damage * share:.0f} {damage_type}", damage_colors.get(damage_type, _WHITE)))
-        elif parts:
-            damage_type = next(iter(parts))
-            lines.append((f"Damage type: {damage_type}", damage_colors.get(damage_type, _GRAY)))
+        from systems.damage import damage_lines
+        lines.extend(damage_lines({k: damage * share for k, share in damage_split(t).items()}))
 
     projectiles = gem_val("projectiles")
     if projectiles and projectiles > 1:
@@ -829,10 +840,9 @@ def _tt_active_gem(item, lines):
     if gem_aoe is not None and template_uses_aoe(t):
         lines.append((f"{gem_aoe * 100:.0f}% area of effect", _WHITE))
 
-    scaling = t.get("damage_scaling")
-    if scaling:
-        nice = ", ".join(stat_label(s).lower() for s in scaling)
-        lines.append((f"Scales with: {nice}", _GRAY))
+    cannot = t.get("cannot_scale")
+    if cannot:
+        lines.append((f"Cannot scale with: {', '.join(sorted(cannot))}", _GRAY))
 
     built_in = getattr(item, "built_in_support", None)
     if built_in is not None:
@@ -957,6 +967,7 @@ class HoverState:
     def __init__(self):
         self.item = None
         self.ability = None
+        self.pet = None   
         self.ground_item = None
     
 def try_set_hover(item, rect):

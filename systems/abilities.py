@@ -47,7 +47,7 @@ class ActiveGem:
 
     def get_base_effective(self, player):
         from systems.damage import final_damage
-        damage, parts = final_damage(self.base_damage, self.extra, self.damage_scaling, lambda name, default: getattr(player, name, default))
+        damage, parts = final_damage(self.base_damage, self.extra, lambda name, default: getattr(player, name, default))
 
         if self.speed_stat:
             rate = max(0.01, getattr(player, self.speed_stat, 100) / 100)
@@ -291,23 +291,20 @@ basic_attacks_by_weapon = {}
 # Adding an active gem used to mean editing THREE separate places:
 #   1. active_gem_templates  - the mechanic
 #   2. item_templates        - the item that grants it
-#   3. active_gem_group      - so it can actually drop
 #
 # register_active_gem() does all three from a single block, so a new
 # gem is one edit in content/gems.py and nothing else.
 # ---------------------------------------------------------------
 
-def register_active_gem(key, drop_weight=5, item_sprite=None, item_rarity=None, **template):
+def register_active_gem(key, item_sprite=None, item_rarity=None, **template):
     """Define a gem, the item that grants it, and its drop entry in one call.
 
     key          - internal name, e.g. "shotgun_blast"
-    drop_weight  - how often it drops (0 = never drops, shop-only)
     item_sprite  - inventory icon; defaults to the gem's own sprite_name
     **template   - everything active_gem_templates normally takes
     """
-    from systems.items import item_templates, make_item
-    from systems.rarity import rarity_common, roll_rarity
-    from systems.drops import DropEntry, active_gem_group
+    from systems.items import item_templates
+    from systems.rarity import rarity_common
 
     name = template.get("name", key.replace("_", " ").title())
     template["name"] = name
@@ -321,9 +318,4 @@ def register_active_gem(key, drop_weight=5, item_sprite=None, item_rarity=None, 
         "template_key": key,
         "rarity": item_rarity or rarity_common,
     }
-
-    if drop_weight:
-        active_gem_group.append(
-            DropEntry(lambda k=item_key: make_item(k, rarity=roll_rarity()), weight=drop_weight)
-        )
     return key

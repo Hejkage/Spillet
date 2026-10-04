@@ -18,7 +18,7 @@ projectile_hit_scale = 0.5          # hit radius = half the sprite's short side 
 
 class Projectile:
     def __init__(self, sprite_name, x, y, direction, speed, damage=10, aoe=0, hitbox_scale=1, slow_amount=0, slow_duration=0, dot_damage=0, dot_duration=0, effects = None, hit_stats=None, from_player=True, pierce=0,
-                    orbit=False, orbit_radius=200, orbit_dir=1, orbit_player=None, lifetime=projectile_default_lifetime):
+                    orbit=False, orbit_radius=200, orbit_dir=1, orbit_player=None, lifetime=projectile_default_lifetime, attacker=None):
         self.x = x
         self.y = y
         self.direction = direction.normalize() if direction.length() > 0 else pygame.Vector2(1, 0)
@@ -35,6 +35,7 @@ class Projectile:
         if dot_duration > 0:
             self.effects.append({"name": "dot", "duration": dot_duration, "dps": dot_damage, "hit_stats": self.hit_stats})
         self.from_player = from_player
+        self.attacker = attacker        # whose stats crit/penetrate with. None = the player
         self.pierce = pierce or 0
         self.pierced = set()
         self.orbit = orbit

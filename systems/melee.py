@@ -160,7 +160,7 @@ class MeleeSwing:
             pygame.draw.rect(app.screen, (255, 60, 60), enemy.rect, 2)
 
     def get_sort_y(self):
-        return self.owner.y
+        return self.owner.get_sort_y()
 
 def update_melee_swings(dt):
     if not melee_swings:

@@ -11,7 +11,7 @@ from systems.ground import spawn_drops
 from systems.player import begin_leap, leap_height_offset, update_leap
 from systems.player import player
 from systems.facing import face_direction, facing_sprite_name, facing_surface
-from systems.world_objects import move_with_collision
+from systems.world_objects import move_with_collision, feet_y
 
 # region Enemies
 
@@ -80,8 +80,9 @@ class SpatialGrid:
 enemy_grid = SpatialGrid(enemy_grid_cell_size)
 
 class EnemyAbility():
-    def __init__(self, cooldown, ability_range, projectiles=1, spread=12):
+    def __init__(self, cooldown, ability_range, projectiles=1, spread=12, hit_type="spell"):
         self.cooldown = cooldown
+        self.hit_type = hit_type            # "attack" or "spell": silence blocks spells
         self.ability_range = ability_range
         self.projectiles = projectiles      # how many it fires at once
         self.spread = spread                # degrees between them
@@ -93,6 +94,8 @@ class EnemyAbility():
 
     def update(self, enemy, player, dt, dist):
         if self.timer > 0:
+            return
+        if enemy.is_blocked(self.hit_type):
             return
         if dist > self.ability_range:
             return
@@ -117,8 +120,8 @@ class EnemyAbility():
                 hit_stats={"damage_type": self.damage_type}))
 
 class EnemyProjectileAbility(EnemyAbility):
-    def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0, projectiles=1, spread=12, damage_type="physical"):
-        super().__init__(cooldown, ability_range, projectiles=projectiles, spread=spread)
+    def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0, projectiles=1, spread=12, damage_type="physical", hit_type="spell"):
+        super().__init__(cooldown, ability_range, projectiles=projectiles, spread=spread, hit_type=hit_type)
         self.damage = damage
         self.speed = speed
         self.sprite_name = sprite_name
@@ -215,7 +218,7 @@ class Enemy:
         return self.move_speed * self.slow_multiplier
 
     def get_sort_y(self):
-        return self.y
+        return feet_y(self.y, self.sprite)
     
     def apply_status(self, name, duration, **params):
         if name not in status_effect_types:
@@ -291,13 +294,13 @@ class Enemy:
         else:
             self.update_idle(dt)
 
-        if self.is_blocked("attacking"):
-            self.casting = False
+        if self.pending_cast is not None and self.is_blocked(self.pending_cast.hit_type):
+            self.casting = False                # silenced mid-cast: the spell is lost
             self.pending_cast = None
-        else:
-            self.update_cast(player, dt, dist)
-            if not self.casting:
-                self.update_abilities(player, dt, dist)
+        self.update_cast(player, dt, dist)
+        if not self.casting:
+            self.update_abilities(player, dt, dist)
+            if not self.is_blocked("attack"):   # touching you counts as an attack
                 self.update_contact_damage(player, dt, dist)
         if self.state == "engaged":
             for ability in self.abilities:
@@ -434,7 +437,7 @@ class Enemy:
 
         if p.hits_rect(self.rect):
             if p.from_player:
-                apply_player_hit(self, p.damage, p.effects, p.hit_stats, source=p)
+                apply_player_hit(self, p.damage, p.effects, p.hit_stats, source=p, attacker=p.attacker)
             else:
                 self.enemy_take_damage(p.damage)
                 apply_hit_effects(self, p.effects, source=p)
@@ -486,11 +489,12 @@ register_behavior("caster", caster_behavior)
 register_behavior("leaper", leaper_behavior)
 
 def credit_gem_kill():
-    from systems.items import active_gem_slots, equipment
+    """Every equipped gem AND pet gets the kill (pets level their tree from it)."""
+    from systems.items import active_gem_slots, pet_equip_slots, equipment
     from systems.gemtree import level_from_kills
     from systems.popups import spawn_floating_text
-    for slot in active_gem_slots:
-        gem = equipment.extra_slots.get(slot)
+    levelling = ([equipment.extra_slots.get(s) for s in active_gem_slots] + [equipment.pet_slots.get(s) for s in pet_equip_slots])
+    for gem in levelling:
         if gem is not None and hasattr(gem, "kills"):
             before = level_from_kills(gem.kills)
             gem.kills += 1
@@ -498,21 +502,23 @@ def credit_gem_kill():
             if after > before:
                 spawn_floating_text(f"{gem.name} +1 Point", player.x, player.y - 40, color=(120, 200, 255))
 
-def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None):
-    chance, crit_multiplier = player.crit_stats(hit_stats)
+def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None, attacker=None):
+    """A hit from the player's side. attacker = whose stats it uses (a pet), None = the player."""
+    attacker = attacker or player
+    chance, crit_multiplier = attacker.crit_stats(hit_stats)
 
     if chance > 0 and random.uniform(0, 100) < chance:
         damage *= crit_multiplier / 100
 
     from systems.damage import damage_split, resolve_damage_parts
-    parts = resolve_damage_parts(damage, hit_stats, enemy, player)
+    parts = resolve_damage_parts(damage, hit_stats, enemy, attacker)
     if enemy.show_hit_stats:
         enemy.last_hit = {"raw": {t: damage * share for t, share in damage_split(hit_stats).items()}, "after": parts}
     damage = sum(parts.values())
 
     enemy.enemy_take_damage(damage)
 
-    if player.lifesteal > 0:
+    if attacker is player and player.lifesteal > 0:
         player.heal(damage * player.lifesteal / 100)
 
     apply_hit_effects(enemy, effects, source=source)

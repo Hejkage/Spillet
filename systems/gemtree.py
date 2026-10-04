@@ -8,7 +8,9 @@ max_gem_level = 10
 base_kills_for_level = 100
 respec_cost_per_node = 25   # gold to unallocate one node
 
-def register_gem_node(template_key, key, name, position, support_type=None, value=None, is_root=False, is_socket=False, sprite_name=None):
+def register_gem_node(template_key, key, name, position, support_type=None, value=None, is_root=False, is_socket=False, sprite_name=None, stats=None):
+    """stats = item-style stat lines, e.g. [{"stat": "buff_effect", "type": "increased", "amount": 100}].
+    On a pet tree they change the pet's stats (systems/pets.py)."""
     gem_tree_nodes.setdefault(template_key, {})[key] = {
         "name": name,
         "position": position,
@@ -17,6 +19,7 @@ def register_gem_node(template_key, key, name, position, support_type=None, valu
         "is_root": is_root,
         "is_socket": is_socket,
         "sprite_name": sprite_name,
+        "stats": list(stats) if stats else [],
     }
     return key
 
@@ -149,9 +152,16 @@ def tree_supports(item, allocated=None):
             supports.append(gem)
     return supports
 
+def tree_stats(item, allocated=None):
+    """Every stat line from the allocated nodes: [{"stat", "type", "amount"}, ...]."""
+    if allocated is None:
+        allocated = item.allocated
+    nodes = nodes_for(item)
+    return [mod for key in allocated if key in nodes for mod in nodes[key]["stats"]]
+
 def supports_gem(support_item, gem_item):
     from systems.abilities import active_gem_templates
     from systems.supports import support_gem_types
-    t = active_gem_templates[gem_item.template_key]
-    allowed = t.get("support_tags", set())
-    return bool(support_gem_types[support_item.gem_type]["tags"] & allowed)
+    t = active_gem_templates.get(gem_item.template_key)
+    if t is None:
+        return False          # e.g. a pet: support gems don't fit it

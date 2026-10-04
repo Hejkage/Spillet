@@ -169,6 +169,12 @@ register_formation("ring",    ring_formation)
 register_formation("vein",    vein_formation)
 register_formation("clump",   clump_formation)
 
+def feet_y(y, sprite):
+    """Where a sprite touches the ground: its centre y + half its height.
+    Sort by this, not the centre, so a small pet in front of a tall player
+    can't draw over them (and the other way round)."""
+    return y + sprite.get_height() / 2
+
 def draw_depth_sorted(entities):
     for entity, draw_func in sorted(entities, key=lambda pair: pair[0].get_sort_y()):
         draw_func()

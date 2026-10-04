@@ -96,11 +96,3 @@ class DropPool:
 # A system must NEVER import from content/.
 # ---------------------------------------------------------------
 generic_drop_pool = DropPool(drop_count=(1, 1))
-
-
-# ---------------------------------------------------------------
-# REGISTRY - content/drops.py fills this in, and register_active_gem()
-# appends to it automatically.
-# ---------------------------------------------------------------
-active_gem_group = []
-pet_group = []          # filled by register_pet()

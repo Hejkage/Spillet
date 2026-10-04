@@ -27,7 +27,7 @@ default_damage_type = "physical"
 
 # Colours for readouts (target dummy). A type with no entry is drawn white.
 damage_colors = {
-    "physical": (200, 200, 200),
+    "physical": (150, 0, 0),
     "fire":     (255, 120, 60),
     "frost":    (110, 200, 255),
     "nature":   (110, 220, 90),
@@ -82,49 +82,58 @@ def attacker_stat(attacker, stat, hit_stats):
         return attacker.resolve_stat(stat, hit_stats)
     return (hit_stats or {}).get(stat, 0)
 
-def final_damage(base_damage, hit_stats, scaling, stat):
-    """Work out what a gem really deals BEFORE the target is known.
+def cannot_scale_keys(hit_stats):
+    """What a hit refuses to scale with: its "cannot_scale" set, plus every type
+    inside a blocked group. {"elemental"} -> {"elemental", "fire", "frost", "nature"}."""
+    blocked = set((hit_stats or {}).get("cannot_scale", ()))
+    for t, tags in damage_types.items():
+        if blocked & set(tags):
+            blocked.add(t)
+    return blocked
 
-    base_damage  the gem's number (after rarity), shared out by its damage_type/damage_split
-    hit_stats    the gem's own fields: damage_type / damage_split, crit_type, damage_tags
-    scaling      the gem's damage_scaling, e.g. {"elemental_damage", "spell_damage"}
-    stat         stat(name, default) -> the player's value for that stat
+def final_damage(base_damage, hit_stats, stat):
+    """Work out what an ability really deals BEFORE the target is known.
+    Used by gems, basic attacks and pets alike.
 
-    Returns (total, parts) where parts = {"fire": 100.0, "cold": 60.0}.
+    base_damage  the ability's number, shared out by its damage_type/damage_split
+    hit_stats    the ability's own fields: damage_type / damage_split, crit_type,
+                 damage_tags, cannot_scale
+    stat         stat(name, default) -> the attacker's value for that stat
+
+    Returns (total, parts) where parts = {"fire": 100.0, "frost": 60.0}.
     Put `parts` in the hit as "damage_split"; resolve_damage() does the rest.
 
-    1. FLAT: "added_<type>" stats add that type, if the gem accepts it. A gem
-       accepts a type if it already deals it, or the type shares a tag with the
-       gem's scaling (cold is elemental, so a gem scaling with elemental takes it).
-    2. INCREASED: each part is multiplied by the increased-damage stats of its OWN
-       keys that the gem scales with. Elemental increases every elemental part.
-    """
-    accepted = {s.removesuffix("_damage") for s in scaling}
-    base_split = damage_split(hit_stats)
-    parts = {t: base_damage * share for t, share in base_split.items()}
+    1. FLAT: every "added_<type>" stat is added - any ability can get any type.
+       "added_<type>_spell" / "_attack" only land on spells / attacks.
+    2. INCREASED: each part is multiplied by the increased-damage stats of its
+       OWN keys: its type, that type's groups, and the hit's attack/spell.
+       Added fire on a sword swing is increased by fire, elemental and attack.
 
-    hit_tags = set((hit_stats or {}).get("damage_tags", ()))
-    if (hit_stats or {}).get("crit_type"):
+    "cannot_scale": {"fire"} turns both off for that key: no added fire, and
+    no increased fire. A group blocks every type in it; "spell"/"attack"
+    blocks the conditional flat stats and that increased stat.
+    """
+    hit_stats = hit_stats or {}
+    blocked = cannot_scale_keys(hit_stats)
+    parts = {t: base_damage * share for t, share in damage_split(hit_stats).items()}
+
+    hit_tags = set(hit_stats.get("damage_tags", ()))
+    if hit_stats.get("crit_type"):
         hit_tags.add(hit_stats["crit_type"])
 
-    for t, tags in damage_types.items():
-        if t not in base_split and not ({t, *tags} & accepted):
+    for t in damage_types:
+        if t in blocked:
             continue
         flat = stat(f"added_{t}", 0)
         for condition in flat_conditions:
-            if condition in hit_tags:
+            if condition in hit_tags and condition not in blocked:
                 flat += stat(f"added_{t}_{condition}", 0)
         if flat:
             parts[t] = parts.get(t, 0) + flat
 
     for t in parts:
-        # A part is always increased by its OWN type and by the groups that type is
-        # in: 100 fire damage is elemental damage, whatever the gem scales with.
-        # The other keys ("spell", "attack") still need the gem to scale with them.
-        own = {t, *damage_types.get(t, ())}
-        increased = sum((stat(f"{k}_damage", 100) - 100) / 100
-                        for k in part_keys(t, hit_stats) if k in own or k in accepted)
-        parts[t] *= 1 + increased
+        increased = sum((stat(f"{k}_damage", 100) - 100) / 100 for k in part_keys(t, hit_stats) if k not in blocked)
+        parts[t] *= max(0, 1 + increased)
 
     return sum(parts.values()), parts
 
@@ -185,3 +194,17 @@ def resolve_damage_parts(damage, hit_stats, defender, attacker=None, protectable
 def resolve_damage(damage, hit_stats, defender, attacker=None, protectable=True):
     """The damage that actually lands, after resistance and protection."""
     return sum(resolve_damage_parts(damage, hit_stats, defender, attacker, protectable).values())
+
+def damage_lines(parts):
+    """Tooltip lines for a hit's damage, e.g. "Fire Damage: 70".
+    A mixed hit gets its total first, then one line per type.
+    Used by gem items, the hotbar and pets, so they always look the same."""
+    white = (255, 255, 255)
+    shown = [(t, v) for t, v in sorted(parts.items(), key=lambda kv: -kv[1]) if v > 0]
+    if len(shown) == 1:
+        t, v = shown[0]
+        return [(f"{t.title()} Damage: {v:.0f}", damage_colors.get(t, white))]
+    lines = [(f"Damage: {sum(v for _, v in shown):.0f}", white)] if shown else []
+    for t, v in shown:
+        lines.append((f"  {t.title()} Damage: {v:.0f}", damage_colors.get(t, white)))
+    return lines

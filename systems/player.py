@@ -7,7 +7,7 @@ from systems.supports import support_gem_types
 from systems.items import active_gem_slots, equipment, pet_equip_slots, stat_defs
 from systems.damage import fold_damage_stats
 from systems.abilities import active_gem_templates, basic_attacks_by_weapon, build_active_gem
-from systems.world_objects import world_rect_at, nearest_free_point, move_with_collision
+from systems.world_objects import world_rect_at, nearest_free_point, move_with_collision, feet_y
 from systems.pets import Pet
 from core.screen import camera
 from systems.facing import face_direction, facing_sprite_name, facing_surface
@@ -156,7 +156,8 @@ class Player:
     def recalculate_stats(self, force=False):
         from systems.skilltree import (allocated_effects, allocated_grants, allocated_mods, allocated_nodes, skill_nodes)
         equip_signature = tuple(id(i) if i else None for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()))
-        signature = (equip_signature, frozenset(allocated_nodes))
+        from systems.pets import pet_signature, update_pet_stats
+        signature = (equip_signature, frozenset(allocated_nodes), pet_signature(self.pets))
         if not force and signature == getattr(self, "_stat_signature", None):
             return
         self._stat_signature = signature
@@ -171,6 +172,9 @@ class Player:
         for key in allocated_nodes:
             for mod in skill_nodes[key]["stats"]:
                 self.apply_modifier(mod)
+        # pets read your "pet_..." stats from above, then their auras land on you
+        for mod in update_pet_stats(self):
+            self.apply_modifier(mod)
         for stat in self.base_stats:
             setattr(self, stat, self.resolve_stat(stat))
         self.damage_totals = fold_damage_stats(lambda s: getattr(self, s, 0))
@@ -246,8 +250,7 @@ class Player:
             if id(item) in existing:
                 new_pets.append(existing[id(item)])
             else:
-                new_pet = Pet(item.pet_type, self.x, self.y)
-                new_pet.source_item = item
+                new_pet = Pet(item.pet_type, self.x, self.y, rarity=item.rarity, source_item=item)
                 new_pets.append(new_pet)
 
         summon_existing = {id(p.summon_key): p for p in self.pets if getattr(p, "summon_key", None) is not None}
@@ -261,8 +264,7 @@ class Player:
             if found is not None:
                 new_pets.append(found)
             else:
-                new_pet = Pet(pet_type, self.x, self.y)
-                new_pet.source_item = None
+                new_pet = Pet(pet_type, self.x, self.y, rarity=weapon.rarity)
                 new_pet.summon_key = key
                 new_pets.append(new_pet)
 
@@ -421,7 +423,7 @@ class Player:
         return True
     
     def get_sort_y(self):
-        return self.y
+        return feet_y(self.y, scaled_sprites[facing_sprite_name(self)])
     
 player = Player("witch_front_sprite", 1500, 1500)
 #region Leaps and jumps (movement)
