@@ -65,6 +65,9 @@ def handle_events():
             elif event.key == pygame.K_q:
                 app.debug_hitboxes = not app.debug_hitboxes
 
+        elif event.type == pygame.MOUSEWHEEL:
+            equipment.scroll_stats(event.y)
+
         elif event.type == pygame.MOUSEBUTTONDOWN:
             handle_mouse(event.pos, event.button)
         
