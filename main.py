@@ -21,6 +21,7 @@ from systems.save import load_game
 from content import inventory
 from ui.gemtree import gem_tree_panel
 from systems.popups import draw_floating_texts, update_floating_texts
+from systems.damage import resolve_damage
 
 # region Main game loop
 
@@ -35,7 +36,7 @@ def update_player_input(dt):
     if pygame.mouse.get_pressed()[0] and not app.attack_input_blocked and not attack_blocking_panel_open():
         player.use_ability("primary", pygame.mouse.get_pos(), camera)
     if not attack_blocking_panel_open():
-        held_keys = pygame.key.get_pressed()
+        held_keys = pygame.key.get_pressed() 
         mouse_pos = pygame.mouse.get_pos()
         for slot, key in ability_keybinds.items():
             if held_keys[key]:
@@ -52,7 +53,7 @@ def update_projectiles(dt):
     for p in world.enemy_projectiles:
         p.projectile_update(dt, camera)
         if p.alive and p.hits_player(player):
-            player.take_damage(p.damage)
+            player.take_damage(resolve_damage(p.damage, p.hit_stats, player))
             p.alive = False
     world.enemy_projectiles[:] = [p for p in world.enemy_projectiles if p.alive]
     process_projectile_hits(world.projectiles)
@@ -114,6 +115,7 @@ while app.running:
     app.screen.fill((30, 30, 30))
     hover_state.item = None
     hover_state.ability = None
+    hover_state.pet = None
     hover_state.ground_item = None
 
 #update
@@ -124,11 +126,11 @@ while app.running:
             b.draw_button()
 
     elif app.game_state == "" or (app.game_state == "settings" and app.previous_game_state == ""): 
-        
+
+        player.rebuild_pets()
         player.recalculate_stats()
         player.rebuild_basic_attack()
         player.rebuild_gem_ability()
-        player.rebuild_pets()
 
     #Game function stuff
         if app.game_state != "settings" and not skill_tree_panel.open and not gem_tree_panel.open:

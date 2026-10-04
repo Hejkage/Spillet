@@ -62,6 +62,33 @@ def draw_hotbar(player):
         if rect.collidepoint(pygame.mouse.get_pos()) and ability:
             hover_state.ability = ability
 
+    draw_pet_slots(player, start_x + total_width + padding * 3, y, slot_size, padding)
+
+def draw_pet_slots(player, start_x, y, slot_size, padding):
+    """Your pets, to the right of the abilities. Hover one to see its REAL
+    stats (gear, its tree and auras included) - like an ability."""
+    from core.assets import scaled_sprites
+    from systems.items import scale_item_sprite
+    from systems.rarity import rarity_colors
+    background = get_ui_scaled("inventory_slot_sprite", slot_size, slot_size)
+    for i, pet in enumerate(player.pets):
+        rect = pygame.Rect(start_x + i * (slot_size + padding), y, slot_size, slot_size)
+        if background:
+            app.screen.blit(background, rect)
+        icon = scale_item_sprite(scaled_sprites[pet.sprite_name], slot_size * 0.8)
+        app.screen.blit(icon, icon.get_rect(center=rect.center))
+
+        if pet.get_stat("ability") and pet.ability_timer > 0:
+            ratio = min(1.0, pet.ability_timer / max(0.01, pet.ability_cooldown()))
+            overlay_height = int(slot_size * ratio)
+            overlay = pygame.Surface((slot_size, overlay_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 140))
+            app.screen.blit(overlay, (rect.x, rect.bottom - overlay_height))
+
+        pygame.draw.rect(app.screen, rarity_colors.get(pet.rarity, (255, 255, 255)), rect, 2)
+        if rect.collidepoint(pygame.mouse.get_pos()):
+            hover_state.pet = pet
+
 def ability_tooltip_lines(ability, player):
     """The lines describing one ability. Used by the hotbar tooltip AND by the
     gem item tooltip, so the two can never drift apart.
@@ -71,10 +98,8 @@ def ability_tooltip_lines(ability, player):
     white = (255, 255, 255)
     lines = [(ability.name, (255, 220, 120))]
 
-    lines.append((f"Damage: {stats['damage']:.0f}", white))
-
-    for damage_type, amount in sorted(stats["parts"].items(), key=lambda kv: -kv[1]):
-        lines.append((f"  {damage_type.title()}: {amount:.0f}", damage_colors.get(damage_type, white)))
+    from systems.damage import damage_lines
+    lines.extend(damage_lines(stats["parts"]))
 
     if stats["projectiles"] > 1:
         lines.append((f"Projectiles: {stats['projectiles']}", white))
@@ -126,7 +151,8 @@ def ability_tooltip_lines(ability, player):
 
 def draw_ability_tooltip(player):
     from systems.items import draw_tooltip_box
-    ability = hover_state.ability
-    if not ability:
-        return
-    draw_tooltip_box(ability_tooltip_lines(ability, player))
+    if hover_state.ability:
+        draw_tooltip_box(ability_tooltip_lines(hover_state.ability, player))
+    elif hover_state.pet:
+        from systems.pets import pet_live_tooltip_lines
+        draw_tooltip_box(pet_live_tooltip_lines(hover_state.pet))

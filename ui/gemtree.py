@@ -215,6 +215,10 @@ class GemTreePanel:
             from systems.supports import SupportGem
             from systems.rarity import rarity_common
             lines.append((SupportGem(data["support_type"], data["value"], rarity_common).describe(), _GRAY))
+        elif data["stats"]:
+            from systems.pets import describe_pet_mod
+            for mod in data["stats"]:
+                lines.append((describe_pet_mod(mod), _GRAY))
         else:
             lines.append(("No effect", _GRAY))
 
