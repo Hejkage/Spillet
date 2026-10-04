@@ -98,7 +98,7 @@ def roll_affix_value(affix, tier_rarity):
     return round(random.uniform(low, high), 3)
 
 def roll_item(base_key, rarity=None, monster_tier=None):
-    from systems.items import EquippableItem, affix_count_by_rarity, affix_pool, base_items
+    from systems.items import EquippableItem, affix_count_by_rarity, affix_entries, affix_pool, base_items
     base = base_items[base_key]
     if monster_tier is None:
         monster_tier = drop_context.monster_tier
@@ -110,8 +110,9 @@ def roll_item(base_key, rarity=None, monster_tier=None):
     lo, hi = affix_count_by_rarity[rarity]
     count = random.randint(lo, hi)
 
-    available = list(base["affixes"])
-    weights = [affix_pool[key].get("weight", 1) for key in available]
+    entries = affix_entries(base)          # groups expanded, weights resolved
+    available = [key for key, _ in entries]
+    weights = [weight for _, weight in entries]
 
     allowed_tiers = roll_rarity_tier_range(rarity)
 

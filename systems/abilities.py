@@ -46,7 +46,8 @@ class ActiveGem:
             self.timer -= dt
 
     def get_base_effective(self, player):
-        damage_mult = 1.0 + sum((getattr(player, s, 100) - 100) / 100 for s in self.damage_scaling)
+        from systems.damage import final_damage
+        damage, parts = final_damage(self.base_damage, self.extra, self.damage_scaling, lambda name, default: getattr(player, name, default))
 
         if self.speed_stat:
             rate = max(0.01, getattr(player, self.speed_stat, 100) / 100)
@@ -55,7 +56,8 @@ class ActiveGem:
             cooldown = self.base_cooldown * max(0.1, 1 - player.cooldown / 100)
 
         return {
-            "damage": self.base_damage * damage_mult,
+            "damage": damage,
+            "parts": parts,
             "aoe": self.base_aoe * (player.aoe / 100) if self.uses_aoe else self.base_aoe,
             "speed": self.base_projectile_speed * (player.projectile_speed / 100),
             "cooldown": cooldown,
@@ -65,9 +67,12 @@ class ActiveGem:
     def get_effective_stats(self, player):
         base = self.get_base_effective(player)
 
-        probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra(), count=base["count"])
+        probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra(base), count=base["count"])
 
+        from systems.damage import damage_split
         per_hit = probe[0]["damage"]
+        # what ONE hit is made of, after supports scaled the total
+        parts = {t: per_hit * share for t, share in damage_split(probe[0]).items()}
         count = len(probe)
         burst_extra = max((p.get("burst_extra", 0) for p in probe), default=0)
         total_shots = count * (1 + burst_extra)
@@ -76,6 +81,7 @@ class ActiveGem:
 
         return {
             "damage": per_hit,
+            "parts": parts,
             "projectiles": count if self.hit_kind == "projectile" else 0,
             "hit_kind": self.hit_kind,
             "uses_aoe": self.uses_aoe,
@@ -91,12 +97,13 @@ class ActiveGem:
             "range": (melee_reach(player, melee_weapon_sprite(self.sprite_name), self.extra.get("range_mult", 1.0), probe[0]["aoe"] if self.extra.get("aoe_scales_range", False) else 1.0) if self.hit_kind == "melee" else 0),
         }
 
-    def mod_extra(self):
+    def mod_extra(self, base):
         """self.extra plus the mod lists build_hit_packets() reads."""
         extra = dict(self.extra)
         extra["_always"] = self.always_mods
         extra["_mods"] = self.outside_mods
         extra["_mod_tags"] = self.mod_tags
+        extra["damage_split"] = base["parts"]     # what the hit is made of, after flat and increased
         return extra
 
     def try_cast(self, player, target_pos, camera):
@@ -107,7 +114,7 @@ class ActiveGem:
 
         base = self.get_base_effective(player)
 
-        probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra())
+        probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra(base))
         cooldown_mult = min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
         self.timer = base["cooldown"] * cooldown_mult
 
@@ -116,11 +123,22 @@ class ActiveGem:
         if self.locks_movement:
             player.begin_action_lock(self.timer * self.lock_duration)
 
-        extra = self.mod_extra()
+        extra = self.mod_extra(base)
         extra["_interval"] = self.timer
         extra["_count"] = base["count"]
 
         self.gem_function(player, target_pos, camera, base["damage"], base["aoe"], base["speed"], self.sprite_name, self.support_gems, extra=extra, facing_flip=self.facing_flip)
+
+def template_crit_type(t):
+    """"attack" or "spell". A gem can set crit_type; otherwise what it scales with decides."""
+    return t.get("crit_type") or ("spell" if "spell_damage" in t.get("damage_scaling", set()) else "attack")
+
+def template_speed_stat(t):
+    """What makes this ability faster: an ATTACK uses attack speed, a SPELL uses
+    cooldown reduction. A gem can override it with its own "speed_stat"."""
+    if "speed_stat" in t:
+        return t["speed_stat"]
+    return "attack_speed" if template_crit_type(t) == "attack" else None
 
 def template_uses_aoe(t):
     if "uses_aoe" in t:
@@ -131,7 +149,7 @@ def template_uses_aoe(t):
 
 def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         extra = {k: v for k, v in t.items() if k not in standard_gem_fields}
-        extra["crit_type"] = t.get("crit_type") or ("spell" if "spell_damage" in t.get("damage_scaling", set()) else "attack")
+        extra["crit_type"] = template_crit_type(t)
 
         rolled = gem_stats or {}
 
@@ -163,7 +181,7 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         )
         gem.facing_flip = t.get("facing_flip", 1)
         gem.damage_scaling = t.get("damage_scaling", [])
-        gem.speed_stat = t.get("speed_stat")
+        gem.speed_stat = template_speed_stat(t)
         gem.hit_kind = t.get("hit_kind", "projectile")
         gem.uses_aoe = template_uses_aoe(t)
         gem.locks_movement = t.get("locks_movement", False)
@@ -178,7 +196,7 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         gem.outside_mods = list(outside_mods)              # skill tree, uniques
         gem.mod_tags = set(t.get("support_tags", set()))   # what it accepts from them
         return gem
-        return gem
+
 
 pending_bursts = []
 class PendingBurst:

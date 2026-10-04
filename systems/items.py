@@ -70,39 +70,168 @@ active_gem_slots = [s for s in extra_equip_slots if s.startswith("gem_active")]
 
 stat_defs = {}
 
-def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_label=None):
+def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_label=None,
+                  tab=None, always=False, cap=None, color=None):
+    """
+    tab    which tab of the stats panel shows it: "defence", "offence" or "misc".
+           None = not shown. (show_in_panel=True with no tab puts it on "misc".)
+    always show it even at zero. Without this a zero row is hidden.
+    cap    the highest value that counts. The panel shows the rest as "(x total)".
+    color  the row's colour in the panel
+    """
+    if tab is None and show_in_panel:
+        tab = "misc"
     stat_defs[key] = {
         "label": label,
         "base": base,
         "percent": percent,
-        "show_in_panel": show_in_panel,
+        "show_in_panel": tab is not None,
         "panel_label": panel_label or label,
+        "tab": tab,
+        "always": always,
+        "cap": cap,
+        "color": color,
     }
     return key
 
-register_stat("movement_speed",     "Movement Speed",                   base=350)
-register_stat("projectile_speed",   "Projectile Speed",                 base=100,   panel_label="Increased Projectile Speed")
-register_stat("spell_damage",       "Spell Damage",                     base=100,   panel_label="Increased Spell Damage")
-register_stat("attack_damage",      "Attack Damage",                    base=100,   panel_label="Increased Attack Damage")
-register_stat("cooldown",           "Cooldown Reduction",               base=0,     percent=True)
-register_stat("max_health",         "Health",                           base=1000)
-register_stat("health_regen",       "Health Regen per Second",          base=5)
-register_stat("lifesteal",          "Lifesteal",                        base=0,     percent=True)
-register_stat("attack_crit_chance", "Attack Critical Strike Chance",    base=0,     percent=True)
-register_stat("spell_crit_chance",  "Spell Critical Strike Chance",     base=0,     percent=True)
-register_stat("crit_chance",        "Critical Strike Chance",           base=5,     percent=True)
-register_stat("crit_damage",        "Critical Strike Damage",           base=150,   percent=True)
-register_stat("aoe",                "Area of Effect",                   base=100,   panel_label="Increased Area of Effect", percent=True)
-register_stat("physical_damage",    "Physical Damage",                  base=100,   show_in_panel=False)
-register_stat("elemental_damage",   "Elemental Damage",                 base=100,   show_in_panel=False)
-register_stat("attack_speed",       "Attack Speed",                     base=100,   panel_label="Increased Attack Speed")
-register_stat("attack_range",       "Attack Range",                     base=0,     show_in_panel=False)
+register_stat("movement_speed",     "Movement Speed",                   base=350,   tab="misc", always=True)
+register_stat("projectile_speed",   "Projectile Speed",                 base=100,   tab="misc", panel_label="Increased Projectile Speed")
+register_stat("spell_damage",       "Spell Damage",                     base=100,   tab="offence", panel_label="Increased Spell Damage")
+register_stat("attack_damage",      "Attack Damage",                    base=100,   tab="offence", panel_label="Increased Attack Damage")
+register_stat("cooldown",           "Cooldown Reduction",               base=0,     tab="offence", percent=True)
+register_stat("max_health",         "Health",                           base=1000,  tab="defence", always=True)
+register_stat("health_regen",       "Health Regen per Second",          base=5,     tab="defence", always=True)
+register_stat("lifesteal",          "Lifesteal",                        base=0,     tab="misc", percent=True)
+register_stat("attack_crit_chance", "Attack Critical Strike Chance",    base=0,     tab="offence", percent=True)
+register_stat("spell_crit_chance",  "Spell Critical Strike Chance",     base=0,     tab="offence", percent=True)
+register_stat("crit_chance",        "Critical Strike Chance",           base=5,     tab="offence", percent=True, always=True)
+register_stat("crit_damage",        "Critical Strike Damage",           base=150,   tab="offence", percent=True, always=True)
+register_stat("aoe",                "Area of Effect",                   base=100,   tab="misc", panel_label="Increased Area of Effect", percent=True)
+register_stat("physical_damage",    "Physical Damage",                  base=100,   tab="offence", panel_label="Increased Physical Damage")
+register_stat("attack_speed",       "Attack Speed",                     base=100,   tab="offence", panel_label="Increased Attack Speed", always=True)
+register_stat("attack_range",       "Attack Range",                     base=0)
+
+from systems.damage import (damage_colors, damage_groups, damage_keys, damage_types, flat_conditions, max_protection, max_resistance)
+
+def register_generated_stat(key, *args, **kw):
+    """For the damage stats below, which are generated from systems/damage.py.
+    Your own register_stat() for the same key always wins, wherever you put it."""
+    if key not in stat_defs:
+        register_stat(key, *args, **kw)
+
+for key in [*damage_types, *damage_groups]:
+    name = key.replace("_", " ").title()
+    shown = key in damage_types      # a group has no row: it is folded into its types
+    register_generated_stat(f"{key}_resistance", f"{name} Resistance", percent=True, show_in_panel=shown,
+                  tab="defence" if shown else None, cap=max_resistance, color=damage_colors.get(key))
+    register_generated_stat(f"{key}_protection", f"{name} Protection", show_in_panel=shown,
+                  tab="defence" if shown else None, cap=max_protection, color=damage_colors.get(key))
+
+# Penetration. A GROUP has no row of its own: like resistance, its value is
+# added into every type in it, so "2% elemental penetration" shows up as 2% on
+# each element instead of as a second number to add.
+for key in damage_keys:
+    name = key.replace("_", " ").title()
+    shown = key not in damage_groups
+    register_generated_stat(f"{key}_penetration",            f"{name} Penetration",            percent=True, show_in_panel=shown, tab="offence" if shown else None, color=damage_colors.get(key))
+    register_generated_stat(f"{key}_protection_penetration", f"{name} Protection Penetration", show_in_panel=shown, tab="offence" if shown else None, color=damage_colors.get(key))
+
+# Increased damage: every type AND every group, so "increased elemental damage"
+# and "increased dark damage" both exist.
+for key in [*damage_types, *damage_groups]:
+    name = key.replace("_", " ").title()
+    register_generated_stat(f"{key}_damage", f"{name} Damage", base=100, tab="offence", panel_label=f"Increased {name} Damage", color=damage_colors.get(key))
+
+# Flat added damage: types ONLY. A group is not a damage type, so "+30 elemental"
+# would not know which resistance should reduce it.
+for t in damage_types:
+    name = t.replace("_", " ").title()
+    register_generated_stat(f"added_{t}", f"Added {name} Damage", tab="offence", color=damage_colors.get(t))
+    for condition in flat_conditions:
+        register_generated_stat(f"added_{t}_{condition}", f"Added {name} Damage to {condition.replace('_', ' ').title()}s", tab="offence", color=damage_colors.get(t))
 
 def stat_label(key):
     return stat_defs[key]["label"] if key in stat_defs else key
 
 def stat_is_percent(key):
     return key in stat_defs and stat_defs[key]["percent"]
+
+
+# ---------------------------------------------------------------
+# THE STATS PANEL
+# A new tab is one line here. A stat picks its tab in register_stat(tab=...).
+# ---------------------------------------------------------------
+stat_tabs = [("defence", "Defensive"), ("offence", "Offensive"), ("misc", "Other")]
+
+# Rows a tab shows that are not plain stats (tree mods, on-kill effects...).
+# A source is fn(player) -> [(text, colour), ...]. Add one with @panel_rows("misc").
+panel_extra_rows = {}
+
+def panel_rows(tab):
+    def register(fn):
+        panel_extra_rows.setdefault(tab, []).append(fn)
+        return fn
+    return register
+
+def _number(value):
+    rounded = round(value, 2)
+    return str(int(rounded)) if rounded == int(rounded) else f"{rounded:.2f}"
+
+def stat_rows(player, tab):
+    """Everything one tab of the stats panel shows: [(text, colour), ...]."""
+    rows = []
+    for stat, d in stat_defs.items():
+        if d["tab"] != tab:
+            continue
+        value = player.stat_value(stat)
+        if d["base"] == 100:
+            value -= 100                          # 130 is shown as "30% increased"
+        if value == 0 and not d["always"]:
+            continue
+        suffix = "%" if (d["percent"] or d["base"] == 100) else ""
+        text = f"{d['panel_label']}: {_number(value)}{suffix}"
+        if d["cap"] is not None and value > d["cap"]:
+            text = f"{d['panel_label']}: {_number(d['cap'])}{suffix}  ({_number(value)}{suffix} total)"
+        rows.append((text, d["color"] or (255, 255, 255)))
+    for source in panel_extra_rows.get(tab, ()):
+        rows.extend(source(player))
+    return rows
+
+@panel_rows("offence")
+def _rows_total_crit(player):
+    """What an attack or a spell really crits with. A gem's own bonuses come on top (see its tooltip)."""
+    attack, _ = player.crit_stats({"crit_type": "attack"})
+    spell, _ = player.crit_stats({"crit_type": "spell"})
+    return [(f"Crit chance with attacks: {attack:.1f}%", (255, 255, 255)),
+            (f"Crit chance with spells: {spell:.1f}%", (255, 255, 255))]
+
+@panel_rows("misc")
+def _rows_global_mods(player):
+    """Mods the skill tree gives every ability that accepts them: pierce, extra projectiles..."""
+    from systems.mods import describe_mod, mod_combine
+    grouped = {}
+    for name, value in getattr(player, "tree_mods", ()):
+        grouped.setdefault(name, []).append(value)
+    rows = []
+    for name, values in grouped.items():
+        if mod_combine(name) == "mul":
+            total = 1.0
+            for v in values:
+                total *= v
+        else:
+            total = sum(values)
+        rows.append((describe_mod(name, total), (255, 255, 255)))
+    return rows
+
+@panel_rows("misc")
+def _rows_event_effects(player):
+    """On-kill effects and the like, from the skill tree."""
+    from systems.status import describe_effect
+    rows = []
+    for event, effects in getattr(player, "event_effects", {}).items():
+        for effect in effects:
+            rows.append((f"{describe_effect(effect)} ({event.replace('_', ' ')})", (255, 255, 255)))
+    return rows
 
 item_kinds = {}
 
@@ -335,6 +464,10 @@ class Equipment:
         self.open = False
         self.drag_source = None
         self.rect = None
+        self.stat_tab = stat_tabs[0][0]     # which tab of the stats panel is showing
+        self.stat_tab_rects = {}
+        self.stat_rect = None
+        self.stat_scroll = 0
 
     def toggle(self):
         self.open = not self.open
@@ -441,46 +574,68 @@ class Equipment:
     def draw_stat_panel(self, scaled_sprites, player, panel_x, panel_y, panel_height, scale):
         panel_width = int(350 * scale)
         stats_x = panel_x - panel_width - int(10 * scale)
+        self.stat_rect = pygame.Rect(stats_x, panel_y, panel_width, panel_height)
 
         bg_surface = get_ui_scaled("inventory_background_sprite", panel_width, panel_height)
         app.screen.blit(bg_surface, (stats_x, panel_y))
 
-        font_size = max(15, int(25 * scale))
-        font = get_font(font_size)
-
-        row_padding = int(20 * scale)
-        text_x = stats_x + row_padding
-
-        i = 0
+        pad = int(20 * scale)
+        text_x = stats_x + pad
 
         level_font = get_font(max(20, int(34 * scale)))  # bigger than the normal stat font
         label_surf = level_font.render("Level: ", True, (200, 200, 200))
         value_surf = level_font.render(str(player.level), True, (255, 255, 255))
+        app.screen.blit(label_surf, (text_x, panel_y + pad))
+        app.screen.blit(value_surf, (text_x + label_surf.get_width(), panel_y + pad))
+        y = panel_y + pad + level_font.get_height() + int(8 * scale)
 
-        app.screen.blit(label_surf, (text_x, panel_y + row_padding))
-        app.screen.blit(value_surf, (text_x + label_surf.get_width(), panel_y + row_padding))
+        # tabs
+        tab_font = get_font(max(14, int(20 * scale)))
+        gap = int(6 * scale)
+        tab_w = (panel_width - pad * 2 - gap * (len(stat_tabs) - 1)) // len(stat_tabs)
+        tab_h = tab_font.get_height() + int(8 * scale)
+        self.stat_tab_rects = {}
+        for i, (tab, label) in enumerate(stat_tabs):
+            rect = pygame.Rect(text_x + i * (tab_w + gap), y, tab_w, tab_h)
+            self.stat_tab_rects[tab] = rect
+            active = tab == self.stat_tab
+            pygame.draw.rect(app.screen, (95, 75, 35) if active else (40, 40, 40), rect, border_radius=4)
+            pygame.draw.rect(app.screen, (240, 200, 60) if active else (90, 90, 90), rect, width=1, border_radius=4)
+            text = tab_font.render(label, True, (255, 255, 255) if active else (170, 170, 170))
+            app.screen.blit(text, text.get_rect(center=rect.center))
+        y += tab_h + int(10 * scale)
 
-        level_row_height = level_font.get_height()
+        # the rows of the open tab, scrolled with the mouse wheel
+        font = get_font(max(13, int(21 * scale)))
+        row_h = font.get_linesize()
+        view = pygame.Rect(stats_x, y, panel_width, panel_y + panel_height - y - pad)
+        rows = stat_rows(player, self.stat_tab)
+        self.stat_scroll = max(0, min(self.stat_scroll, len(rows) * row_h - view.height))
 
-        for stat, d in stat_defs.items():
-            if not d["show_in_panel"]:
+        app.screen.set_clip(view)
+        for i, (text, color) in enumerate(rows):
+            row_y = view.y + i * row_h - self.stat_scroll
+            if row_y + row_h < view.y or row_y > view.bottom:
                 continue
-            label = d["panel_label"]
-            value = getattr(player, stat, 0)
-            if d["base"] == 100:
-                value -= 100
+            app.screen.blit(font.render(text, True, color), (text_x, row_y))
+        app.screen.set_clip(None)
 
-            rounded = round(value, 2)
-            display_value = str(int(rounded)) if rounded == int(rounded) else f"{rounded:.2f}"
-
-            suffix = "%" if (d["percent"] or d["base"] == 100) else ""
-            text = font.render(f"{label}: {display_value}{suffix}", True, (255, 255, 255))
-            app.screen.blit(text, (text_x, panel_y + row_padding + level_row_height + i * font_size))
-            i += 1
+    def scroll_stats(self, wheel):
+        """Mouse wheel over the stats panel scrolls the open tab."""
+        if self.open and self.stat_rect and self.stat_rect.collidepoint(pygame.mouse.get_pos()):
+            self.stat_scroll = max(0, self.stat_scroll - wheel * 40)
                             
     def handle_click(self, pos, button, drag_state, player):
         if not self.open or button != 1:
             return False
+        
+        for tab, rect in self.stat_tab_rects.items():
+            if rect.collidepoint(pos):
+                self.stat_tab = tab
+                self.stat_scroll = 0
+                return True
+        if self.stat_rect and self.stat_rect.collidepoint(pos):
+            return True      # a click on the stats panel is not an attack
         
         all_slots = {}
         if hasattr(self, "main_slot_rects"):
@@ -615,8 +770,11 @@ def _tt_gem_level(item, lines):
 
 @tooltip_section
 def _tt_active_gem(item, lines):
-    from systems.abilities import active_gem_templates, template_uses_aoe
-    if not hasattr(item, "template_key"):
+    """An active gem item: its OWN base numbers, before the player's stats.
+    What it does once equipped is the hotbar tooltip; what the tree adds is the tree."""
+    from systems.abilities import active_gem_templates, template_speed_stat, template_uses_aoe
+    from systems.damage import damage_colors, damage_split
+    if not hasattr(item, "template_key") or item.template_key not in active_gem_templates:
         return
     t = active_gem_templates[item.template_key]
     rolled = getattr(item, "gem_stats", {})
@@ -624,50 +782,61 @@ def _tt_active_gem(item, lines):
     def gem_val(stat, default=None):
         return rolled.get(stat, t.get(stat, default))
 
-    dmg = gem_val("damage")
-    if dmg is not None:
-        lines.append((f"{dmg:.0f} damage", _WHITE))
+    damage = gem_val("damage")
+    if damage is not None:
+        lines.append((f"{damage:.0f} base damage", _WHITE))
+        parts = damage_split(t)
+        if len(parts) > 1:                  # only worth listing when the gem is mixed
+            for damage_type, share in sorted(parts.items(), key=lambda kv: -kv[1]):
+                lines.append((f"  {damage * share:.0f} {damage_type}", damage_colors.get(damage_type, _WHITE)))
+        elif parts:
+            damage_type = next(iter(parts))
+            lines.append((f"Damage type: {damage_type}", damage_colors.get(damage_type, _GRAY)))
 
-    speed_stat = t.get("speed_stat")
-    cd = gem_val("attack_time")
-    if cd is None:
-        cd = gem_val("cooldown")
-    if cd is not None:
-        label = "attack time" if speed_stat else "cooldown"
-        lines.append((f"{cd:.2f}s {label}", _WHITE))
+    projectiles = gem_val("projectiles")
+    if projectiles and projectiles > 1:
+        lines.append((f"{int(projectiles)} projectiles", _WHITE))
+
+    cooldown = gem_val("attack_time")
+    if cooldown is None:
+        cooldown = gem_val("cooldown")
+    if cooldown is not None:
+        lines.append((f"{cooldown:.2f}s {'base attack time' if template_speed_stat(t) else 'base cooldown'}", _WHITE))
+
+    cast_time = t.get("action_time", t.get("swing_time"))
+    if cast_time:
+        lines.append((f"{cast_time:.2f}s cast time", _WHITE))
+
+    cc = gem_val("crit_chance", 0)
+    if cc:
+        lines.append((f"{cc:.0f}% crit chance", _WHITE))
+    cdmg = gem_val("crit_damage", 0)
+    if cdmg:
+        lines.append((f"+{cdmg:.0f}% crit damage", _WHITE))
+
+    dot_damage = gem_val("dot_damage", 0)
+    if dot_damage:
+        lines.append((f"{dot_damage:.0f} damage per second", _WHITE))
+        dot_duration = gem_val("dot_duration", 0)
+        if dot_duration:
+            lines.append((f"{dot_duration:.0f}s damage over time", _WHITE))
 
     speed = gem_val("projectile_speed")
-    if speed is not None:
+    if speed:
         lines.append((f"{speed:.0f} projectile speed", _WHITE))
 
     gem_aoe = gem_val("aoe")
     if gem_aoe is not None and template_uses_aoe(t):
         lines.append((f"{gem_aoe * 100:.0f}% area of effect", _WHITE))
 
-    cc = gem_val("crit_chance", 0)
-    if cc:
-        lines.append((f"{cc:.0f}% crit chance", _WHITE))
-
-    cdmg = gem_val("crit_damage", 0)
-    if cdmg:
-        lines.append((f"{cdmg:.0f}% crit damage", _WHITE))
-
-    dot_d = gem_val("dot_damage", 0)
-    if dot_d:
-        lines.append((f"{dot_d:.0f} damage per second", _WHITE))
-        dot_dur = gem_val("dot_duration", 0)
-        if dot_dur:
-            lines.append((f"{dot_dur:.0f}s damage over time", _WHITE))
-
     scaling = t.get("damage_scaling")
     if scaling:
-        nice = ", ".join(stat_label(s).lower() for s in scaling)   # was stat_display.get
+        nice = ", ".join(stat_label(s).lower() for s in scaling)
         lines.append((f"Scales with: {nice}", _GRAY))
 
     built_in = getattr(item, "built_in_support", None)
     if built_in is not None:
-        color = rarity_colors.get(built_in.rarity, _WHITE)
-        lines.append((f"Built-in: {built_in.describe()}", color))
+        lines.append((f"Built-in: {built_in.describe()}", rarity_colors.get(built_in.rarity, _WHITE)))
 
 def draw_tooltip_box(lines):
     font = get_font(max(16, int(20 * app.ui_scale)))
@@ -804,12 +973,61 @@ equipment = Equipment()
 # ---------------------------------------------------------------
 base_items = {}
 affix_pool = {}
+affix_groups = {}
 affix_count_by_rarity = {}
+
+# ---------------------------------------------------------------
+# AFFIX WEIGHTS AND GROUPS
+#
+# WEIGHT is how often an affix rolls compared to the others on that item.
+# An affix sets its own with a "weight" key in affix_pool; without one it
+# uses base_affix_weight.
+#
+# A GROUP is a name for several affixes, filled in content/items.py:
+#
+#     affix_groups.update({
+#         "elemental_affixes": ["fire_damage", "fire_resistance", ...],
+#     })
+#
+# A base item's "affixes" list takes an affix name, a GROUP name, or a
+# (name, weight) pair to override the weight just for that item:
+#
+#     "affixes": ["elemental_affixes",        # the whole group, own weights
+#                 ("fire_penetration", 40),   # this one, often, on this item
+#                 ("lifesteal", 1)]           # this one, rarely
+#
+# A later entry wins, so list a group first and then override one member.
+# ---------------------------------------------------------------
+base_affix_weight = 10
+
+def affix_entries(base):
+    """base["affixes"] -> [(affix_key, weight), ...] with every group expanded.
+
+    Three places can set the weight. The most specific one wins:
+       1. the base item   ("fire_penetration", 40)
+       2. the group       ("elemental_damage", 40) inside affix_groups
+       3. the affix       "weight": 4 in affix_pool, else base_affix_weight
+    """
+    found = {}
+    for entry in base["affixes"]:
+        key, item_weight = entry if isinstance(entry, (tuple, list)) else (entry, None)
+        for member in affix_groups.get(key, [key]):
+            affix_key, group_weight = member if isinstance(member, (tuple, list)) else (member, None)
+            affix = affix_pool.get(affix_key)
+            if affix is None:
+                print(f"WARNING: base item '{base.get('name')}' wants affix '{affix_key}',"
+                      f" which is not in affix_pool. See content/items.py.")
+                continue
+            if item_weight is not None:
+                found[affix_key] = item_weight
+            elif group_weight is not None:
+                found[affix_key] = group_weight
+            else:
+                found[affix_key] = affix.get("weight", base_affix_weight)
+    return list(found.items())
+
 item_templates = {}
-# ---------------------------------------------------------------
-# Gem rolling. This is a MECHANIC (it builds an item object), so it
-# lives in systems/. The gem definitions it reads live in content/gems.py.
-# ---------------------------------------------------------------
+
 gem_built_in_support_chance = 1
 
 def roll_gem_rarity():

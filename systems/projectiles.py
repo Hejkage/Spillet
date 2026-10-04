@@ -3,6 +3,7 @@ import math
 from core.state import app, world
 from core.assets import scaled_sprites
 from core.screen import is_near_view
+from systems.world_objects import projectile_blocked_at
 
 # region projectiles
 
@@ -13,6 +14,7 @@ orbit_rehit_cooldown = 0.5
 projectile_default_lifetime = 5.0   # seconds; a gem can override it with "lifetime"
 projectile_view_scale = 1.5         # projectiles die this many screens from the player
 projectile_sprite_angle = {}
+projectile_hit_scale = 0.5          # hit radius = half the sprite's short side * aoe * this
 
 class Projectile:
     def __init__(self, sprite_name, x, y, direction, speed, damage=10, aoe=0, hitbox_scale=1, slow_amount=0, slow_duration=0, dot_damage=0, dot_duration=0, effects = None, hit_stats=None, from_player=True, pierce=0,
@@ -31,7 +33,7 @@ class Projectile:
         if slow_duration > 0:
             self.effects.append({"name": "slow", "duration": slow_duration, "amount": slow_amount})
         if dot_duration > 0:
-            self.effects.append({"name": "dot", "duration": dot_duration, "dps": dot_damage})
+            self.effects.append({"name": "dot", "duration": dot_duration, "dps": dot_damage, "hit_stats": self.hit_stats})
         self.from_player = from_player
         self.pierce = pierce or 0
         self.pierced = set()
@@ -44,9 +46,13 @@ class Projectile:
         self.orbit_radius = orbit_radius
         self.hit_cooldowns = {}
         
-
         base_sprite = scaled_sprites[sprite_name]
         base_width, base_height = base_sprite.get_size()
+
+        # What it actually hits with. self.rect is the DRAWN sprite, which rotation
+        # inflates (a rotated square's bounding box is up to 41% wider), so hitting
+        # off that rect made a big projectile land early and from the side.
+        self.hit_radius = min(base_width, base_height) * 0.5 * max(0.01, self.aoe) * projectile_hit_scale
 
         target_width = int(base_width * self.aoe)
         target_height = int(base_height * self.aoe)
@@ -81,17 +87,26 @@ class Projectile:
             if not is_near_view(self.x, self.y, projectile_view_scale):
                 self.alive = False
 
-            for o in world.world_objects:
-                if o.blocks_projectiles and self.rect.colliderect(o.rect):
-                    self.alive = False
-                    break
+            # the projectile's CENTRE has to reach the object. Checking its drawn
+            # rect instead let a big projectile be eaten by something it flew past.
+            if projectile_blocked_at(self.x, self.y):
+                self.alive = False
     
+    def hits_rect(self, rect):
+        """Circle against a rect, in screen space. Uses hit_radius, so aoe still
+        makes a projectile hit from further out, but honestly."""
+        cx, cy = self.rect.center
+        nearest_x = min(max(cx, rect.left), rect.right)
+        nearest_y = min(max(cy, rect.top), rect.bottom)
+        dx, dy = cx - nearest_x, cy - nearest_y
+        return dx * dx + dy * dy <= self.hit_radius * self.hit_radius
+
     def hits_player(self, player):
-        px, py = player.x, player.y
-        dx = self.x - px
-        dy = self.y - py
-        hit_radius = 20 + max(self.rect.width, self.rect.height) * 0.3
-        return (dx * dx + dy * dy) ** 0.5 <= hit_radius
+        from systems.weapons import player_body_radius
+        dx = self.x - player.x
+        dy = self.y - player.y
+        reach = self.hit_radius + player_body_radius
+        return dx * dx + dy * dy <= reach * reach
 
 
     def projectile_draw(self, camera):

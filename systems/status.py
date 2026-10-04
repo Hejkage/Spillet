@@ -84,18 +84,23 @@ def slow_expire(enemy, status):
     enemy.slow_multiplier = 1.0
 
 def dot_tick(enemy, status, dt):
-    enemy.enemy_take_damage(status.get("dps", 0) * dt)
+    from systems.damage import resolve_damage
+    from systems.player import player
+    enemy.enemy_take_damage(resolve_damage(status.get("dps", 0) * dt, status.get("hit_stats"), enemy, player, protectable=False))
 
 def explode(target, effect, source):
     """Damage everything near the target. Works from a projectile, a melee
     swing, a pet, an on-kill effect - anything that carries effect data."""
     from core.state import world
+    from systems.damage import resolve_damage
+    from systems.player import player
     radius = effect.get("radius", 100)
     damage = effect.get("damage", 0)
+    hit_stats = getattr(source, "hit_stats", None)
     for enemy in world.enemies:
         if enemy is not target and enemy.alive:
             if (enemy.x - target.x) ** 2 + (enemy.y - target.y) ** 2 <= radius ** 2:
-                enemy.enemy_take_damage(damage)
+                enemy.enemy_take_damage(resolve_damage(damage, hit_stats, enemy, player))
 
 def heal_caster(target, effect, source):
     """Heal the player. `percent` of max health, or a flat `amount`."""

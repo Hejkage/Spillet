@@ -5,6 +5,7 @@ from core.assets import scaled_sprites
 from systems.weapons import weapon_class_tags
 from systems.supports import support_gem_types
 from systems.items import active_gem_slots, equipment, pet_equip_slots, stat_defs
+from systems.damage import fold_damage_stats
 from systems.abilities import active_gem_templates, basic_attacks_by_weapon, build_active_gem
 from systems.world_objects import world_rect_at, nearest_free_point, move_with_collision
 from systems.pets import Pet
@@ -99,6 +100,17 @@ class Player:
     def heal(self, amount):
         self.current_health = min(self.max_health, self.current_health + amount)
 
+    def defence_stat(self, stat):
+        """Used by resolve_damage(). Enemies have the same method.
+        "fire_resistance" already includes "elemental_resistance"."""
+        return self.damage_totals.get(stat, 0)
+
+    def stat_value(self, stat):
+        """What the stats panel shows for a stat."""
+        if stat in self.damage_totals:
+            return self.damage_totals[stat]
+        return getattr(self, stat, 0)
+
     def die(self):
         from systems.areas import areas, switch_area
         self.current_health = self.max_health
@@ -161,6 +173,7 @@ class Player:
                 self.apply_modifier(mod)
         for stat in self.base_stats:
             setattr(self, stat, self.resolve_stat(stat))
+        self.damage_totals = fold_damage_stats(lambda s: getattr(self, s, 0))
         if hasattr(self, "current_health"):
             self.current_health = min(self.current_health, self.max_health)
 
@@ -186,11 +199,11 @@ class Player:
         for slot in active_gem_slots:
             item = equipment.extra_slots.get(slot)
             socket_ids = tuple(sorted((k, id(v)) for k, v in getattr(item, "sockets", {}).items())) if item else ()
-            signature.append(tuple(tree_mods))      # the tree is part of the ability
+            signature.append((id(item) if item else None, socket_ids, tuple(tree_mods)))
         signature = tuple(signature)
-        if signature == self.gem_signature:
+        if signature == self.gem_signature:      # <-- without this the gem is rebuilt every frame
             return
-        self.gem_signature = signature
+        self.gem_signature = signature           # <-- and without this too
 
         for slot in active_gem_slots:
             active_item = equipment.extra_slots.get(slot)

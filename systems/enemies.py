@@ -6,6 +6,7 @@ from core.screen import view_radius
 from systems.status import apply_hit_effects, status_blocks, status_effect_types
 from systems.projectiles import Projectile, orbit_rehit_cooldown
 from systems.drops import DropPool
+from systems.damage import fold_damage_stats
 from systems.ground import spawn_drops
 from systems.player import begin_leap, leap_height_offset, update_leap
 from systems.player import player
@@ -25,6 +26,12 @@ enemy_cast_time = 0.5
 enemy_global_cast_cooldown = 0.4
 
 enemy_grid_cell_size = 128
+
+# How much an ability's cooldown varies from cast to cast, as a fraction.
+# 0.1 was too little: a 5s meteor landed between 4.5s and 5.5s, so two casters
+# that drifted into step stayed in step for many casts and you saw waves of
+# the same spell. An ability can override it with "cooldown_jitter".
+enemy_ability_jitter = 0.35
 
 enemy_collision_ratio = 0.625   # radius = sprite width * this (player: 32px sprite -> 20)
 
@@ -106,16 +113,17 @@ class EnemyAbility():
             shot = direction.rotate((start + i) * self.spread)
             world.enemy_projectiles.append(Projectile(
                 self.sprite_name, enemy.x, enemy.y, shot,
-                speed=self.speed, damage=self.damage, aoe=self.aoe))
+                speed=self.speed, damage=self.damage, aoe=self.aoe,
+                hit_stats={"damage_type": self.damage_type}))
 
 class EnemyProjectileAbility(EnemyAbility):
-    def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0,
-                 projectiles=1, spread=12):
+    def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0, projectiles=1, spread=12, damage_type="physical"):
         super().__init__(cooldown, ability_range, projectiles=projectiles, spread=spread)
         self.damage = damage
         self.speed = speed
         self.sprite_name = sprite_name
         self.aoe = aoe
+        self.damage_type = damage_type
 
 enemy_defaults = {
     "base_sprite": None, 
@@ -136,6 +144,8 @@ enemy_defaults = {
     "tier_scaling": None,          # this monster's own curve, e.g. {"health": 1.8}
     "tier_stats": None,            # exact values per tier, e.g. {5: {"health": 900}}
     "tier_stats_sticky": False,    # True = a row applies from its tier UPWARDS
+    "defence": {},                 # e.g. {"fire_resistance": 50, "grass_protection": 20}
+    "show_hit_stats": False,       # True = draws the last hit's damage above its head (target dummy)
 }
 
 enemy_behaviors = {}
@@ -148,7 +158,7 @@ class Enemy:
         cfg = {**enemy_defaults, **enemy_configs[enemy_type]}
         for key, value in cfg.items():
             setattr(self, key, value)
-
+        self.damage_totals = fold_damage_stats(lambda s: self.defence.get(s, 0))
         self.x, self.y = x, y
         self.enemy_type = enemy_type
         self.sprite_name = cfg["base_sprite"]
@@ -174,6 +184,7 @@ class Enemy:
         self.cast_timer = 0
         self.global_cast_timer = 0
         self.pending_cast = None
+        self.last_hit = None           # {"raw": {...}, "after": {...}}, only filled if show_hit_stats
     
     def build_scaled_sprite(self, sprite_name):
         base = scaled_sprites[sprite_name]
@@ -181,6 +192,9 @@ class Enemy:
             return base
         w, h = base.get_size()
         return pygame.transform.scale(base, (max(1, int(w * self.sprite_scale)), max(1, int(h * self.sprite_scale))))
+    
+    def defence_stat(self, stat):
+        return self.damage_totals.get(stat, 0)
 
     def enemy_take_damage(self, amount):
         if not self.alive:
@@ -362,7 +376,8 @@ class Enemy:
         if self.cast_timer <= 0:
             if self.pending_cast is not None:
                 self.pending_cast.fire(self, player, dist)
-                self.pending_cast.timer = self.pending_cast.cooldown * random.uniform(0.9, 1.1)
+                jitter = getattr(self.pending_cast, "cooldown_jitter", enemy_ability_jitter)
+                self.pending_cast.timer = self.pending_cast.cooldown * random.uniform(1 - jitter, 1 + jitter)
             self.casting = False
             self.pending_cast = None
             self.global_cast_timer = self.cast_cooldown
@@ -386,6 +401,26 @@ class Enemy:
         if color:
             pygame.draw.rect(app.screen, color, (bar_x - 1, bar_y - 1, bar_width + 2, bar_height + 2), width=1)
 
+        if self.show_hit_stats and self.last_hit:
+            self.draw_hit_stats(bar_x, bar_y)
+
+    def draw_hit_stats(self, x, bar_y):
+        """The last hit, above the health bar: total, then each damage type."""
+        from core.screen import get_font
+        from systems.damage import damage_colors
+        raw, after = self.last_hit["raw"], self.last_hit["after"]
+        font = get_font(max(14, int(18 * app.ui_scale)))
+
+        lines = [(f"Hit: {sum(after.values()):.0f}   (before resistance: {sum(raw.values()):.0f})", (255, 255, 255))]
+        for damage_type, amount in after.items():
+            lines.append((f"{damage_type.title()}: {amount:.0f}   (from {raw[damage_type]:.0f})",
+                          damage_colors.get(damage_type, (255, 255, 255))))
+
+        y = bar_y - 6 - len(lines) * font.get_height()
+        for text, color in lines:
+            app.screen.blit(font.render(text, True, color), (x, y))
+            y += font.get_height()
+
     def try_hit_from_projectile(self, p):
         if not p.alive:
             return
@@ -397,7 +432,7 @@ class Enemy:
             if self in getattr(p, "pierced", ()):
                 return
 
-        if self.rect.colliderect(p.rect):
+        if p.hits_rect(self.rect):
             if p.from_player:
                 apply_player_hit(self, p.damage, p.effects, p.hit_stats, source=p)
             else:
@@ -468,6 +503,12 @@ def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None):
 
     if chance > 0 and random.uniform(0, 100) < chance:
         damage *= crit_multiplier / 100
+
+    from systems.damage import damage_split, resolve_damage_parts
+    parts = resolve_damage_parts(damage, hit_stats, enemy, player)
+    if enemy.show_hit_stats:
+        enemy.last_hit = {"raw": {t: damage * share for t, share in damage_split(hit_stats).items()}, "after": parts}
+    damage = sum(parts.values())
 
     enemy.enemy_take_damage(damage)
 

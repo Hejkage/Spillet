@@ -205,7 +205,7 @@ def cast_melee_attack(player, target_pos, camera, damage, aoe, speed, sprite_nam
 
     effects = []
     if extra.get("dot_duration", 0) > 0:
-        effects.append({"name": "dot", "duration": extra["dot_duration"], "dps": extra.get("dot_damage", 0)})
+        effects.append({"name": "dot", "duration": extra["dot_duration"], "dps": extra.get("dot_damage", 0), "hit_stats": data})
 
     melee_swings.append(MeleeSwing(
         player, aim_angle, arc, radius, duration, data["damage"],

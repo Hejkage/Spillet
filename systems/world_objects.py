@@ -42,6 +42,42 @@ class WorldObject:
         offset_x, offset_y = self.hitbox_offset
         return self.y + offset_y
 
+# ---------------------------------------------------------------
+# PROJECTILE BLOCKERS
+#
+# World objects never move, so their blocking rects are worked out ONCE per
+# area and put in a grid. Without this every projectile tested every object
+# every frame: 25 casters on a map with a tree border was ~900k rect tests
+# per second, and it was the single most expensive thing in the frame.
+# ---------------------------------------------------------------
+blocker_cell_size = 128
+_blockers = {"token": None, "cells": {}}
+
+def _rebuild_blockers(token):
+    cells = {}
+    for o in world.world_objects:
+        if not o.blocks_projectiles:
+            continue
+        rect = world_rect_at(o)
+        for cx in range(rect.left // blocker_cell_size, rect.right // blocker_cell_size + 1):
+            for cy in range(rect.top // blocker_cell_size, rect.bottom // blocker_cell_size + 1):
+                cells.setdefault((cx, cy), []).append(rect)
+    _blockers["cells"] = cells
+    _blockers["token"] = token
+
+def projectile_blocked_at(x, y):
+    """True if a projectile at this WORLD point is inside something solid."""
+    token = (id(world.world_objects), len(world.world_objects))
+    if _blockers["token"] != token:      # new area, or an object was added/removed
+        _rebuild_blockers(token)
+    cell = _blockers["cells"].get((int(x) // blocker_cell_size, int(y) // blocker_cell_size))
+    if not cell:
+        return False
+    for rect in cell:
+        if rect.collidepoint(x, y):
+            return True
+    return False
+
 def world_rect_at(obj):
     offset_x, offset_y = obj.hitbox_offset
     half_w = obj.rect.width / 2
