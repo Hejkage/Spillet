@@ -23,7 +23,7 @@ configure_sprite("ember_fox_sprite", pre_scale=2)
 def ember_burn_tick(target, status, dt):
     target.enemy_take_damage(status.get("dps", 0) * dt)
 
-register_status("ember_burn", tick=ember_burn_tick)
+register_status("ember_burn", tick=ember_burn_tick, describe=lambda e: f"Burns for {e.get('dps', 0):.0f} damage per second for {e.get('duration', 0):.1f}s")
 
 
 # 3. A NEW HIT EFFECT - happens once, when the hit lands.
@@ -80,3 +80,4 @@ register_pet(
         "dash_cooldown": 1.0,
     },
 )
+

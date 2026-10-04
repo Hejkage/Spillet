@@ -935,8 +935,6 @@ item_templates.update({
     "support_crit_damage": {"kind": "support_gem", "gem_type": "crit_damage", "rarity": rarity_common},
     "support_attack_speed":{"kind": "support_gem", "gem_type": "attack_speed","rarity": rarity_common},
 
-    # Pet items are made by register_pet() in content/pets/
-
     # Currency
     "gold_coin": {
         "kind": "currency",

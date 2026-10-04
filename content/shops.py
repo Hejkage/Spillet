@@ -4,7 +4,7 @@ from systems.rarity import rarity_uncommon, roll_item, roll_rarity
 from systems.items import make_item
 from systems.drops import DropEntry, roll_from_group
 from ui.panels import Inventory, ShopContainer, ShopStock, register_shop
-from .drops import active_gem_group, leather_armor_group, low_level_jewelry_group, low_level_weapons_group, support_gem_group, unique_group, wand_group
+from .drops import active_gem_group, leather_armor_group, low_level_jewelry_group, low_level_weapons_group, support_gem_group, unique_group, wand_group, pet_group
 
 inventory = Inventory()
 starting_items = [
@@ -17,7 +17,7 @@ blacksmith = register_shop("blacksmith", ShopContainer(4, 4, reroll_cost=100, st
         0: roll_from_group(unique_group),                               # always a unique
         1: roll_from_group(wand_group),                                 # always a wand
         2: lambda: roll_item("leather_pants", rarity=rarity_uncommon),  # always uncommon pants
-        3: lambda: make_item("spider_pet")
+        3: roll_from_group(pet_group),
     },
     random_entries=[
         DropEntry(lambda: roll_item("short_sword"), weight=10),

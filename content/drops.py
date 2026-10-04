@@ -5,7 +5,7 @@ Pure data. Add new entries here - never in systems/.
 
 from systems.rarity import rarity_epic, rarity_legendary, rarity_rare, roll_item, roll_rarity
 from systems.items import make_item, make_unique, unique_drop
-from systems.drops import DropEntry, DropPool, active_gem_group, pet_group
+from systems.drops import DropEntry, DropPool
 
 support_gem_group = [
     DropEntry(lambda: make_item("support_projectiles", rarity=roll_rarity()), weight=5),
@@ -21,14 +21,19 @@ support_gem_group = [
     DropEntry(lambda: make_item("support_attack_speed",rarity=roll_rarity()), weight=5),
 ]
 
-active_gem_group.extend([
+active_gem_group = [
     DropEntry(lambda: make_item("fireball_gem",             rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("shadow_bolt_gem",          rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("cleave_gem",               rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("spin_attack_gem",          rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("shotgun_blast_gem",        rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("elemental_projectile_gem", rarity=roll_rarity()), weight=5),
-])
+]
+
+pet_group = [
+    DropEntry(lambda: make_item("spider_pet",    rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("bing_bong_pet", rarity=roll_rarity()), weight=5),
+]
 
 leather_armor_group = [
     DropEntry(lambda: roll_item("leather_helmet"),      weight=25),
