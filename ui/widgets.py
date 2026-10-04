@@ -167,15 +167,25 @@ class Dropdown:
         return False
     
 class Checkbox:
-    def __init__(self, position, size=28, anchor="center", get_state=None, on_toggle=None):
+    def __init__(self, position, size=28, anchor="center", get_state=None, on_toggle=None,
+                 follow=None, follow_gap=16):
+        """follow      another widget to sit beside, instead of using `position`.
+                       Its own width is in UI pixels, so a screen fraction drifts
+                       into it on a small or differently shaped screen.
+           follow_gap  pixels between the two, at design scale."""
         self.position = position
         self.size = size
-        self.anchor = anchor
+        self.anchor = "midleft" if follow is not None else anchor
         self.get_state = get_state      # returns current bool
         self.on_toggle = on_toggle      # called with the new bool
+        self.follow = follow
+        self.follow_gap = follow_gap
         self.rect = None
 
     def get_pixel_pos(self):
+        if self.follow is not None and self.follow.rect is not None:
+            return (self.follow.rect.right + max(1, int(self.follow_gap * app.ui_scale)),
+                    self.follow.rect.centery)
         return (int(self.position[0] * app.screen_width), int(self.position[1] * app.screen_height))
 
     def draw(self):
@@ -229,7 +239,7 @@ def set_loot_filter_enabled(value):
     if app.show_all_labels:
         assign_label_slots()
 
-loot_filter_checkbox = Checkbox(position=(0.28, 0.20), anchor="center", get_state=lambda: app.loot_filter_enabled, on_toggle=set_loot_filter_enabled)
+loot_filter_checkbox = Checkbox(position=(0.28, 0.20), get_state=lambda: app.loot_filter_enabled, on_toggle=set_loot_filter_enabled, follow=loot_filter_dropdown)
 
 for b in menu_buttons:
     b.update()

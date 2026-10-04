@@ -62,73 +62,71 @@ def draw_hotbar(player):
         if rect.collidepoint(pygame.mouse.get_pos()) and ability:
             hover_state.ability = ability
 
+def ability_tooltip_lines(ability, player):
+    """The lines describing one ability. Used by the hotbar tooltip AND by the
+    gem item tooltip, so the two can never drift apart.
+    Returns [(text, colour), ...]. A stat the ability does not have is left out."""
+    from systems.damage import damage_colors
+    stats = ability.get_effective_stats(player)
+    white = (255, 255, 255)
+    lines = [(ability.name, (255, 220, 120))]
+
+    lines.append((f"Damage: {stats['damage']:.0f}", white))
+
+    for damage_type, amount in sorted(stats["parts"].items(), key=lambda kv: -kv[1]):
+        lines.append((f"  {damage_type.title()}: {amount:.0f}", damage_colors.get(damage_type, white)))
+
+    if stats["projectiles"] > 1:
+        lines.append((f"Projectiles: {stats['projectiles']}", white))
+
+    if ability.speed_stat:                  # an attack: shown as a rate
+        rate = 1 / stats["cooldown"] if stats["cooldown"] > 0 else 0
+        lines.append((f"Attack speed: {rate:.2f} per second", white))
+        lines.append((f"Attack time: {stats['cooldown']:.2f}s", white))
+    else:
+        lines.append((f"Cooldown: {stats['cooldown']:.2f}s", white))
+    if ability.action_time:
+        lines.append((f"Cast time: {ability.action_time:.2f}s", white))
+
+    chance, crit_damage = player.crit_stats(stats["hit_stats"])
+    if chance > 0:
+        lines.append((f"Crit chance: {min(100, chance):.1f}%", white))
+    if crit_damage > 0:
+        lines.append((f"Crit damage: {crit_damage:.0f}%", white))
+
+    if stats["dot_damage"] > 0:
+        lines.append((f"Damage over time: {stats['dot_damage']:.0f} per second", white))
+        if stats["dot_duration"] > 0:
+            lines.append((f"DoT duration: {stats['dot_duration']:.0f}s", white))
+
+    if stats["hit_kind"] == "melee":
+        lines.append((f"Range: {stats['range']:.0f}", white))
+        if stats["arc"]:
+            lines.append((f"Swing arc: {stats['arc']:.0f} degrees", white))
+    else:
+        lines.append((f"Projectile speed: {stats['speed']:.0f}", white))
+
+    if stats["uses_aoe"]:
+        lines.append((f"Area of effect: {stats['aoe'] * 100:.0f}%", white))
+    if stats.get("orbit_range", 0) > 0:
+        lines.append((f"Orbits you at {stats['orbit_range']:.0f} range", white))
+    if stats["hit_stats"].get("pierce"):
+        lines.append((f"Pierces {int(stats['hit_stats']['pierce'])} targets", white))
+
+    # socketed support gems only. What the gem TREE gives is the tree's own screen.
+    supports = [g for g in ability.support_gems if not getattr(g, "from_tree", False)]
+    if supports:
+        lines.append(("", white))
+        for gem in supports:
+            lines.append((f"- {gem.gem_name}: {gem.describe()}", white))
+
+    return lines
+
+    return lines
+
 def draw_ability_tooltip(player):
+    from systems.items import draw_tooltip_box
     ability = hover_state.ability
     if not ability:
         return
-    
-    scale = app.ui_scale
-    font_size = max(16, int(20 * scale))
-    font = get_font(font_size)
-
-    stats = ability.get_effective_stats(player)
-
-    lines = [ability.name]
-    lines.append(f"Damage: {stats['damage']:.0f}")
-
-    if ability.speed_stat:
-        lines.append(f"Attack time: {stats['cooldown']:.2f}s")
-    else:
-        lines.append(f"Cooldown: {stats['cooldown']:.2f}s")
-
-    if stats["hit_kind"] == "melee":
-        lines.append(f"DPS (single target): {stats['dps']:.0f}")
-        lines.append(f"Range: {stats['range']:.0f}")
-    else:
-        if stats["projectiles"] > 0:
-            lines.append(f"Projectiles: {stats['projectiles']}")
-            lines.append(f"Damage per cast: {stats['damage'] * stats['projectiles']:.0f}")
-        lines.append(f"DPS: {stats['dps']:.0f}")
-        lines.append(f"Projectile speed: {stats['speed']:.0f}")
-
-    if stats["uses_aoe"]:
-        lines.append(f"Area: {stats['aoe'] * 100 :.0f}%")
-
-    if stats.get("orbit_range", 0) > 0:
-        lines.append(f"Projectiles orbit at {stats['orbit_range']:.0f} range")
-
-    total_cc, total_cd = player.crit_stats(stats["hit_stats"])
-    if total_cc > 0:
-        lines.append(f"Crit chance: {min(100, total_cc):.1f}%")
-    if total_cd > 0:
-        lines.append(f"Crit damage: {total_cd:.0f}%")
-    
-    if stats["dot_damage"] > 0:
-        lines.append(f"DoT: {stats['dot_damage']:.0f} /s")
-        lines.append(f"DoT duration: {stats['dot_duration']:.0f}s")
-
-    real_supports = [g for g in ability.support_gems if not getattr(g, "from_tree", False)]
-    if real_supports:
-        lines.append("")
-        for gem in real_supports:
-            lines.append(f"- {gem.gem_name}: {gem.describe()}")
-
-    rendered = [font.render(line, True, (255, 255, 255) if i else (255, 220, 120)) for i, line in enumerate(lines)]
-
-    padding = 10
-    width = max(t.get_width() for t in rendered) + padding * 2
-    height = sum(t.get_height() for t in rendered) + padding * 2
-
-    mouse_x, mouse_y = pygame.mouse.get_pos()
-    box_x = min(mouse_x + 20, app.screen_width - width)
-    box_y = max(0, mouse_y - height)
-
-    box_surface = pygame.Surface((width, height), pygame.SRCALPHA)
-    box_surface.fill((20, 20, 20, 230))
-    app.screen.blit(box_surface, (box_x, box_y))
-
-    y_offset = box_y + padding
-    for t in rendered:
-        app.screen.blit(t, (box_x + padding, y_offset))
-        y_offset += t.get_height()
-
+    draw_tooltip_box(ability_tooltip_lines(ability, player))
