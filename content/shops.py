@@ -17,7 +17,7 @@ blacksmith = register_shop("blacksmith", ShopContainer(4, 4, reroll_cost=100, st
         0: roll_from_group(unique_group),                               # always a unique
         1: roll_from_group(wand_group),                                 # always a wand
         2: lambda: roll_item("leather_pants", rarity=rarity_uncommon),  # always uncommon pants
-        3: lambda: make_item("bing_bong_pet")
+        3: lambda: make_item("spider_pet")
     },
     random_entries=[
         DropEntry(lambda: roll_item("short_sword"), weight=10),

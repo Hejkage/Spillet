@@ -22,11 +22,12 @@ support_gem_group = [
 ]
 
 active_gem_group.extend([
-    DropEntry(lambda: make_item("fireball_gem",    rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("shadow_bolt_gem", rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("cleave_gem",      rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("spin_attack_gem", rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("shotgun_blast_gem", rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("fireball_gem",             rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("shadow_bolt_gem",          rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("cleave_gem",               rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("spin_attack_gem",          rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("shotgun_blast_gem",        rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("elemental_projectile_gem", rarity=roll_rarity()), weight=5),
 ])
 
 leather_armor_group = [

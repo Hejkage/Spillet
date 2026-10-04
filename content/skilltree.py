@@ -30,7 +30,7 @@ register_skill_node("volley", "Volley", position=(1050, 100),
 register_skill_node("chain_reaction", "Chain Reaction", position=(1050, 200),
     effects={
         "on_kill": [
-            {"name": "explode", "radius": 1800, "damage": 50000},
+            {"name": "explode", "radius": 200, "damage": 250},
         ],
     },
 )

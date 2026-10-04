@@ -8,20 +8,21 @@ generic_drop_pool.add_entry(lambda: make_item("gold_coin"), weight=1, min_amount
 
 #Enemy Spells and attacks
 def witch_wand_attack():
-    return EnemyProjectileAbility(cooldown=1.2, ability_range=500, damage=150, speed=400, sprite_name="shadow_bolt_sprite")
+    return EnemyProjectileAbility(cooldown=1.2, ability_range=500, damage=150, speed=400, sprite_name="shadow_bolt_sprite", damage_type="shadow")
 
 def witch_meteor():
-    return EnemyProjectileAbility(cooldown=5.0, ability_range=600, damage=300, speed=250, sprite_name="fireball_sprite", aoe=2.5)
+    return EnemyProjectileAbility(cooldown=5.0, ability_range=600, damage=300, speed=250, sprite_name="fireball_sprite", aoe=2.5, damage_type="fire")
 
 enemy_configs.update({
     "witch": {
         "base_sprite": "witch_front_sprite",
         "back_sprite": "witch_back_sprite",
-        "health": 100,
+        "health": 1000,
         "xp_value": 50,
         "move_speed": 150,
-        "contact_damage": 5,
+        "contact_damage": 0,
         "behavior": "caster",
+        "defence": {"fire_resistance": 50},
         "attack_range": 400,
         "cast_cooldown": 0.5,
         "cast_time": 0.5,
@@ -77,6 +78,23 @@ enemy_configs.update({
             "abilities": [],
             "drop_pool": example_drop_pool,
         },
+
+    "target_dummy": {
+        "base_sprite": "witch_front_sprite",
+        "back_sprite": "witch_back_sprite",
+        "health": 100000000,
+        "xp_value": 0,
+        "move_speed": 0,
+        "contact_damage": 0,
+        "behavior": "caster",
+        "attack_range": 0,
+        "cast_cooldown": 0.5,
+        "cast_time": 0.5,
+        "abilities": [],
+        "drop_pool": None,
+        "show_hit_stats": True,
+        "defence": {"fire_resistance": 50, "frost_resistance": 25, "elemental_protection": 10, "shadow_protection": 50},
+    },
 })
 
 
