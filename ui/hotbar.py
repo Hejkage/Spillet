@@ -89,6 +89,18 @@ def draw_pet_slots(player, start_x, y, slot_size, padding):
         if rect.collidepoint(pygame.mouse.get_pos()):
             hover_state.pet = pet
 
+def ailment_tooltip_lines(player, stats):
+    """Burn / poison for one ability: only the TOTAL chance (player + gem + tree + supports).
+    How long and how hard they hit are player stats, shown in the stats panel."""
+    from systems.ailments import attacker_value, ailment_types
+    from systems.status import status_effect_types
+    lines = []
+    for name in ailment_types:
+        chance = attacker_value(player, f"{name}_chance", stats["hit_stats"])
+        if chance > 0:
+            lines.append((f"Chance to {name}: {min(100, chance):g}%", status_effect_types[name]["color"]))
+    return lines
+
 def ability_tooltip_lines(ability, player):
     """The lines describing one ability. Used by the hotbar tooltip AND by the
     gem item tooltip, so the two can never drift apart.
@@ -118,6 +130,8 @@ def ability_tooltip_lines(ability, player):
         lines.append((f"Crit chance: {min(100, chance):.1f}%", white))
     if crit_damage > 0:
         lines.append((f"Crit damage: {crit_damage:.0f}%", white))
+
+    lines.extend(ailment_tooltip_lines(player, stats))
 
     if stats["dot_damage"] > 0:
         lines.append((f"Damage over time: {stats['dot_damage']:.0f} per second", white))

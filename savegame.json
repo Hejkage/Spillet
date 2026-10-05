@@ -1,9 +1,9 @@
 {
   "level": 13,
-  "xp": 18699,
+  "xp": 29799.0,
   "xp_to_next_level": 34405,
-  "coins": 1111111111111111014816,
-  "current_health": 57947.20199999246,
+  "coins": 1111111111111111006673,
+  "current_health": 1000.0,
   "equipment": {
     "main": {
       "ring1": {
@@ -51,49 +51,7 @@
         "swing_sprite": null
       },
       "neck": null,
-      "head": {
-        "kind": "equippable",
-        "name": "Helmet",
-        "sprite_name": "helmet_item_sprite",
-        "rarity": "legendary",
-        "category": "equipment",
-        "slot_type": "head",
-        "layer_sprite_name": null,
-        "stats": [
-          {
-            "stat": "max_health",
-            "type": "increased",
-            "amount": 1000
-          },
-          {
-            "stat": "max_health",
-            "type": "increased",
-            "amount": 1000
-          },
-          {
-            "stat": "max_health",
-            "type": "increased",
-            "amount": 1000
-          },
-          {
-            "stat": "max_health",
-            "type": "increased",
-            "amount": 1000
-          },
-          {
-            "stat": "max_health",
-            "type": "increased",
-            "amount": 1000
-          },
-          {
-            "stat": "max_health",
-            "type": "increased",
-            "amount": 1000
-          }
-        ],
-        "weapon_class": null,
-        "swing_sprite": null
-      },
+      "head": null,
       "body": null,
       "gloves": {
         "kind": "equippable",
@@ -205,7 +163,7 @@
           "attack_time": 0.6,
           "crit_damage": 10
         },
-        "kills": 601,
+        "kills": 618,
         "allocated": [],
         "sockets": {}
       },
@@ -220,13 +178,13 @@
           "damage": 70,
           "cooldown": 1
         },
-        "kills": 111111111111727,
+        "kills": 111111111111744,
         "allocated": [
-          "proj_1",
-          "aoe_2",
           "socket_2",
+          "start",
           "aoe_1",
-          "start"
+          "aoe_2",
+          "proj_1"
         ],
         "sockets": {
           "socket_2": {
@@ -251,10 +209,10 @@
           "damage": 112,
           "projectiles": 10
         },
-        "kills": 596,
+        "kills": 613,
         "allocated": [
-          "dmg_1",
-          "start"
+          "start",
+          "dmg_1"
         ],
         "sockets": {
           "dmg_1": {
@@ -280,16 +238,46 @@
           "attack_time": 0.6,
           "crit_damage": 10
         },
-        "kills": 600,
+        "kills": 617,
         "allocated": [],
         "sockets": {}
       },
       "gem_active5": null
     },
     "pets": {
-      "pet1": null,
-      "pet2": null,
-      "pet3": null
+      "pet1": {
+        "kind": "pet",
+        "name": "Nature Flatworm",
+        "sprite_name": "flatworm_pet_sprite",
+        "rarity": "common",
+        "category": "generic",
+        "pet_type": "nature_flatworm",
+        "kills": 17,
+        "allocated": [],
+        "sockets": {}
+      },
+      "pet2": {
+        "kind": "pet",
+        "name": "Pure Flatworm",
+        "sprite_name": "flatworm_pet_sprite",
+        "rarity": "uncommon",
+        "category": "generic",
+        "pet_type": "pure_flatworm",
+        "kills": 17,
+        "allocated": [],
+        "sockets": {}
+      },
+      "pet3": {
+        "kind": "pet",
+        "name": "Fire Flatworm",
+        "sprite_name": "flatworm_pet_sprite",
+        "rarity": "uncommon",
+        "category": "generic",
+        "pet_type": "fire_flatworm",
+        "kills": 17,
+        "allocated": [],
+        "sockets": {}
+      }
     }
   },
   "inventory": [
@@ -313,133 +301,37 @@
       "swing_sprite": null
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Frost Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "common",
+      "category": "generic",
+      "pet_type": "frost_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Rock Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "common",
+      "category": "generic",
+      "pet_type": "physical_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Rock Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "rare",
+      "category": "generic",
+      "pet_type": "physical_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
       "kind": "active_gem",
@@ -482,129 +374,77 @@
       "swing_sprite": null
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Rock Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "epic",
+      "category": "generic",
+      "pet_type": "physical_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
+    },
+    {
+      "kind": "pet",
+      "name": "Frost Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "rare",
+      "category": "generic",
+      "pet_type": "frost_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
       "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
+      "name": "Jeweled necklace",
+      "sprite_name": "necklace_item_sprite",
       "rarity": "legendary",
       "category": "equipment",
-      "slot_type": "head",
+      "slot_type": "neck",
       "layer_sprite_name": null,
       "stats": [
         {
-          "stat": "max_health",
+          "stat": "spell_damage",
           "type": "increased",
-          "amount": 1000
+          "amount": 28,
+          "tier": "rare"
         },
         {
-          "stat": "max_health",
+          "stat": "crit_chance",
           "type": "increased",
-          "amount": 1000
+          "amount": 21,
+          "tier": "uncommon"
         },
         {
-          "stat": "max_health",
+          "stat": "spell_damage",
           "type": "increased",
-          "amount": 1000
+          "amount": 50,
+          "tier": "legendary"
         },
         {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
+          "stat": "cooldown",
+          "type": "flat",
+          "amount": 1,
+          "tier": "common"
         },
         {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
+          "stat": "aoe",
+          "type": "flat",
+          "amount": 16,
+          "tier": "uncommon"
         },
         {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
-    },
-    {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
+          "stat": "cooldown",
+          "type": "flat",
+          "amount": 10,
+          "tier": "legendary"
         },
         {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
+          "stat": "cooldown",
+          "type": "flat",
+          "amount": 4,
+          "tier": "uncommon"
         }
       ],
       "weapon_class": null,
@@ -697,102 +537,26 @@
       "swing_sprite": null
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Fire Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "common",
+      "category": "generic",
+      "pet_type": "fire_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
-      "kind": "equippable",
-      "name": "Jeweled necklace",
-      "sprite_name": "necklace_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "neck",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "spell_damage",
-          "type": "increased",
-          "amount": 28,
-          "tier": "rare"
-        },
-        {
-          "stat": "crit_chance",
-          "type": "increased",
-          "amount": 21,
-          "tier": "uncommon"
-        },
-        {
-          "stat": "spell_damage",
-          "type": "increased",
-          "amount": 50,
-          "tier": "legendary"
-        },
-        {
-          "stat": "cooldown",
-          "type": "flat",
-          "amount": 1,
-          "tier": "common"
-        },
-        {
-          "stat": "aoe",
-          "type": "flat",
-          "amount": 16,
-          "tier": "uncommon"
-        },
-        {
-          "stat": "cooldown",
-          "type": "flat",
-          "amount": 10,
-          "tier": "legendary"
-        },
-        {
-          "stat": "cooldown",
-          "type": "flat",
-          "amount": 4,
-          "tier": "uncommon"
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Bing Bong Pet",
+      "sprite_name": "bing_bong_pet_sprite",
+      "rarity": "rare",
+      "category": "generic",
+      "pet_type": "bing_bong",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
       "kind": "equippable",
@@ -887,47 +651,15 @@
       "swing_sprite": null
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Nature Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "uncommon",
+      "category": "generic",
+      "pet_type": "nature_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
       "kind": "support_gem",
@@ -976,178 +708,60 @@
       "swing_sprite": null
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Spider",
+      "sprite_name": "spider_pet_sprite",
+      "rarity": "rare",
+      "category": "generic",
+      "pet_type": "spider",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Bing Bong",
+      "sprite_name": "bing_bong_pet_sprite",
+      "rarity": "common",
+      "category": "generic",
+      "pet_type": "bing_bong",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
+    },
+    {
+      "kind": "pet",
+      "name": "Spider",
+      "sprite_name": "spider_pet_sprite",
+      "rarity": "common",
+      "category": "generic",
+      "pet_type": "spider",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
+    },
+    {
+      "kind": "pet",
+      "name": "Frost Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "common",
+      "category": "generic",
+      "pet_type": "frost_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     },
     null,
-    null,
     {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
-    },
-    {
-      "kind": "equippable",
-      "name": "Helmet",
-      "sprite_name": "helmet_item_sprite",
-      "rarity": "legendary",
-      "category": "equipment",
-      "slot_type": "head",
-      "layer_sprite_name": null,
-      "stats": [
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        },
-        {
-          "stat": "max_health",
-          "type": "increased",
-          "amount": 1000
-        }
-      ],
-      "weapon_class": null,
-      "swing_sprite": null
+      "kind": "pet",
+      "name": "Frost Flatworm",
+      "sprite_name": "flatworm_pet_sprite",
+      "rarity": "uncommon",
+      "category": "generic",
+      "pet_type": "frost_flatworm",
+      "kills": 0,
+      "allocated": [],
+      "sockets": {}
     }
   ],
   "chest": [
@@ -1367,15 +981,15 @@
       },
       "kills": 11111111111111111345,
       "allocated": [
-        "proj_1",
-        "socket_1",
         "socket_2",
-        "aoe_2",
-        "aoe_1",
         "start",
-        "crit_1",
         "dmg_2",
-        "dmg_1"
+        "socket_1",
+        "crit_1",
+        "aoe_1",
+        "dmg_1",
+        "aoe_2",
+        "proj_1"
       ],
       "sockets": {
         "socket_2": null,
@@ -1396,62 +1010,62 @@
       "stocked": true,
       "slots": [
         {
-          "kind": "unique",
-          "name": "Swarmcaller",
-          "sprite_name": "wand_item_sprite",
-          "rarity": "common",
+          "kind": "equippable",
+          "name": "Helmet",
+          "sprite_name": "helmet_item_sprite",
+          "rarity": "legendary",
           "category": "equipment",
-          "slot_type": "weapon",
+          "slot_type": "head",
           "layer_sprite_name": null,
-          "stats": [],
-          "weapon_class": "wand",
-          "swing_sprite": null,
-          "summon_pets": [
-            "spider",
-            "bing_bong",
-            "bing_bong",
-            "bing_bong",
-            "spider",
-            "bing_bong"
+          "stats": [
+            {
+              "stat": "max_health",
+              "type": "increased",
+              "amount": 1
+            },
+            {
+              "stat": "max_health",
+              "type": "increased",
+              "amount": 1
+            },
+            {
+              "stat": "max_health",
+              "type": "increased",
+              "amount": 2
+            },
+            {
+              "stat": "max_health",
+              "type": "increased",
+              "amount": 3
+            },
+            {
+              "stat": "max_health",
+              "type": "increased",
+              "amount": 3
+            },
+            {
+              "stat": "max_health",
+              "type": "increased",
+              "amount": 4
+            }
           ],
-          "unique_key": "swarmcaller",
-          "rolled": {
-            "summon_pets": [
-              "spider",
-              "bing_bong",
-              "bing_bong",
-              "bing_bong",
-              "spider",
-              "bing_bong"
-            ]
-          }
+          "weapon_class": null,
+          "swing_sprite": null
         },
         {
           "kind": "equippable",
           "name": "Twig wand",
           "sprite_name": "wand_item_sprite",
-          "rarity": "uncommon",
+          "rarity": "common",
           "category": "equipment",
           "slot_type": "weapon",
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "cooldown",
-              "type": "flat",
-              "amount": 1,
-              "tier": "common"
-            },
-            {
-              "stat": "elemental_damage",
+              "stat": "fire_damage",
               "type": "increased",
-              "amount": 11,
-              "tier": "uncommon"
-            },
-            {
-              "stat": "aoe",
-              "type": "flat",
-              "amount": 24,
-              "tier": "uncommon"
+              "amount": 2,
+              "tier": "common"
             }
           ],
           "weapon_class": "wand",
@@ -1467,69 +1081,73 @@
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "health_regen",
+              "stat": "nature_resistance",
               "type": "flat",
-              "amount": 1,
-              "tier": "common"
-            },
-            {
-              "stat": "max_health",
-              "type": "flat",
-              "amount": 180,
+              "amount": 5,
               "tier": "uncommon"
             },
             {
-              "stat": "max_health",
+              "stat": "fire_resistance",
               "type": "flat",
-              "amount": 67,
-              "tier": "common"
+              "amount": 4,
+              "tier": "uncommon"
             }
           ],
           "weapon_class": null,
           "swing_sprite": null
         },
-        {
-          "kind": "pet",
-          "name": "Bing Bong Pet",
-          "sprite_name": "bing_bong_pet_sprite",
-          "rarity": "rare",
-          "category": "generic",
-          "pet_type": "bing_bong"
-        },
         null,
         {
           "kind": "equippable",
-          "name": "Basic Gun",
-          "sprite_name": "basic_gun_item_sprite",
+          "name": "Twig wand",
+          "sprite_name": "wand_item_sprite",
           "rarity": "common",
           "category": "equipment",
           "slot_type": "weapon",
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "physical_damage",
+              "stat": "crit_chance",
               "type": "increased",
               "amount": 6,
               "tier": "common"
+            },
+            {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 1,
+              "tier": "common"
             }
           ],
-          "weapon_class": "gun",
+          "weapon_class": "wand",
           "swing_sprite": null
         },
         {
           "kind": "equippable",
-          "name": "Leather gloves",
-          "sprite_name": "gloves_item_sprite",
-          "rarity": "common",
+          "name": "Wooden shield",
+          "sprite_name": "shield_item_sprite",
+          "rarity": "rare",
           "category": "equipment",
-          "slot_type": "gloves",
+          "slot_type": "offhand",
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "elemental_damage",
-              "type": "increased",
-              "amount": 5,
+              "stat": "aoe",
+              "type": "flat",
+              "amount": 7,
               "tier": "common"
+            },
+            {
+              "stat": "crit_damage",
+              "type": "flat",
+              "amount": 24,
+              "tier": "rare"
+            },
+            {
+              "stat": "aoe",
+              "type": "flat",
+              "amount": 22,
+              "tier": "uncommon"
             }
           ],
           "weapon_class": null,
@@ -1545,7 +1163,13 @@
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "health_regen",
+              "stat": "aoe",
+              "type": "flat",
+              "amount": 6,
+              "tier": "common"
+            },
+            {
+              "stat": "elemental_resistance",
               "type": "flat",
               "amount": 1,
               "tier": "common"
@@ -1553,13 +1177,7 @@
             {
               "stat": "aoe",
               "type": "flat",
-              "amount": 5,
-              "tier": "common"
-            },
-            {
-              "stat": "max_health",
-              "type": "flat",
-              "amount": 182,
+              "amount": 26,
               "tier": "uncommon"
             }
           ],
@@ -1568,11 +1186,11 @@
         },
         {
           "kind": "equippable",
-          "name": "Leather helmet",
-          "sprite_name": "helmet_item_sprite",
+          "name": "Wooden shield",
+          "sprite_name": "shield_item_sprite",
           "rarity": "common",
           "category": "equipment",
-          "slot_type": "head",
+          "slot_type": "offhand",
           "layer_sprite_name": null,
           "stats": [
             {
@@ -1582,58 +1200,29 @@
               "tier": "common"
             },
             {
-              "stat": "max_health",
-              "type": "flat",
-              "amount": 93,
-              "tier": "common"
-            }
-          ],
-          "weapon_class": null,
-          "swing_sprite": null
-        },
-        {
-          "kind": "equippable",
-          "name": "Twig wand",
-          "sprite_name": "wand_item_sprite",
-          "rarity": "common",
-          "category": "equipment",
-          "slot_type": "weapon",
-          "layer_sprite_name": null,
-          "stats": [
-            {
-              "stat": "lifesteal",
+              "stat": "shadow_resistance",
               "type": "flat",
               "amount": 3,
               "tier": "common"
             }
           ],
-          "weapon_class": "wand",
+          "weapon_class": null,
           "swing_sprite": null
         },
         {
-          "kind": "equippable",
-          "name": "Twig wand",
-          "sprite_name": "wand_item_sprite",
-          "rarity": "common",
+          "kind": "active_gem",
+          "name": "Fireball",
+          "sprite_name": "fireball_item_sprite",
+          "rarity": "uncommon",
           "category": "equipment",
-          "slot_type": "weapon",
-          "layer_sprite_name": null,
-          "stats": [
-            {
-              "stat": "aoe",
-              "type": "flat",
-              "amount": 11,
-              "tier": "common"
-            },
-            {
-              "stat": "crit_chance",
-              "type": "increased",
-              "amount": 20,
-              "tier": "common"
-            }
-          ],
-          "weapon_class": "wand",
-          "swing_sprite": null
+          "template_key": "fireball",
+          "gem_stats": {
+            "damage": 95,
+            "cooldown": 0.9
+          },
+          "kills": 0,
+          "allocated": [],
+          "sockets": {}
         },
         {
           "kind": "equippable",
@@ -1645,15 +1234,34 @@
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "cooldown",
+              "stat": "max_health",
+              "type": "flat",
+              "amount": 19,
+              "tier": "common"
+            }
+          ],
+          "weapon_class": null,
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Leather boots",
+          "sprite_name": "boots_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "boots",
+          "layer_sprite_name": null,
+          "stats": [
+            {
+              "stat": "fire_resistance",
               "type": "flat",
               "amount": 1,
               "tier": "common"
             },
             {
-              "stat": "max_health",
+              "stat": "shadow_resistance",
               "type": "flat",
-              "amount": 79,
+              "amount": 2,
               "tier": "common"
             }
           ],
@@ -1664,13 +1272,19 @@
           "kind": "equippable",
           "name": "Leather helmet",
           "sprite_name": "helmet_item_sprite",
-          "rarity": "common",
+          "rarity": "uncommon",
           "category": "equipment",
           "slot_type": "head",
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "cooldown",
+              "stat": "spell_damage",
+              "type": "increased",
+              "amount": 13,
+              "tier": "uncommon"
+            },
+            {
+              "stat": "frost_resistance",
               "type": "flat",
               "amount": 1,
               "tier": "common"
@@ -1683,9 +1297,65 @@
           "kind": "equippable",
           "name": "Leather belt",
           "sprite_name": "belt_item_sprite",
-          "rarity": "epic",
+          "rarity": "uncommon",
           "category": "equipment",
           "slot_type": "belt",
+          "layer_sprite_name": null,
+          "stats": [
+            {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 22,
+              "tier": "uncommon"
+            },
+            {
+              "stat": "crit_chance",
+              "type": "increased",
+              "amount": 7,
+              "tier": "common"
+            }
+          ],
+          "weapon_class": null,
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Leather pants",
+          "sprite_name": "pants_item_sprite",
+          "rarity": "uncommon",
+          "category": "equipment",
+          "slot_type": "pants",
+          "layer_sprite_name": null,
+          "stats": [
+            {
+              "stat": "movement_speed",
+              "type": "flat",
+              "amount": 5,
+              "tier": "common"
+            },
+            {
+              "stat": "shadow_resistance",
+              "type": "flat",
+              "amount": 6,
+              "tier": "uncommon"
+            },
+            {
+              "stat": "elemental_resistance",
+              "type": "flat",
+              "amount": 2,
+              "tier": "uncommon"
+            }
+          ],
+          "weapon_class": null,
+          "swing_sprite": null
+        },
+        {
+          "kind": "equippable",
+          "name": "Basic Gun",
+          "sprite_name": "basic_gun_item_sprite",
+          "rarity": "common",
+          "category": "equipment",
+          "slot_type": "weapon",
           "layer_sprite_name": null,
           "stats": [
             {
@@ -1697,81 +1367,26 @@
             {
               "stat": "lifesteal",
               "type": "flat",
-              "amount": 6,
-              "tier": "rare"
-            },
-            {
-              "stat": "aoe",
-              "type": "flat",
-              "amount": 13,
-              "tier": "common"
-            },
-            {
-              "stat": "crit_chance",
-              "type": "increased",
-              "amount": 44,
-              "tier": "rare"
-            },
-            {
-              "stat": "physical_damage",
-              "type": "increased",
-              "amount": 21,
-              "tier": "rare"
-            }
-          ],
-          "weapon_class": null,
-          "swing_sprite": null
-        },
-        {
-          "kind": "equippable",
-          "name": "Leather body armor",
-          "sprite_name": "body_item_sprite",
-          "rarity": "common",
-          "category": "equipment",
-          "slot_type": "body",
-          "layer_sprite_name": null,
-          "stats": [
-            {
-              "stat": "health_regen",
-              "type": "flat",
               "amount": 1,
               "tier": "common"
-            },
-            {
-              "stat": "cooldown",
-              "type": "flat",
-              "amount": 2,
-              "tier": "common"
             }
           ],
-          "weapon_class": null,
+          "weapon_class": "gun",
           "swing_sprite": null
         },
         {
           "kind": "equippable",
-          "name": "Jeweled ring",
-          "sprite_name": "ring_item_sprite",
-          "rarity": "rare",
+          "name": "Leather helmet",
+          "sprite_name": "helmet_item_sprite",
+          "rarity": "common",
           "category": "equipment",
-          "slot_type": "ring",
+          "slot_type": "head",
           "layer_sprite_name": null,
           "stats": [
             {
-              "stat": "cooldown",
+              "stat": "fire_resistance",
               "type": "flat",
-              "amount": 2,
-              "tier": "common"
-            },
-            {
-              "stat": "crit_chance",
-              "type": "increased",
-              "amount": 54,
-              "tier": "rare"
-            },
-            {
-              "stat": "max_health",
-              "type": "flat",
-              "amount": 84,
+              "amount": 3,
               "tier": "common"
             }
           ],
@@ -1780,22 +1395,22 @@
         }
       ],
       "prices": [
+        1000,
         50,
         100,
-        100,
-        200,
         0,
         50,
+        200,
+        100,
         50,
         100,
         50,
         50,
+        100,
+        100,
+        100,
         50,
-        50,
-        50,
-        400,
-        50,
-        200
+        50
       ]
     },
     "gemsmith": {
@@ -1858,8 +1473,8 @@
     "start_completed": true
   },
   "skilltree": [
-    "swiftness_1",
+    "start",
     "swiftness_2",
-    "start"
+    "swiftness_1"
   ]
 }
