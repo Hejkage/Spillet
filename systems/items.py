@@ -825,6 +825,12 @@ def _tt_active_gem(item, lines):
     if cdmg:
         lines.append((f"+{cdmg:.0f}% crit damage", _WHITE))
 
+    from systems.ailments import ailment_stats, ailment_text
+    for key, label, base, percent, text in ailment_stats:          # e.g. "Chance to burn: 5%"
+        value = gem_val(key, 0)
+        if value:
+            lines.append((ailment_text(text, value), _WHITE))
+
     dot_damage = gem_val("dot_damage", 0)
     if dot_damage:
         lines.append((f"{dot_damage:.0f} damage per second", _WHITE))

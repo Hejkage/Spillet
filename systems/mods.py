@@ -201,6 +201,15 @@ register_mod("burst", burst_fire,
 register_mod("explode_on_hit", add_effect("explode", radius=150, scales="damage"),
              tags={"damage"},
              describe=lambda v: f"Hits explode for {int(v)} in a 150 radius")
+# --- ailments (systems/ailments.py) - added to the hit, on top of the attacker's own stat ---
+register_mod("burn_chance", add_key("burn_chance"), tags={"damage"},
+             describe=lambda v: f"+{v:g}% chance to burn")
+register_mod("burn_damage", add_key("burn_damage"), tags={"damage"},
+             describe=lambda v: f"Burns deal +{v:g}% of the hit's fire damage per second")
+register_mod("poison_chance", add_key("poison_chance"), tags={"damage"},
+             describe=lambda v: f"+{v:g}% chance to poison")
+register_mod("poison_damage", add_key("poison_damage"), tags={"damage"},
+             describe=lambda v: f"Poison deals +{v:g}% of max health per stack")
 # --- projectiles only ----------------------------------------------------
 register_mod("projectiles", add_projectiles, tags={"projectile"},
              describe=lambda v: f"+{int(v)} projectiles")

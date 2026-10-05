@@ -3,7 +3,7 @@ import random
 from core.state import app, world
 from core.assets import scaled_sprites
 from core.screen import view_radius
-from systems.status import apply_hit_effects, status_blocks, status_effect_types
+from systems.status import apply_hit_effects, StatusHolder, draw_statuses
 from systems.projectiles import Projectile, orbit_rehit_cooldown
 from systems.drops import DropPool
 from systems.damage import fold_damage_stats
@@ -149,6 +149,11 @@ enemy_defaults = {
     "tier_stats_sticky": False,    # True = a row applies from its tier UPWARDS
     "defence": {},                 # e.g. {"fire_resistance": 50, "grass_protection": 20}
     "show_hit_stats": False,       # True = draws the last hit's damage above its head (target dummy)
+    "burn_immune": False,
+    "poison_immune": False,
+    "poison_stack_mult": 1.0,      # 0.5 = this enemy can only have half the max poison stacks
+    "poison_duration_mult": 1.0,   # 0.5 = poison lasts half as long on it
+    "burn_duration_mult": 1.0,
 }
 
 enemy_behaviors = {}
@@ -156,7 +161,7 @@ enemy_behaviors = {}
 def register_behavior(name, movement):
     enemy_behaviors[name] = movement
 
-class Enemy:
+class Enemy(StatusHolder):
     def __init__(self, x, y, enemy_type):
         cfg = {**enemy_defaults, **enemy_configs[enemy_type]}
         for key, value in cfg.items():
@@ -219,42 +224,6 @@ class Enemy:
 
     def get_sort_y(self):
         return feet_y(self.y, self.sprite)
-    
-    def apply_status(self, name, duration, **params):
-        if name not in status_effect_types:
-            return
-        status = self.statuses.get(name)
-        if status is None:
-            status = dict(params)
-            status["remaining"] = duration
-            self.statuses[name] = status
-        else:
-            status.update(params)
-            status["remaining"] = max(status["remaining"], duration)
-        hook = status_effect_types[name]["apply"]
-        if hook:
-            hook(self, status)
-
-    def update_statuses(self, dt):
-        if not self.statuses:
-            return
-        for name in list(self.statuses):
-            status = self.statuses[name]
-            config = status_effect_types[name]
-            if config["tick"]:
-                config["tick"](self, status, dt)
-            status["remaining"] -= dt
-            if status["remaining"] <= 0:
-                del self.statuses[name]
-                if config["expire"]:
-                    config["expire"](self, status)
-
-    def has_status(self, name):
-        return name in self.statuses
-
-    def is_blocked(self, action):
-        """True if a status (silence, stun...) stops this action. See systems/status.py."""
-        return status_blocks(self.statuses, action)
     
     def enemy_update_hitbox(self, camera):
         screen_pos = camera.apply_camera(self.x, self.y)
@@ -404,8 +373,10 @@ class Enemy:
         if color:
             pygame.draw.rect(app.screen, color, (bar_x - 1, bar_y - 1, bar_width + 2, bar_height + 2), width=1)
 
+        status_top = draw_statuses(self, self.rect.centerx, bar_y - 2)
+
         if self.show_hit_stats and self.last_hit:
-            self.draw_hit_stats(bar_x, bar_y)
+            self.draw_hit_stats(bar_x, status_top)
 
     def draw_hit_stats(self, x, bar_y):
         """The last hit, above the health bar: total, then each damage type."""
@@ -517,6 +488,10 @@ def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None, att
     damage = sum(parts.values())
 
     enemy.enemy_take_damage(damage)
+
+    if enemy.alive:
+        from systems.ailments import try_ailments
+        try_ailments(enemy, attacker, hit_stats, parts)     # parts = what actually landed
 
     if attacker is player and player.lifesteal > 0:
         player.heal(damage * player.lifesteal / 100)

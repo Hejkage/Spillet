@@ -12,6 +12,8 @@ from systems.pets import Pet
 from core.screen import camera
 from systems.facing import face_direction, facing_sprite_name, facing_surface
 from systems.skilltree import (allocated_effects, allocated_grants, allocated_mods, allocated_nodes, skill_nodes)
+from systems.status import StatusHolder, draw_statuses
+import systems.ailments        # registers the burn / poison stats BEFORE the player is created
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -24,7 +26,7 @@ class MoveOrder:
         self.on_arrive = on_arrive            
         self.is_valid = is_valid or (lambda: True)  
 
-class Player:
+class Player(StatusHolder):
     def __init__(self, sprite_name, player_x, player_y):
         self.sprite_name = sprite_name
         self.back_sprite_name = "witch_back_sprite"
@@ -37,6 +39,7 @@ class Player:
         self.level = 1
         self.xp_to_next_level = 1000
         self.move_target = None
+        self.statuses = {}
         self.abilities = {"primary": None}
         for slot in active_gem_slots:
             self.abilities[slot] = None
@@ -380,8 +383,8 @@ class Player:
         shadow_rect = shadow_surface.get_rect(center=(rect.centerx, rect.bottom + 2))
 
         app.screen.blit(shadow_surface, shadow_rect)
-
         app.screen.blit(sprite, rect)
+        draw_statuses(self, rect.centerx, rect.top - 4)
 
     def update_abilities(self, dt):
         for ability in self.abilities.values():

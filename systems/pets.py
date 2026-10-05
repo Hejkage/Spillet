@@ -212,6 +212,27 @@ def make_pet_projectile_ability(sprite_name, effects=None, name="Projectile"):
     ability.effects = list(effects or [])      # so the tooltip can describe what a hit does
     return ability
 
+def make_pet_heal_ability(name="Heal"):
+    """Heals the PLAYER for "heal_amount" every "ability_cooldown" seconds.
+    Needs no enemy, so it also works out of combat.
+    Set "heal_amount" in the pet's stats, or per rarity in rarity_overrides."""
+    def ability(pet, player, dt):
+        pet.ability_timer -= dt
+        if pet.ability_timer > 0:
+            return
+        amount = pet.get_stat("heal_amount", 0)
+        if player.current_health < player.max_health:
+            player.heal(amount)
+            from systems.popups import spawn_floating_text
+            spawn_floating_text(f"+{amount:.0f}", player.x, player.y - 40, color=(120, 255, 120))
+        pet.ability_timer = pet.ability_cooldown()
+    ability.ability_name = name
+    ability.effects = []
+    # Own tooltip, because a heal has no damage / crit lines (see pet_tooltip_lines)
+    ability.tooltip = lambda values: [
+        (f"Heals you for {values.get('heal_amount', 0):.0f} every {pet_ability_cooldown(values):.1f}s", _EFFECT),
+    ]
+    return ability
 # ---------------------------------------------------------------
 # MOVEMENT - how a pet travels towards its spot next to the player.
 # A pet picks one with "movement": "walk" in its stats.
@@ -228,10 +249,12 @@ def make_pet_projectile_ability(sprite_name, effects=None, name="Projectile"):
 # ---------------------------------------------------------------
 pet_movements = {}
 
-def register_pet_movement(name, move, setup=None):
+def register_pet_movement(name, move, setup=None, tick=None):
+    """tick(pet, dt) - optional, runs EVERY frame, also while the pet stands still.
+    Count cooldowns down here, so they never freeze while the pet is idle."""
     if name in pet_movements:
         raise ValueError(f"Pet movement '{name}' is registered twice")
-    pet_movements[name] = {"move": move, "setup": setup}
+    pet_movements[name] = {"move": move, "setup": setup, "tick": tick}
 
 def walk_move(pet, dt, target_x, target_y, dx, dy, distance):
     move_dir = pygame.Vector2(dx, dy).normalize()
@@ -242,10 +265,12 @@ def walk_move(pet, dt, target_x, target_y, dx, dy, distance):
 def leap_setup(pet):
     pet.leap_timer = 0.0
 
+def leap_tick(pet, dt):
+    pet.leap_timer -= dt
+
 def leap_move(pet, dt, target_x, target_y, dx, dy, distance):
     from systems.player import begin_leap
     faster = pet.speed_multiplier()
-    pet.leap_timer -= dt
     if pet.leap_timer <= 0:
         begin_leap(pet, target_x, target_y,
                    pet.get_stat("leap_height", 100),
@@ -256,7 +281,8 @@ def leap_move(pet, dt, target_x, target_y, dx, dy, distance):
         pet.leap_timer = pet.get_stat("leap_cooldown", 0.0) / faster
 
 register_pet_movement("walk", walk_move)
-register_pet_movement("leap", leap_move, setup=leap_setup)
+register_pet_movement("leap", leap_move, setup=leap_setup, tick=leap_tick)
+
 
 class Pet:
     def __init__(self, pet_type, x, y, rarity=rarity_common, source_item=None):
@@ -272,7 +298,9 @@ class Pet:
         self.damage_totals = {}
         self.x = x
         self.y = y
-        self.follow_distance = 80
+        self.follow_distance = 80                                  # starts moving when this far from its spot
+        self.arrive_distance = self.get_stat("arrive_distance", 10)  # ...and keeps going until this close
+        self.returning = False
         self.ability_timer = 0
         self.sound_name = self.get_stat("sound")
         self.sound_interval = self.get_stat("sound_interval", 5.0)
@@ -341,6 +369,10 @@ class Pet:
             self.x = player.x + self.follow_offset.x
             self.y = player.y + self.follow_offset.y
 
+        tick = pet_movements[self.movement]["tick"]
+        if tick:
+            tick(self, dt)
+
         if update_leap(self, dt):
             return
 
@@ -357,6 +389,10 @@ class Pet:
         distance = (dx * dx + dy * dy) ** 0.5
 
         if distance > self.follow_distance:
+            self.returning = True
+        elif distance <= self.arrive_distance:
+            self.returning = False
+        if self.returning:
             pet_movements[self.movement]["move"](self, dt, target_x, target_y, dx, dy, distance)
 
         ability = self.get_stat("ability")
@@ -466,7 +502,10 @@ def pet_tooltip_lines(values, buffs):
     lines = []
 
     ability = values.get("ability")
-    if ability:
+    if ability and hasattr(ability, "tooltip"):          # abilities that don't deal damage (heals, buffs...)
+        lines.append((getattr(ability, "ability_name", "Ability"), _TITLE))
+        lines.extend(ability.tooltip(values))
+    elif ability:
         lines.append((getattr(ability, "ability_name", "Ability"), _TITLE))
         damage, hit_stats = pet_hit(values)
         lines.extend(damage_lines(hit_stats["damage_split"]))
@@ -479,6 +518,11 @@ def pet_tooltip_lines(values, buffs):
         lines.append((f"Crit damage: {_number(values.get('crit_damage', 150))}%", _WHITE))
         for effect in getattr(ability, "effects", ()):
             lines.append((f"On hit: {describe_effect(effect)}", _EFFECT))
+        from systems.ailments import ailment_types
+        for ailment in ailment_types:                                 # "100% chance to poison"
+            chance = values.get(f"{ailment}_chance", 0)
+            if chance > 0:
+                lines.append((f"On hit: {chance:g}% chance to {ailment}", _EFFECT))
 
     for buff in buffs:
         lines.append((f"Aura: {describe_buff(buff)}", _BUFF))

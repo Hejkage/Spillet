@@ -174,6 +174,10 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
             extra[key] = rolled["crit_chance"]
         if "crit_damage" in rolled:
             extra["crit_damage"] = rolled["crit_damage"]
+        from systems.ailments import ailment_stats
+        for key, *_ in ailment_stats:                  # "burn_chance" in rarity_stats -> on the hit
+            if key in rolled:
+                extra[key] = rolled[key]
 
         gem = ActiveGem(
             t["name"], cooldown, damage, aoe, speed,
