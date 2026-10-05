@@ -5,7 +5,8 @@ Pure data. Add new entries here - never in systems/.
 
 from systems.rarity import rarity_epic, rarity_legendary, rarity_rare, roll_item, roll_rarity
 from systems.items import make_item, make_unique, unique_drop
-from systems.drops import DropEntry, DropPool
+from systems.drops import DropEntry, DropPool, roll_from_group
+from systems.pets import pet_item_key
 
 support_gem_group = [
     DropEntry(lambda: make_item("support_projectiles", rarity=roll_rarity()), weight=5),
@@ -30,9 +31,24 @@ active_gem_group = [
     DropEntry(lambda: make_item("elemental_projectile_gem", rarity=roll_rarity()), weight=5),
 ]
 
+def pet_drop(pet_type, weight):
+    """One pet as a drop entry. pet_drop("spider", 5) drops a "spider_pet" item with a rolled rarity."""
+    return DropEntry(lambda: make_item(pet_item_key(pet_type), rarity=roll_rarity()), weight=weight)
+
+# Rolled ONLY after "a flatworm" has been picked in pet_group below.
+flatworm_group = [
+    pet_drop("fire_flatworm",     24),
+    pet_drop("frost_flatworm",    24),
+    pet_drop("nature_flatworm",   24),
+    pet_drop("physical_flatworm", 24),
+    pet_drop("shadow_flatworm",    1),
+    pet_drop("pure_flatworm",      1),
+]
+
 pet_group = [
-    DropEntry(lambda: make_item("spider_pet",    rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("bing_bong_pet", rarity=roll_rarity()), weight=5),
+    pet_drop("spider",    5),
+    pet_drop("bing_bong", 5),
+    DropEntry(roll_from_group(flatworm_group), weight=5),   # the whole flatworm group = ONE entry
 ]
 
 leather_armor_group = [

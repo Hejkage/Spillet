@@ -9,7 +9,11 @@ register_gem_node("fireball", "proj_1", "Split Flame", position=(800, 300), supp
 register_gem_node("fireball", "crit_1", "Searing Focus", position=(800, 950), support_type="crit_chance", value=80)
 register_gem_node("fireball", "socket_1", "Socket", position=(400, 800), is_socket=True)
 register_gem_node("fireball", "socket_2", "Socket", position=(1200, 800), is_socket=True)
+register_gem_node("fireball", "burn_1", "Smoulder", position=(1000, 950), support_type="burn_chance", value=5)
 
+
+
+register_gem_edge("fireball", "start", "burn_1")
 register_gem_edge("fireball", "start", "dmg_1")
 register_gem_edge("fireball", "dmg_1", "dmg_2")
 register_gem_edge("fireball", "start", "aoe_1")

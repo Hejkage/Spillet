@@ -17,8 +17,11 @@ register_pet(
         "ability_range": 600,
         "ability_projectile_speed": 500,
         "ability_damage": 1,
-        "damage_type": "shadow",
         "hit_type": "spell",
+        "damage_type": "fire",
+        "cannot_scale": {"physical"},
+        "crit_damage": 150,
+        "crit_chance": 8,
         "movement_speed": 100,
         "movement": "leap",
         "leap_height": 100,
@@ -33,9 +36,9 @@ register_pet(
     },
     # Auras: same lines as item stats, plus who gets them.
     rarity_overrides={
-        rarity_common:    {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 2, "targets": ["player", "pets"]}]},
-        rarity_uncommon:  {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 4, "targets": ["player", "pets"]}]},
-        rarity_rare:      {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 7, "targets": ["player", "pets"]}]},
+        rarity_common:    {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 2, "targets":  ["player", "pets"]}]},
+        rarity_uncommon:  {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 4, "targets":  ["player", "pets"]}]},
+        rarity_rare:      {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 7, "targets":  ["player", "pets"]}]},
         rarity_epic:      {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 10, "targets": ["player", "pets"]}]},
         rarity_legendary: {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 12, "targets": ["player", "pets"]}, {"stat": "movement_speed",   "type": "increased", "amount": 1, "targets": ["player"]},   # legendary-only bonus
         ]},

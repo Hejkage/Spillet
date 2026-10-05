@@ -84,6 +84,7 @@ active_gem_templates.update({
         "support_tags": {"projectile", "damage", "aoe", "crit", "caster"},
         "damage_scaling": {"elemental_damage", "spell_damage", "light", "dark"},
         "damage_type": "fire",
+        "burn_chance": 5,
         "aoe": 1,
         "projectile_speed": 600,
         "rarity_stats": {
@@ -350,4 +351,14 @@ register_support_gem(
     mod="attack_speed",
 )
 
-
+register_support_gem(
+    "burn_chance", "Chance to Burn",
+    tiers={
+        rarity_common:    (3, 5),
+        rarity_uncommon:  (5, 8),
+        rarity_rare:      (8, 12),
+        rarity_epic:      (12, 16),
+        rarity_legendary: (16, 20),
+    },
+    mod="burn_chance",
+)
