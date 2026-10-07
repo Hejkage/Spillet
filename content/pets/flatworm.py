@@ -97,9 +97,7 @@ flatworm_variants = {
     "nature": {
         "name": "Nature Flatworm",
         "aura": {rarity_common: 2, rarity_uncommon: 5, rarity_rare: 8, rarity_epic: 11, rarity_legendary: 15},
-        "ability": make_pet_projectile_ability("fireball_sprite", name="Venom Spit", effects=[
-            {"name": "slow", "duration": 1.0, "amount": 0.002},
-        ]),
+        "ability": make_pet_projectile_ability("fireball_sprite", name="Venom Spit"),
         "stats": {"poison_chance": 100},
     },
     "physical": {
