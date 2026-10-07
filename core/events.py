@@ -24,6 +24,11 @@ def handle_events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit_game()
+
+        elif event.type == pygame.VIDEORESIZE:
+            if not app.fullscreen:                       # the window edges were dragged
+                app.screen = pygame.display.get_surface()
+                on_screen_resized()
         
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE and app.game_state != "menu":
@@ -195,18 +200,20 @@ def quit_game():
     app.running = False
 
 def toggle_fullscreen():
-    
     if app.fullscreen:
-        app.screen = pygame.display.set_mode((1200,1000))
+        app.screen = pygame.display.set_mode((1200, 1000), pygame.RESIZABLE)   # RESIZABLE = edges can be dragged
     else:
         app.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-
     app.fullscreen = not app.fullscreen
+    on_screen_resized()
+
+def on_screen_resized():
+    """Everything that depends on the window size. Runs after a fullscreen toggle
+    AND every time the window is dragged bigger or smaller."""
     app.screen_width, app.screen_height = app.screen.get_size()
     update_screen_data()
-    
     for b in buttons:
-            b.update()
+        b.update()
     
 def restart_game():
 

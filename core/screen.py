@@ -17,6 +17,21 @@ def get_font(size):
         _font_cache[size] = font
     return font
 
+def wrap_text(text, font, max_width, indent="   "):
+    """Split text into lines that fit max_width. Lines after the first are indented,
+    so a wrapped row is easy to tell apart from the next row."""
+    words = text.split(" ")
+    lines, line = [], ""
+    for word in words:
+        test = f"{line} {word}" if line else word
+        if font.size(test)[0] <= max_width or not line:
+            line = test
+        else:
+            lines.append(line)
+            line = indent + word
+    lines.append(line)
+    return lines
+
 #Camera
 world.width = 0
 world.height = 0
