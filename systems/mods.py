@@ -119,6 +119,15 @@ def scale_key(key):
         return packets
     return apply
 
+def multiply_key(key):
+    """Build a mod that multiplies one field (starting at 1) on every packet.
+    Used for damage multipliers: they are applied at the very end, after all flat damage."""
+    def apply(packets, value):
+        for p in packets:
+            p[key] = p.get(key, 1.0) * value
+        return packets
+    return apply
+
 def add_key(key, to_int=False):
     """Build a mod that adds to one field on every packet."""
     def apply(packets, value):
@@ -184,7 +193,7 @@ def add_effect(name, **defaults):
     return apply
 
 # --- works on any hit ----------------------------------------------------
-register_mod("damage", scale_key("damage"), tags={"damage"}, combine="mul",
+register_mod("damage", multiply_key("damage_more"), tags={"damage"}, combine="mul",
              describe=lambda v: f"x{v:.2f} damage")
 register_mod("aoe", scale_key("aoe"), tags={"aoe"}, combine="mul",
              describe=lambda v: f"x{v:.2f} area of effect")
@@ -210,6 +219,16 @@ register_mod("poison_chance", add_key("poison_chance"), tags={"damage"},
              describe=lambda v: f"+{v:g}% chance to poison")
 register_mod("poison_damage", add_key("poison_damage"), tags={"damage"},
              describe=lambda v: f"Poison deals +{v:g}% of max health per stack")
+# --- flat added damage: "added_fire", "added_nature_spell", "added_frost_attack"... ---
+# These only ADD to the hit. finish_hit_damage() in systems/damage.py adds all flat
+# damage together first and multiplies afterwards, so socket order never matters.
+from systems.damage import damage_types, flat_conditions
+for _type in damage_types:
+    register_mod(f"added_{_type}", add_key(f"added_{_type}"), tags={"damage"},
+                 describe=lambda v, t=_type: f"Adds {v:g} {t} damage")
+    for _cond in flat_conditions:
+        register_mod(f"added_{_type}_{_cond}", add_key(f"added_{_type}_{_cond}"), tags={"damage"},
+                     describe=lambda v, t=_type, c=_cond: f"Adds {v:g} {t} damage to {c}s")
 # --- projectiles only ----------------------------------------------------
 register_mod("projectiles", add_projectiles, tags={"projectile"},
              describe=lambda v: f"+{int(v)} projectiles")

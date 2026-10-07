@@ -46,8 +46,8 @@ class ActiveGem:
             self.timer -= dt
 
     def get_base_effective(self, player):
-        from systems.damage import final_damage
-        damage, parts = final_damage(self.base_damage, self.extra, lambda name, default: getattr(player, name, default))
+        # The damage here is the ability's OWN number. The real damage is worked out at the
+        # very end of build_hit_packets(), after every support and mod (see finish_hit_damage).
 
         if self.speed_stat:
             rate = max(0.01, getattr(player, self.speed_stat, 100) / 100)
@@ -56,8 +56,8 @@ class ActiveGem:
             cooldown = self.base_cooldown * max(0.1, 1 - player.cooldown / 100)
 
         return {
-            "damage": damage,
-            "parts": parts,
+            "damage": self.base_damage,
+            "stat": lambda name, default: getattr(player, name, default),   # the player's stats, for finish_hit_damage
             "aoe": self.base_aoe * (player.aoe / 100) if self.uses_aoe else self.base_aoe,
             "speed": self.base_projectile_speed * (player.projectile_speed / 100),
             "cooldown": cooldown,
@@ -103,7 +103,7 @@ class ActiveGem:
         extra["_always"] = self.always_mods
         extra["_mods"] = self.outside_mods
         extra["_mod_tags"] = self.mod_tags
-        extra["damage_split"] = base["parts"]     # what the hit is made of, after flat and increased
+        extra["_stat"] = base["stat"]             # build_hit_packets() works out the final damage with these
         return extra
 
     def try_cast(self, player, target_pos, camera):

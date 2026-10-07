@@ -3,10 +3,10 @@ import pygame
 import random
 from collections import Counter
 from core.state import app, world
-from core.screen import camera, get_font, wrap_text
+from core.screen import camera, get_font, wrap_text, place_centre_window, window_gap
 from systems.weapons import get_weapon_geometry, player_body_radius, weapon_class_tags
 from systems.supports import SupportGem, roll_support_value, support_gem_types
-from core.assets import get_ui_scaled, scaled_sprites, sprites
+from core.assets import get_ui_scaled, scaled_sprites, sprites, draw_window, window_size, check_window_fits
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, roll_rarity, rarity_colors, rarity_order, unique_color
 
 # NOTE: imports for the modules below are done inside the functions that
@@ -528,7 +528,7 @@ class Equipment:
         scale = app.ui_scale
         slot_size = max(1, int(equip_slot_size * scale))
         padding = max(1, int(equip_padding * scale))
-        margin = max(1, int(30 * scale))
+        margin = max(1, int(20 * scale))
         cell = slot_size + padding                         # one grid step: a slot plus the gap after it
         header_font = get_font(max(12, int(18 * scale)))
         header_h = header_font.get_height() + padding
@@ -541,19 +541,25 @@ class Equipment:
             ("Skill Gems", extra_equip_slots, self.extra_slots, self.extra_slots_rects),
         ]
 
-        # size the panel from the layout, so a new slot or row never overlaps anything
         doll_w = equip_doll_columns * cell - padding
         doll_h = equip_doll_rows * cell - padding
         widest_row = max(len(slots) for _, slots, _, _ in bottom_rows) * cell - padding
-        panel_width = margin * 2 + max(doll_w, widest_row)
-        panel_height = margin * 2 + doll_h + len(bottom_rows) * (padding * 2 + header_h + slot_size)
+        check_window_fits("equipment", margin * 2 + max(doll_w, widest_row),
+                          margin * 2 + doll_h + len(bottom_rows) * (padding * 2 + header_h + slot_size))
 
-        panel_x = app.screen_width // 2 - panel_width // 2
-        panel_y = app.screen_height // 2 - panel_height // 2
+        # stats + equipment are placed as ONE block: centred, sliding left if the inventory is in the way.
+        # Their sizes come from register_window() in core/assets.py.
+        from content import inventory
+        stats_width, stats_height = window_size("stats")
+        panel_width, panel_height = window_size("equipment")
+        avoid = inventory.planned_rect() if inventory.open else None
+        stats_x, panel_y = place_centre_window(stats_width + window_gap + panel_width,
+                                               max(stats_height, panel_height), avoid)
+        panel_x = stats_x + stats_width + window_gap
         self.rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
-        app.screen.blit(get_ui_scaled("inventory_background_sprite", panel_width, panel_height), (panel_x, panel_y))
+        draw_window("equipment", self.rect)
 
-        self.draw_stat_panel(scaled_sprites, player, panel_x, panel_y, panel_height, scale)
+        self.draw_stat_panel(scaled_sprites, player, stats_x, panel_y, scale)
 
         # --- the paper doll: main slots around an empty middle ---
         doll_x = panel_x + (panel_width - doll_w) // 2
@@ -603,13 +609,10 @@ class Equipment:
 
         try_set_hover(item, rect)
 
-    def draw_stat_panel(self, scaled_sprites, player, panel_x, panel_y, panel_height, scale):
-        panel_width = int(350 * scale)
-        stats_x = panel_x - panel_width - int(10 * scale)
+    def draw_stat_panel(self, scaled_sprites, player, stats_x, panel_y, scale):
+        panel_width, panel_height = window_size("stats")     # register_window("stats", ...) in core/assets.py
         self.stat_rect = pygame.Rect(stats_x, panel_y, panel_width, panel_height)
-
-        bg_surface = get_ui_scaled("inventory_background_sprite", panel_width, panel_height)
-        app.screen.blit(bg_surface, (stats_x, panel_y))
+        draw_window("stats", self.stat_rect)
 
         pad = int(20 * scale)
         text_x = stats_x + pad

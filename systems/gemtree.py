@@ -165,3 +165,5 @@ def supports_gem(support_item, gem_item):
     t = active_gem_templates.get(gem_item.template_key)
     if t is None:
         return False          # e.g. a pet: support gems don't fit it
+    allowed = t.get("support_tags", set())
+    return bool(support_gem_types[support_item.gem_type]["tags"] & allowed)

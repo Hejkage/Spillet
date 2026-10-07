@@ -137,6 +137,29 @@ def final_damage(base_damage, hit_stats, stat):
 
     return sum(parts.values()), parts
 
+def finish_hit_damage(packets, base_damage, stat):
+    """The real damage of each hit, worked out AFTER every support, tree node and mod
+    has run - so the order they are socketed in never matters:
+
+      1. FLAT       the ability's own damage + the player's added_<type> stats
+                    + every added_<type> a support / mod put on the hit
+      2. INCREASED  the player's increased damage stats (fire, elemental, spell...)
+      3. MORE       every damage multiplier from supports / the tree ("damage_more"),
+                    multiplied together
+
+    stat(name, default) -> the player's value of a stat."""
+    for p in packets:
+        def total_stat(name, default, p=p):
+            value = stat(name, default)
+            if name.startswith("added_"):
+                value += p.get(name, 0)          # flat damage a support added to this hit
+            return value
+        total, parts = final_damage(base_damage, p, total_stat)
+        more = p.get("damage_more", 1.0)
+        p["damage_split"] = {t: v * more for t, v in parts.items()}
+        p["damage"] = total * more
+    return packets
+
 # The stats a group hands down to every type in it. "+2% elemental penetration"
 # IS "+2% fire, +2% frost, +2% nature penetration", so the group keeps no number
 # of its own and nobody has to add two rows together.

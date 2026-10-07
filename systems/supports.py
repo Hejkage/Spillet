@@ -99,6 +99,11 @@ def build_hit_packets(base_direction, base_speed, base_damage, base_aoe, sprite_
 
     for gem in support_gems:
         packets = gem.apply_gem(packets)
+
+    # 4. only now the real damage: all flat, then increased, then all multipliers
+    if extra and "_stat" in extra:
+        from systems.damage import finish_hit_damage
+        finish_hit_damage(packets, base_damage, extra["_stat"])
     return packets
 
 # the old name, so nothing breaks while you rename the call sites
