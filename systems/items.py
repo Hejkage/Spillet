@@ -3,7 +3,7 @@ import pygame
 import random
 from collections import Counter
 from core.state import app, world
-from core.screen import camera, get_font
+from core.screen import camera, get_font, wrap_text
 from systems.weapons import get_weapon_geometry, player_body_radius, weapon_class_tags
 from systems.supports import SupportGem, roll_support_value, support_gem_types
 from core.assets import get_ui_scaled, scaled_sprites, sprites
@@ -473,6 +473,30 @@ def reroll_unique(item):
     item.apply_rolled(t["roll"]())
     return True
 
+# ---------------------------------------------------------------
+# EQUIPMENT PANEL LAYOUT
+# Where each MAIN slot sits on the paper doll: (column, row) on a grid.
+# The middle (equip_model_area) is kept empty for the player model.
+# Move a slot = change its numbers. New slot = register_equip_slot() + one line here.
+#
+#   col:  0        1     2      3     4
+#   row0  neck     .     head   .     ring1
+#   row1  body     [            ]     ring2
+#   row2  belt     [   model    ]     gloves
+#   row3  pants    [            ]     .
+#   row4  weapon   .     boots  .     offhand
+# ---------------------------------------------------------------
+equip_doll_columns = 5
+equip_doll_rows = 5
+equip_doll_layout = {
+    "neck":   (0, 0),                     "head": (2, 0),                         "ring1":  (4, 0),
+    "body":   (0, 1),                                                             "ring2":  (4, 1),
+    "belt":   (0, 2),                                                             "gloves": (4, 2),
+    "pants":  (0, 3),                                                             "boots":  (4, 3),
+                       "weapon": (1, 4),                    "offhand": (3, 4),
+}
+equip_model_area = ((1, 1), (3, 3))     # (top-left cell, bottom-right cell) kept empty
+
 class Equipment:
     def __init__(self):
         self.main_slots = {slot: None for slot in main_equip_slots}
@@ -504,74 +528,65 @@ class Equipment:
         scale = app.ui_scale
         slot_size = max(1, int(equip_slot_size * scale))
         padding = max(1, int(equip_padding * scale))
-        outer_margin = max(1, int(30 * scale))
+        margin = max(1, int(30 * scale))
+        cell = slot_size + padding                         # one grid step: a slot plus the gap after it
+        header_font = get_font(max(12, int(18 * scale)))
+        header_h = header_font.get_height() + padding
 
-        left_slots = ["head", "body", "pants", "boots",]
-        right_slots = ["ring1", "ring2", "gloves", "neck", "belt"]
-        bottom_slots = ["weapon", "offhand"]
+        # the rows under the paper doll: (title, slot names, where the items live, where the rects go)
+        self.pet_slots_rects = {}
+        self.extra_slots_rects = {}
+        bottom_rows = [
+            ("Pets",       pet_equip_slots,   self.pet_slots,   self.pet_slots_rects),
+            ("Skill Gems", extra_equip_slots, self.extra_slots, self.extra_slots_rects),
+        ]
 
-        # gap between adjacent columns
-        col_gap = slot_size + padding * 3
-
-        # four columns: left(main), right(main), pet, extra
-        num_columns = 4
-        # tallest main column decides the vertical space needed
-        tallest = max(len(left_slots), len(right_slots), len(pet_equip_slots), len(extra_equip_slots))
-
-        # panel sized to actually fit the columns + a bottom row
-        panel_width = outer_margin * 2 + num_columns * slot_size + (num_columns - 1) * col_gap
-        panel_height = outer_margin * 2 + tallest * (slot_size + padding) + (slot_size + padding * 2)
+        # size the panel from the layout, so a new slot or row never overlaps anything
+        doll_w = equip_doll_columns * cell - padding
+        doll_h = equip_doll_rows * cell - padding
+        widest_row = max(len(slots) for _, slots, _, _ in bottom_rows) * cell - padding
+        panel_width = margin * 2 + max(doll_w, widest_row)
+        panel_height = margin * 2 + doll_h + len(bottom_rows) * (padding * 2 + header_h + slot_size)
 
         panel_x = app.screen_width // 2 - panel_width // 2
         panel_y = app.screen_height // 2 - panel_height // 2
         self.rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
-
-        bg_surface = get_ui_scaled("inventory_background_sprite", panel_width, panel_height)
-        app.screen.blit(bg_surface, (panel_x, panel_y))
+        app.screen.blit(get_ui_scaled("inventory_background_sprite", panel_width, panel_height), (panel_x, panel_y))
 
         self.draw_stat_panel(scaled_sprites, player, panel_x, panel_y, panel_height, scale)
 
-        self.slot_size = slot_size
-        self.padding = padding
+        # --- the paper doll: main slots around an empty middle ---
+        doll_x = panel_x + (panel_width - doll_w) // 2
+        doll_y = panel_y + margin
 
-        # column x positions derived from slot size, so they never overlap
-        col_x = [panel_x + outer_margin + c * (slot_size + col_gap) for c in range(num_columns)]
-        top_y = panel_y + outer_margin
+        (c0, r0), (c1, r1) = equip_model_area
+        self.model_rect = pygame.Rect(doll_x + c0 * cell, doll_y + r0 * cell,
+                                      (c1 - c0 + 1) * cell - padding, (r1 - r0 + 1) * cell - padding)
+        shade = pygame.Surface(self.model_rect.size, pygame.SRCALPHA)
+        shade.fill((0, 0, 0, 35))                          # placeholder until the player model is drawn here
+        app.screen.blit(shade, self.model_rect)
 
         self.main_slot_rects = {}
-
-        for i, slot in enumerate(left_slots):
-            rect = pygame.Rect(col_x[0], top_y + i * (slot_size + padding), slot_size, slot_size)
+        for slot in main_equip_slots:
+            if slot not in equip_doll_layout:
+                continue                                   # not placed yet: add it to equip_doll_layout
+            col, row = equip_doll_layout[slot]
+            rect = pygame.Rect(doll_x + col * cell, doll_y + row * cell, slot_size, slot_size)
             self.main_slot_rects[slot] = rect
             self.draw_slot(scaled_sprites, rect, self.main_slots[slot], slot)
 
-        for i, slot in enumerate(right_slots):
-            rect = pygame.Rect(col_x[1], top_y + i * (slot_size + padding), slot_size, slot_size)
-            self.main_slot_rects[slot] = rect
-            self.draw_slot(scaled_sprites, rect, self.main_slots[slot], slot)
-
-        self.pet_slots_rects = {}
-        for i, slot in enumerate(pet_equip_slots):
-            rect = pygame.Rect(col_x[2], top_y + i * (slot_size + padding), slot_size, slot_size)
-            self.pet_slots_rects[slot] = rect
-            self.draw_slot(scaled_sprites, rect, self.pet_slots[slot], slot)
-
-        self.extra_slots_rects = {}
-        for i, slot in enumerate(extra_equip_slots):
-            rect = pygame.Rect(col_x[3], top_y + i * (slot_size + padding), slot_size, slot_size)
-            self.extra_slots_rects[slot] = rect
-            self.draw_slot(scaled_sprites, rect, self.extra_slots[slot], slot)
-
-        # weapon / offhand centered along the bottom of the panel
-        bottom_y = panel_y + panel_height - outer_margin - slot_size
-        bottom_total_width = len(bottom_slots) * slot_size + (len(bottom_slots) - 1) * padding
-        bottom_start_x = panel_x + panel_width // 2 - bottom_total_width // 2
-
-        for i, slot in enumerate(bottom_slots):
-            x = bottom_start_x + i * (slot_size + padding)
-            rect = pygame.Rect(x, bottom_y, slot_size, slot_size)
-            self.main_slot_rects[slot] = rect
-            self.draw_slot(scaled_sprites, rect, self.main_slots[slot], slot)
+        # --- pets and gems: one centred row each, with a small title ---
+        y = doll_y + doll_h + padding * 2
+        for title, slots, contents, rects in bottom_rows:
+            text = header_font.render(title, True, (230, 230, 230))
+            app.screen.blit(text, text.get_rect(midtop=(panel_x + panel_width // 2, y)))
+            y += header_h
+            row_x = panel_x + (panel_width - (len(slots) * cell - padding)) // 2
+            for i, slot in enumerate(slots):
+                rect = pygame.Rect(row_x + i * cell, y, slot_size, slot_size)
+                rects[slot] = rect
+                self.draw_slot(scaled_sprites, rect, contents[slot], slot)
+            y += slot_size + padding * 2
 
     def draw_slot(self, scaled_sprites, rect, item, slot_name=None):
         bg_name = equip_slots.get(slot_name, {}).get("background") or "inventory_slot_sprite"
@@ -626,7 +641,9 @@ class Equipment:
         font = get_font(max(13, int(21 * scale)))
         row_h = font.get_linesize()
         view = pygame.Rect(stats_x, y, panel_width, panel_y + panel_height - y - pad)
-        rows = stat_rows(player, self.stat_tab)
+        rows = []
+        for text, color in stat_rows(player, self.stat_tab):          # long rows wrap instead of going off the panel
+            rows.extend((line, color) for line in wrap_text(text, font, panel_width - pad * 2))
         self.stat_scroll = max(0, min(self.stat_scroll, len(rows) * row_h - view.height))
 
         app.screen.set_clip(view)
