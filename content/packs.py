@@ -6,7 +6,7 @@ Pure data. Built like drop groups - see content/drops.py.
 from systems.packs import PackEntry, PackPool, register_pack
 
 register_pack("witch_coven", [
-    PackEntry("witch", count=(5, 9)),
+    PackEntry("witch", count=(3, 5)),
 ])
 
 register_pack("lone_witch", [

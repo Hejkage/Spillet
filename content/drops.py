@@ -8,18 +8,38 @@ from systems.items import make_item, make_unique, unique_drop
 from systems.drops import DropEntry, DropPool, roll_from_group
 from systems.pets import pet_item_key
 
+flat_to_spell_group = [
+    DropEntry(lambda: make_item("support_added_nature_spell", rarity=roll_rarity()), weight=33),
+    DropEntry(lambda: make_item("support_added_fire_spell",   rarity=roll_rarity()), weight=33),
+    DropEntry(lambda: make_item("support_added_frost_spell",  rarity=roll_rarity()), weight=33),
+    DropEntry(lambda: make_item("support_added_pure_spell",   rarity=roll_rarity()), weight=0.5),
+    DropEntry(lambda: make_item("support_added_shadow_spell", rarity=roll_rarity()), weight=0.5),
+]
+
+flat_to_attack_group = [
+    DropEntry(lambda: make_item("support_added_nature_attack",   rarity=roll_rarity()), weight=24.75),
+    DropEntry(lambda: make_item("support_added_fire_attack",     rarity=roll_rarity()), weight=24.75),
+    DropEntry(lambda: make_item("support_added_frost_attack",    rarity=roll_rarity()), weight=24.75),
+    DropEntry(lambda: make_item("support_added_physical_attack", rarity=roll_rarity()), weight=24.75),
+    DropEntry(lambda: make_item("support_added_pure_attack",     rarity=roll_rarity()), weight=0.5),
+    DropEntry(lambda: make_item("support_added_shadow_attack",   rarity=roll_rarity()), weight=0.5),
+]
+
 support_gem_group = [
-    DropEntry(lambda: make_item("support_projectiles", rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_speed",       rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_aoe",         rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_damage",      rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_dot",         rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_burst",       rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_pierce",      rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_orbit",       rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_crit_chance", rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_crit_damage", rarity=roll_rarity()), weight=5),
-    DropEntry(lambda: make_item("support_attack_speed",rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_projectiles",       rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_speed",             rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_aoe",               rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_damage",            rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_dot",               rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_burst",             rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_pierce",            rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_orbit",             rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_crit_chance",       rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_crit_damage",       rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_attack_speed",      rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_burn_chance",       rarity=roll_rarity()), weight=5),
+    DropEntry(roll_from_group(flat_to_spell_group),                                 weight=5),
+    DropEntry(roll_from_group(flat_to_attack_group),                                weight=5),
 ]
 
 active_gem_group = [

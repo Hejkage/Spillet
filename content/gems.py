@@ -49,7 +49,7 @@ basic_attack_templates.update({
         "speed_stat": "attack_speed",
         "uses_aoe": False,
         "damage_scaling": {"physical_damage", "attack_damage"},
-        "danage_type": "physical",
+        "damage_type": "physical",
         "damage": 50,
         "attack_time": 1,
         "range_mult": 1.0,
@@ -83,6 +83,7 @@ active_gem_templates.update({
         "weapon_tags": {"caster"},
         "support_tags": {"projectile", "damage", "aoe", "crit", "caster"},
         "damage_scaling": {"elemental_damage", "spell_damage", "light", "dark"},
+        "cannot_scale": {"attack"},
         "damage_type": "fire",
         "burn_chance": 5,
         "aoe": 1,
@@ -336,7 +337,7 @@ register_support_gem(
         rarity_legendary: (330, 400),
     },
     mod="orbit",
-    tags=["caster"],          # your choice: this one is caster-only
+    tags=["caster"],          # caster-only
 )
 
 register_support_gem(
@@ -361,4 +362,148 @@ register_support_gem(
         rarity_legendary: (16, 20),
     },
     mod="burn_chance",
+)
+
+register_support_gem(
+    "added_nature_spell", "Added nature damage to spells",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_nature_spell",
+)
+
+register_support_gem(
+    "added_pure_spell", "Added pure damage to spells",
+    tiers={
+        rarity_common:    (1, 2),
+        rarity_uncommon:  (3, 4),
+        rarity_rare:      (5, 6),
+        rarity_epic:      (7, 8),
+        rarity_legendary: (9, 10),
+    },
+    mod="added_pure_spell",
+)
+
+register_support_gem(
+    "added_frost_spell", "Added frost damage to spells",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_frost_spell",
+)
+
+register_support_gem(
+    "added_fire_spell", "Added fire damage to spells",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_fire_spell",
+)
+
+register_support_gem(
+    "added_shadow_spell", "Added shadow damage to spells",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_shadow_spell",
+)
+
+register_support_gem(
+    "added_shadow_attack", "Added shadow damage to attacks",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_shadow_attack",
+)
+
+register_support_gem(
+    "added_shadow_attack", "Added shadow damage to attacks",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_shadow_attack",
+)
+
+register_support_gem(
+    "added_fire_attack", "Added fire damage to attacks",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_fire_attack",
+)
+
+register_support_gem(
+    "added_frost_attack", "Added frost damage to attacks",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_frost_attack",
+)
+
+register_support_gem(
+    "added_nature_attack", "Added nature damage to attacks",
+    tiers={
+        rarity_common:    (1, 5),
+        rarity_uncommon:  (6, 11),
+        rarity_rare:      (12, 18),
+        rarity_epic:      (19, 24),
+        rarity_legendary: (25, 35),
+    },
+    mod="added_nature_attack",
+)
+
+register_support_gem(
+    "added_physical_attack", "Added physical damage to attacks",
+    tiers={
+        rarity_common:    (1, 10),
+        rarity_uncommon:  (11, 25),
+        rarity_rare:      (26, 40),
+        rarity_epic:      (41, 60),
+        rarity_legendary: (61, 85),
+    },
+    mod="added_physical_attack",
+)
+
+register_support_gem(
+    "added_pure_attack", "Added pure damage to attacks",
+    tiers={
+        rarity_common:    (1, 2),
+        rarity_uncommon:  (3, 4),
+        rarity_rare:      (5, 6),
+        rarity_epic:      (7, 8),
+        rarity_legendary: (9, 10),
+    },
+    mod="added_pure_attack",
 )

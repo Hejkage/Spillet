@@ -83,7 +83,7 @@ flatworm_variants = {
         "name": "Fire Flatworm",
         "aura": {rarity_common: 2, rarity_uncommon: 5, rarity_rare: 8, rarity_epic: 11, rarity_legendary: 15},
         "ability": make_pet_projectile_ability("fireball_sprite", name="Ember Spit", effects=[
-            {"name": "ember_burst", "radius": 12000, "damage": 10},
+            {"name": "ember_burst", "radius": 120, "damage": 5},
         ]),
         "stats": {"burn_chance": 100},
     },

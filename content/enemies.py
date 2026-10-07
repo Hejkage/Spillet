@@ -8,10 +8,10 @@ generic_drop_pool.add_entry(lambda: make_item("gold_coin"), weight=1, min_amount
 
 #Enemy Spells and attacks
 def witch_wand_attack():
-    return EnemyProjectileAbility(cooldown=1.2, ability_range=500, damage=150, speed=400, sprite_name="shadow_bolt_sprite", damage_type="shadow", hit_type="attack")
+    return EnemyProjectileAbility(cooldown=3, ability_range=500, damage=150, speed=400, sprite_name="shadow_bolt_sprite", damage_type="shadow", hit_type="attack")
 
 def witch_meteor():
-    return EnemyProjectileAbility(cooldown=5.0, ability_range=600, damage=300, speed=250, sprite_name="fireball_sprite", aoe=2.5, damage_type="fire", hit_type="spell")
+    return EnemyProjectileAbility(cooldown=12, ability_range=600, damage=300, speed=250, sprite_name="fireball_sprite", aoe=2.5, damage_type="fire", hit_type="spell")
 
 enemy_configs.update({
     "witch": {
@@ -24,8 +24,8 @@ enemy_configs.update({
         "behavior": "caster",
         "defence": {"fire_resistance": 50},
         "attack_range": 400,
-        "cast_cooldown": 0.5,
-        "cast_time": 0.5,
+        "cast_cooldown": 2,
+        "cast_time": 1,
         "abilities": [witch_wand_attack, witch_meteor],
         "tier_scaling": {
                     "health":         2.0,
