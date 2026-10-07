@@ -1,6 +1,6 @@
 import pygame
 from core.state import app, world
-from core.screen import camera, is_near_view
+from core.screen import camera, is_near_view, draw_view_limit, present_frame
 from core.assets import draw_background, draw_sprite, scaled_sprites, update_screen_data
 from systems.projectiles import update_orbit_ring
 from systems.items import draw_all_ground_labels, draw_dragged_item, draw_ground_item_label, draw_item_tooltip, equipment, hover_state
@@ -170,6 +170,8 @@ while app.running:
 
         draw_melee_swings(camera)
 
+        draw_view_limit()           # darken the world outside max_view; the UI comes after this
+
         draw_sprite("gear_sprite")
         draw_xp_bar(player)
         draw_health_bar(player)
@@ -202,6 +204,6 @@ while app.running:
     draw_fps(clock)
     
     #Flip
-    pygame.display.flip()
+    present_frame()
 
 pygame.quit()
