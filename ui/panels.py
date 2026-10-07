@@ -1,8 +1,8 @@
 import pygame
 import random
 from core.state import app
-from core.screen import get_font
-from core.assets import get_ui_scaled, scaled_sprites
+from core.screen import get_font, place_centre_window, place_bottom_right_window
+from core.assets import get_ui_scaled, scaled_sprites, draw_window, window_size, check_window_fits
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
 from systems.items import equipment, hover_state, scale_item_sprite
 from systems.player import player
@@ -56,7 +56,7 @@ def attack_blocking_panel_open():
 class GridContainer:
     source_kind = "container"
     is_center_panel = True                
-    bg_sprite_name = "inventory_background_sprite"
+    window = "chest"                     # which register_window() size this uses (core/assets.py)
     slot_sprite_name = "inventory_slot_sprite"
     base_slot_size = 64
     base_padding = 4
@@ -75,6 +75,14 @@ class GridContainer:
     def toggle(self):
         self.open = not self.open
 
+    def grid_origin(self):
+        """Top-left of the first slot: the grid is centred left-to-right in the window."""
+        bag = self.bags[0]
+        grid_width = bag.cols * (self.slot_size + self.padding) - self.padding
+        ox = self.rect.x + (self.rect.width - grid_width) // 2
+        oy = self.rect.y + self.panel_padding + self.extra_content_top(app.ui_scale)
+        return ox, oy
+    
     def get_slot_rect(self, bag_index, slot_index, origin_x, origin_y):
         bag = self.bags[bag_index]
         col = slot_index % bag.cols
@@ -86,8 +94,7 @@ class GridContainer:
     def slot_index_at(self, pos):
         if not self.open or self.rect is None:
             return None
-        ox = self.rect.x + self.panel_padding
-        oy = self.rect.y + self.panel_padding + self.extra_content_top(app.ui_scale)
+        ox, oy = self.grid_origin()
         for i in range(len(self.bags[0].slots)):
             if self.get_slot_rect(0, i, ox, oy).collidepoint(pos):
                 return i
@@ -100,7 +107,10 @@ class GridContainer:
         return 0
 
     def compute_panel_position(self, bg_width, bg_height, scale):
-        return (app.screen_width // 2 - bg_width // 2, app.screen_height // 2 - bg_height // 2)
+        """Centred, sliding left if the open inventory is in the way."""
+        from content import inventory
+        avoid = inventory.planned_rect() if inventory.open and inventory is not self else None
+        return place_centre_window(bg_width, bg_height, avoid)
 
     def draw_extra_content(self, scale):
         pass
@@ -139,17 +149,16 @@ class GridContainer:
 
         top_h = self.extra_content_top(scale)
         extra_h = self.extra_content_height(scale)
-        bg_width = grid_width + self.panel_padding * 2
-        bg_height = grid_height + self.panel_padding * 2 + extra_h + top_h
 
+        check_window_fits(self.window, grid_width + self.panel_padding * 2,
+                          grid_height + self.panel_padding * 2 + extra_h + top_h)
+
+        bg_width, bg_height = window_size(self.window)
         bg_x, bg_y = self.compute_panel_position(bg_width, bg_height, scale)
         self.rect = pygame.Rect(bg_x, bg_y, bg_width, bg_height)
+        draw_window(self.window, self.rect)
 
-        bg_surface = get_ui_scaled(self.bg_sprite_name, bg_width, bg_height)
-        app.screen.blit(bg_surface, (bg_x, bg_y))
-
-        ox = bg_x + self.panel_padding
-        oy = bg_y + self.panel_padding + top_h
+        ox, oy = self.grid_origin()
 
         for bag_index, bag in enumerate(self.bags):
             for i, item in enumerate(bag.slots):
@@ -169,8 +178,7 @@ class GridContainer:
     def handle_click(self, pos, button, drag_state):
         if not self.open:
             return False
-        ox = self.rect.x + self.panel_padding
-        oy = self.rect.y + self.panel_padding + self.extra_content_top(app.ui_scale)
+        ox, oy = self.grid_origin()
         for bag_index, bag in enumerate(self.bags):
             for i in range(len(bag.slots)):
                 rect = self.get_slot_rect(bag_index, i, ox, oy)
@@ -182,6 +190,7 @@ class GridContainer:
 
 class Inventory(GridContainer):
     source_kind = "inventory"
+    window = "inventory"
     is_center_panel = False
     base_slot_size = inventory_slot_size
     base_padding = inventory_padding
@@ -190,16 +199,18 @@ class Inventory(GridContainer):
         super().__init__(inventory_collums, inventory_rows)
     
     def extra_content_top(self, scale):
-        return int(100 * scale)   # header space for the background art
+        return int(4 * scale)     # no big header: the grid starts near the top
 
     def extra_content_height(self, scale):
         return int(28 * scale)   # room for the coin row
 
     def compute_panel_position(self, bg_width, bg_height, scale):
-        margin = int(20 * scale)
-        bg_x = max(margin, app.screen_width - bg_width - margin)
-        bg_y = max(margin, app.screen_height - bg_height - margin)
-        return bg_x, bg_y
+        return place_bottom_right_window(bg_width, bg_height)      # bottom-right corner, like before
+
+    def planned_rect(self):
+        """Where the inventory is (or would be) drawn, so other windows can make room for it."""
+        w, h = window_size(self.window)
+        return pygame.Rect(*place_bottom_right_window(w, h), w, h)
 
     def draw_extra_content(self, scale):
         self.draw_coin_counter(player.coins)
@@ -263,6 +274,7 @@ def register_shop(name, shop):
 
 class ShopContainer(GridContainer):
     source_kind = "shop"
+    window = "shop"
     base_row_extra = 20   
 
     def __init__(self, cols, rows, stock=None, reroll_cost=100):

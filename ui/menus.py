@@ -8,22 +8,22 @@ from core.screen import get_font
 # region menuing stuff
 
 def draw_main_menu():
-    font = get_font(int(min(app.screen_width, app.screen_height) * 0.1))
+    font = get_font(108)
     title = font.render("FRESIM", True, (255, 255, 255))
-    title_rect = title.get_rect(center=(app.screen_width // 2, app.screen_height // 5))
+    title_rect = title.get_rect(center=(app.screen_width // 2, app.screen_height // 2 - 230))
     app.screen.blit(title, title_rect)
 
 def draw_settings_menu():
-    font = get_font(int(min(app.screen_width, app.screen_height) * 0.1))
+    font = get_font(72)
     text = font.render("Game Paused", True, (255, 255, 255))
-    text_rect = text.get_rect(center=(app.screen_width // 2, app.screen_height // 5))
+    text_rect = text.get_rect(center=(app.screen_width // 2, app.screen_height // 2 - 325))
     app.screen.blit(text, text_rect)
 
 def draw_xp_bar(player):
     bar_width = int(app.screen_width * 0.5)
     bar_height = 15
     bar_x = app.screen_width // 2 - bar_width // 2
-    bar_y = app.screen_height - 42
+    bar_y = app.screen_height - 50      # 5 px above the health bar
 
     ratio = player.xp / player.xp_to_next_level
     pygame.draw.rect(app.screen, (60, 60, 60), (bar_x, bar_y, bar_width, bar_height))

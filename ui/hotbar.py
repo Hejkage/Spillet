@@ -161,8 +161,6 @@ def ability_tooltip_lines(ability, player):
 
     return lines
 
-    return lines
-
 def draw_ability_tooltip(player):
     from systems.items import draw_tooltip_box
     if hover_state.ability:

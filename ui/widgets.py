@@ -9,28 +9,27 @@ BUTTON_SIZE = (256, 128)   # design-resolution size for every button-shaped UI e
 # region Buttons
 
 class Button:
-    def __init__(self, sprite_name, text, position, anchor="center", action=None, scale=1.0):
+    def __init__(self, sprite_name, text, position, anchor="center", action=None, scale=1.0, offset=(0, 0)):
+        """position  a point on the screen as fractions: (0.5, 0.5) = the middle, (0, 1) = bottom-left corner
+        offset    pixels added to that point, e.g. (0, -120) = 120 px above it. Pixels never
+                  change with the window size, so buttons in a column never drift into each other.
+        scale     size of the button compared to BUTTON_SIZE"""
         self.sprite_name = sprite_name
         self.text = text
         self.position = position
+        self.offset = offset
         self.anchor = anchor
         self.action = action
         self.scale = scale
         self.rect = None
 
-    def get_sprite(self):
-        sprite = scaled_sprites[self.sprite_name]
-        if self.scale == 1.0:
-            return sprite
-        w, h = sprite.get_size()
-        return pygame.transform.scale(sprite, (max(1, int(w * self.scale)), max(1, int(h * self.scale))))
-    
     def get_pixel_pos(self):
-        return (int(self.position[0] * app.screen_width), int(self.position[1] * app.screen_height))
+        return (int(self.position[0] * app.screen_width) + self.offset[0],
+                int(self.position[1] * app.screen_height) + self.offset[1])
 
     def update(self):
-        w = int(BUTTON_SIZE[0] * app.ui_scale)
-        h = int(BUTTON_SIZE[1] * app.ui_scale)
+        w = int(BUTTON_SIZE[0] * self.scale)
+        h = int(BUTTON_SIZE[1] * self.scale)
         self.sprite = get_ui_scaled(self.sprite_name, w, h)
         pos = self.get_pixel_pos()
         self.rect = self.sprite.get_rect()
@@ -50,9 +49,7 @@ class Button:
         self.update()
         app.screen.blit(self.sprite, self.rect)
 
-        font_scale = min(app.screen_width, app.screen_height)
-        font = get_font(int(font_scale * 0.04))
-
+        font = get_font(int(self.rect.height * 0.32))       # follows the button's own size, so it always fits
         text = font.render(self.text, False, (255, 255, 255))
         text_rect = text.get_rect(center=self.rect.center)
         app.screen.blit(text, text_rect)
@@ -60,8 +57,10 @@ class Button:
 class Dropdown:
     all_dropdowns = []
 
-    def __init__(self, position, options, anchor="center", on_select=None, get_label=None, header_label=None):
+    def __init__(self, position, options, anchor="center", on_select=None, get_label=None, header_label=None, scale=1.0, offset=(0, 0)):
         self.position = position
+        self.scale = scale              # size compared to BUTTON_SIZE, like Button
+        self.offset = offset            # pixels added to `position`, like Button
         self.anchor = anchor
         self.options = options
         self.on_select = on_select
@@ -86,7 +85,8 @@ class Dropdown:
         return self.options[self.selected_index]
     
     def get_pixel_pos(self):
-        return (int(self.position[0]* app.screen_width), int(self.position[1] * app.screen_height))
+        return (int(self.position[0] * app.screen_width) + self.offset[0],
+                int(self.position[1] * app.screen_height) + self.offset[1])
     
     def header_rect(self, sprite):
         rect = sprite.get_rect()
@@ -95,8 +95,8 @@ class Dropdown:
         return rect
     
     def draw(self):
-        w = int(BUTTON_SIZE[0] * app.ui_scale)
-        h = int(BUTTON_SIZE[1] * app.ui_scale)
+        w = int(BUTTON_SIZE[0] * self.scale)
+        h = int(BUTTON_SIZE[1] * self.scale)
         sprite = get_ui_scaled("dropdown_background_sprite", w, h)
         self.rect = self.header_rect(sprite)
 
@@ -107,7 +107,7 @@ class Dropdown:
 
         app.screen.blit(sprite, self.rect)
 
-        font = get_font(int(min(app.screen_width, app.screen_height) * 0.03))
+        font = get_font(int(self.rect.height * 0.28))       # follows the dropdown's own size
         header_fn = self.header_label or self.get_label
         lines = header_fn(self.current_value())
         if isinstance(lines, str):
@@ -208,23 +208,26 @@ class Checkbox:
             return True
         return False
 
+# Settings menu: one column in the middle of the screen. Offsets are pixels from the
+# centre, so the spacing is the same on every window size (fits 1280x720).
+settings_button_scale = 0.75       
 buttons = [
-    Button("button_sprite", "Fullscreen", (0.2, 0.32), action="toggle_fullscreen"),
-    Button("button_sprite", "Quit", (0.2, 0.44), action="quit"),
-    Button("button_sprite", "Save and exit", (0.2, 0.56), action="save_exit"),
-    Button("button_sprite", "Restart", (0.2, 0.68), action="restart"),
-    Button("button_sprite", "Main Menu", (0.2, 0.80), action="menu")
+    Button("button_sprite", "Fullscreen",    (0.5, 0.5), offset=(0, -150), scale=settings_button_scale, action="toggle_fullscreen"),
+    Button("button_sprite", "Quit",          (0.5, 0.5), offset=(0, -50),  scale=settings_button_scale, action="quit"),
+    Button("button_sprite", "Save and exit", (0.5, 0.5), offset=(0, 50),   scale=settings_button_scale, action="save_exit"),
+    Button("button_sprite", "Restart",       (0.5, 0.5), offset=(0, 150),  scale=settings_button_scale, action="restart"),
+    Button("button_sprite", "Main Menu",     (0.5, 0.5), offset=(0, 250),  scale=settings_button_scale, action="menu"),
 ]
 for b in buttons:
     b.update()
 
 menu_buttons = [
-    Button("button_sprite", "Start Game", (0.5, 0.38), action="play"),
-    Button("button_sprite", "Quit", (0.5, 0.50), action="quit"),
-    Button("button_sprite", "Settings", (0.5, 0.62), action="settings")
+    Button("button_sprite", "Start Game", (0.5, 0.5), offset=(0, -40),  scale=1.0, action="play"),
+    Button("button_sprite", "Quit",       (0.5, 0.5), offset=(0, 100),  scale=1.0, action="quit"),
+    Button("button_sprite", "Settings",   (0.5, 0.5), offset=(0, 240),  scale=1.0, action="settings"),
 ]
 
-skill_tree_button = Button("button_sprite", "Skills", (0.02, 0.98), anchor="bottom_left", action="skilltree", scale=0.5)
+skill_tree_button = Button("button_sprite", "Skills", (0, 1), offset=(20, -20), anchor="bottom_left", action="skilltree", scale=0.75)
 skill_tree_button.update()
 
 def set_loot_filter(value):
@@ -232,7 +235,7 @@ def set_loot_filter(value):
     if app.show_all_labels:
         assign_label_slots()
 
-loot_filter_dropdown = Dropdown(position=(0.2, 0.20), options=list(loot_filter_levels), on_select=set_loot_filter, get_label=lambda r: r.capitalize() + "+", header_label=lambda r: ["Item Filter ", r.capitalize() + "+"],)
+loot_filter_dropdown = Dropdown(position=(0.5, 0.5), offset=(0, -250), scale=settings_button_scale, options=list(loot_filter_levels), on_select=set_loot_filter, get_label=lambda r: r.capitalize() + "+", header_label=lambda r: ["Item Filter ", r.capitalize() + "+"],)
 
 def set_loot_filter_enabled(value):
     app.loot_filter_enabled = value
