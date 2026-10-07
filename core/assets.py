@@ -146,8 +146,7 @@ def update_screen_data():
 
     app.screen_width, app.screen_height = app.screen.get_size()
 
-    scale_factor = min(app.screen_width / base_width, app.screen_height / base_height)
-    app.ui_scale = scale_factor
+    app.ui_scale = 1.0          # never shrinks with the window: see "HOW THE SCREEN WORKS" in core/screen.py
     
     for sprite_name in sprites:
         scale_one_sprite(sprite_name)
@@ -271,3 +270,77 @@ def draw_background():
             screen_y = int(world_y - camera.y)
             
             app.screen.blit(tile, (screen_x, screen_y))
+
+# region Windows
+# ---------------------------------------------------------------
+# WINDOW SIZES - the one place that decides how big every window is.
+#
+# Sizes are in SPRITE pixels. Draw each background sprite at EXACTLY this size:
+# it is shown at window_pixel_scale (x4), always a whole number, so it is never
+# stretched out of shape. A missing or wrong-sized sprite is drawn as a plain
+# panel instead, and the console tells you what size it should be.
+#
+# Every size here must fit a 1280x720 window (the minimum): at most 146 tall,
+# and stats + equipment + inventory side by side at most ~310 wide together.
+# If the content does not fit a window, the console says how big it needs to be.
+# ---------------------------------------------------------------
+window_pixel_scale = 4          # 1 sprite pixel = 4 game pixels
+
+windows = {}
+
+def register_window(name, sprite, width, height):
+    windows[name] = {"sprite": sprite, "size": (width, height)}
+
+#               name         background sprite              width  height
+register_window("inventory", "inventory_background_sprite",  78,   117)    # 2:3
+register_window("equipment", "equipment_background_sprite",  96,   144)    # 2:3
+register_window("stats",     "stats_background_sprite",      96,   144)    # 2:3
+register_window("chest",     "chest_background_sprite",     144,    96)    # 3:2
+register_window("shop",      "shop_background_sprite",       80,   120)    # 2:3
+
+def window_size(name):
+    """The window's size in game pixels: (width, height)."""
+    w, h = windows[name]["size"]
+    return w * window_pixel_scale, h * window_pixel_scale
+
+def _window_sprite_ok(name):
+    sprite = sprites.get(windows[name]["sprite"])
+    return sprite is not None and sprite.get_size() == windows[name]["size"]
+
+def draw_window(name, rect):
+    """Draw a window's background. A missing / wrong-sized sprite becomes a plain panel."""
+    if _window_sprite_ok(name):
+        app.screen.blit(get_ui_scaled(windows[name]["sprite"], rect.width, rect.height), rect)
+        return
+    border = 2 * window_pixel_scale
+    pygame.draw.rect(app.screen, (59, 61, 21), rect)
+    pygame.draw.rect(app.screen, (154, 157, 54), rect.inflate(-border * 2, -border * 2))
+
+_warned_too_small = set()
+
+def check_window_fits(name, content_w, content_h):
+    """Call with the size the content needs. Prints ONCE if the window is too small."""
+    w, h = window_size(name)
+    if (content_w > w or content_h > h) and name not in _warned_too_small:
+        _warned_too_small.add(name)
+        px = window_pixel_scale
+        print(f"Window '{name}' is too small for its content: needs at least "
+              f"{-(-content_w // px)} x {-(-content_h // px)} sprite pixels (is {w // px} x {h // px})")
+
+def print_window_sizes():
+    """The list you draw sprites from. Printed once at start-up."""
+    from math import gcd
+    print("=== Window sizes - draw each background sprite at exactly this size (in pixels) ===")
+    for name, d in windows.items():
+        w, h = d["size"]
+        g = gcd(w, h)
+        sprite = sprites.get(d["sprite"])
+        if sprite is None:
+            status = "missing - plain panel used"
+        elif sprite.get_size() != (w, h):
+            status = f"is {sprite.get_width()}x{sprite.get_height()} - WRONG SIZE, plain panel used"
+        else:
+            status = "ok"
+        print(f"  {name:<10} {w:>4} x {h:<4} ratio {w // g}:{h // g:<4}  {d['sprite']}.png  ({status})")
+
+print_window_sizes()

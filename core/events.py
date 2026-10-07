@@ -1,6 +1,6 @@
 import pygame
 from core.state import app, world
-from core.screen import camera
+from core.screen import camera, open_window, to_game_pos, window_resized
 from core.assets import sprite_rects, update_screen_data
 from systems.items import drag_state, equipment, hover_state
 from systems.melee import melee_swings
@@ -27,7 +27,7 @@ def handle_events():
 
         elif event.type == pygame.VIDEORESIZE:
             if not app.fullscreen:                       # the window edges were dragged
-                app.screen = pygame.display.get_surface()
+                window_resized(event.w, event.h)
                 on_screen_resized()
         
         elif event.type == pygame.KEYDOWN:
@@ -74,7 +74,7 @@ def handle_events():
             equipment.scroll_stats(event.y)
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            handle_mouse(event.pos, event.button)
+            handle_mouse(to_game_pos(event.pos), event.button)
         
 #Button actions 
 def handle_mouse(pos, button):
@@ -200,17 +200,12 @@ def quit_game():
     app.running = False
 
 def toggle_fullscreen():
-    if app.fullscreen:
-        app.screen = pygame.display.set_mode((1200, 1000), pygame.RESIZABLE)   # RESIZABLE = edges can be dragged
-    else:
-        app.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-    app.fullscreen = not app.fullscreen
+    open_window(fullscreen=not app.fullscreen)
     on_screen_resized()
 
 def on_screen_resized():
     """Everything that depends on the window size. Runs after a fullscreen toggle
     AND every time the window is dragged bigger or smaller."""
-    app.screen_width, app.screen_height = app.screen.get_size()
     update_screen_data()
     for b in buttons:
         b.update()
