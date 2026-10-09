@@ -19,7 +19,7 @@ register_pet(
         "ability_damage": 1,
         "hit_type": "spell",
         "damage_type": "fire",
-        "cannot_scale": {"physical"},
+        "blocked": {"physical"},
         "crit_damage": 150,
         "crit_chance": 8,
         "movement_speed": 100,

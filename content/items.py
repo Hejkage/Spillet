@@ -729,10 +729,10 @@ affix_count_by_rarity.update({
 })
 
 weapon_class_configs.update({
-    "sword":      {"name": "Sword",      "tags": {"melee", "one_hand"}},
-    "axe":        {"name": "Axe",        "tags": {"melee", "one_hand"}},
-    "mace":       {"name": "Mace",       "tags": {"melee", "one_hand"}},
-    "greatsword": {"name": "Greatsword", "tags": {"melee", "two_hand"}},
+    "sword":      {"name": "Sword",      "tags": {"melee",  "one_hand"}},
+    "axe":        {"name": "Axe",        "tags": {"melee",  "one_hand"}},
+    "mace":       {"name": "Mace",       "tags": {"melee",  "one_hand"}},
+    "greatsword": {"name": "Greatsword", "tags": {"melee",  "two_hand"}},
     "wand":       {"name": "Wand",       "tags": {"caster", "one_hand"}},
     "staff":      {"name": "Staff",      "tags": {"caster", "two_hand"}},
     "bow":        {"name": "Bow",        "tags": {"ranged", "two_hand"}},
@@ -766,12 +766,12 @@ base_items.update({
     },
 
     "basic_gun": {
-            "name": "Basic Gun",
-            "sprite": "basic_gun_item_sprite",
-            "slot": "weapon",
-            "weapon_class": "gun",
-            "affixes": ["cooldown", "crit_damage", "increased_crit_chance", "lifesteal", "physical_damage"],
-        },
+        "name": "Basic Gun",
+        "sprite": "basic_gun_item_sprite",
+        "slot": "weapon",
+        "weapon_class": "gun",
+        "affixes": ["cooldown", "crit_damage", "increased_crit_chance", "lifesteal", "physical_damage"],
+    },
 
     "wooden_shield": {
         "name": "Wooden shield",
@@ -827,6 +827,14 @@ base_items.update({
         "sprite": "gloves_item_sprite",
         "slot": "gloves",
         "affixes": ["aoe", "cooldown", "max_health", "health_regen", "elemental_damage", "physical_damage", "spell_damage", "resistance_group"],
+    },
+
+    "wooden_staff": {
+        "name": "Wooden Staff",
+        "sprite": "wand_item_sprite",
+        "slot": "weapon",
+        "weapon_class": "staff",
+        "affixes": ["aoe", "cooldown", "elemental_damage", "spell_damage"],
     },
 })
 
@@ -923,29 +931,29 @@ item_templates.update({
     },
 
     # Support gems items (Does not do anything but create gem items)
-    "support_projectiles":          {"kind": "support_gem", "gem_type": "projectiles",        "rarity": rarity_common},
-    "support_speed":                {"kind": "support_gem", "gem_type": "speed",              "rarity": rarity_common},
-    "support_aoe":                  {"kind": "support_gem", "gem_type": "aoe",                "rarity": rarity_common},
-    "support_damage":               {"kind": "support_gem", "gem_type": "damage",             "rarity": rarity_common},
-    "support_dot":                  {"kind": "support_gem", "gem_type": "dot_damage",         "rarity": rarity_common},
-    "support_burst":                {"kind": "support_gem", "gem_type": "burst",              "rarity": rarity_common},
-    "support_pierce":               {"kind": "support_gem", "gem_type": "pierce",             "rarity": rarity_common},
-    "support_orbit":                {"kind": "support_gem", "gem_type": "orbit",              "rarity": rarity_common},
-    "support_crit_chance":          {"kind": "support_gem", "gem_type": "crit_chance",        "rarity": rarity_common},
-    "support_crit_damage":          {"kind": "support_gem", "gem_type": "crit_damage",        "rarity": rarity_common},
-    "support_attack_speed":         {"kind": "support_gem", "gem_type": "attack_speed",       "rarity": rarity_common},
-    "support_burn_chance":          {"kind": "support_gem", "gem_type": "burn_chance",        "rarity": rarity_common},
-    "support_added_nature_spell":   {"kind": "support_gem", "gem_type": "added_nature_spell", "rarity": rarity_common},
-    "support_added_fire_spell":     {"kind": "support_gem", "gem_type": "added_fire_spell",   "rarity": rarity_common},
-    "support_added_frost_spell":    {"kind": "support_gem", "gem_type": "added_frost_spell",  "rarity": rarity_common},
-    "support_added_pure_spell":     {"kind": "support_gem", "gem_type": "added_pure_spell",   "rarity": rarity_common},
-    "support_added_shadow_spell":   {"kind": "support_gem", "gem_type": "added_shadow_spell", "rarity": rarity_common},
-    "support_added_nature_attack":  {"kind": "support_gem", "gem_type": "added_nature_attack","rarity": rarity_common},
-    "support_added_fire_attack":    {"kind": "support_gem", "gem_type": "added_fire_attack",  "rarity": rarity_common},
-    "support_added_frost_attack":   {"kind": "support_gem", "gem_type": "added_frost_attack", "rarity": rarity_common},
-    "support_added_pure_attack":    {"kind": "support_gem", "gem_type": "added_pure_attack",  "rarity": rarity_common},
-    "support_added_shadow_attack":  {"kind": "support_gem", "gem_type": "added_shadow_attack","rarity": rarity_common},
-    "support_added_shadow_attack":  {"kind": "support_gem", "gem_type": "added_shadow_attack","rarity": rarity_common},
+    "support_projectiles":          {"kind": "support_gem", "gem_type": "projectiles",          "rarity": rarity_common},
+    "support_speed":                {"kind": "support_gem", "gem_type": "speed",                "rarity": rarity_common},
+    "support_aoe":                  {"kind": "support_gem", "gem_type": "aoe",                  "rarity": rarity_common},
+    "support_damage":               {"kind": "support_gem", "gem_type": "damage",               "rarity": rarity_common},
+    "support_dot":                  {"kind": "support_gem", "gem_type": "dot_damage",           "rarity": rarity_common},
+    "support_burst":                {"kind": "support_gem", "gem_type": "burst",                "rarity": rarity_common},
+    "support_pierce":               {"kind": "support_gem", "gem_type": "pierce",               "rarity": rarity_common},
+    "support_orbit":                {"kind": "support_gem", "gem_type": "orbit",                "rarity": rarity_common},
+    "support_crit_chance":          {"kind": "support_gem", "gem_type": "crit_chance",          "rarity": rarity_common},
+    "support_crit_damage":          {"kind": "support_gem", "gem_type": "crit_damage",          "rarity": rarity_common},
+    "support_attack_speed":         {"kind": "support_gem", "gem_type": "attack_speed",         "rarity": rarity_common},
+    "support_burn_chance":          {"kind": "support_gem", "gem_type": "burn_chance",          "rarity": rarity_common},
+    "support_added_nature_spell":   {"kind": "support_gem", "gem_type": "added_nature_spell",   "rarity": rarity_common},
+    "support_added_fire_spell":     {"kind": "support_gem", "gem_type": "added_fire_spell",     "rarity": rarity_common},
+    "support_added_frost_spell":    {"kind": "support_gem", "gem_type": "added_frost_spell",    "rarity": rarity_common},
+    "support_added_pure_spell":     {"kind": "support_gem", "gem_type": "added_pure_spell",     "rarity": rarity_common},
+    "support_added_shadow_spell":   {"kind": "support_gem", "gem_type": "added_shadow_spell",   "rarity": rarity_common},
+    "support_added_nature_attack":  {"kind": "support_gem", "gem_type": "added_nature_attack",  "rarity": rarity_common},
+    "support_added_fire_attack":    {"kind": "support_gem", "gem_type": "added_fire_attack",    "rarity": rarity_common},
+    "support_added_frost_attack":   {"kind": "support_gem", "gem_type": "added_frost_attack",   "rarity": rarity_common},
+    "support_added_pure_attack":    {"kind": "support_gem", "gem_type": "added_pure_attack",    "rarity": rarity_common},
+    "support_added_shadow_attack":  {"kind": "support_gem", "gem_type": "added_shadow_attack",  "rarity": rarity_common},
+    "support_added_physical_attack":{"kind": "support_gem", "gem_type": "added_physical_attack","rarity": rarity_common},
 
     # Currency
     "gold_coin": {

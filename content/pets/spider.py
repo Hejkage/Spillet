@@ -16,7 +16,7 @@ register_pet(
         "hit_type": "attack",          
         "damage_type": "physical",
         # "damage_split": {"nature": 60, "fire": 40},   # mixed damage instead of damage_type
-        "cannot_scale": {"elemental"},                    # never gets added/increased fire
+        "cannot_scale": {"elemental"},
         "ability_range": 500,
         "ability_projectile_speed": 300,
 

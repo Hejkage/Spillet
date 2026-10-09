@@ -36,3 +36,7 @@ from . import packs
 load_folder("areas")
 from .shops import inventory
 from . import skilltree
+# Every tag, defence key and immunity in content/ is checked once, now that it
+# has all loaded. A typo stops the game here with a list of what is wrong.
+from systems.tags import check_all_content
+check_all_content()

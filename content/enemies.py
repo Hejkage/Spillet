@@ -95,6 +95,40 @@ enemy_configs.update({
         "show_hit_stats": True,
         "defence": {"fire_resistance": 50, "frost_resistance": 25, "elemental_protection": 10, "shadow_protection": 50},
     },
+
+"target_dummy_2": {
+        "base_sprite": "witch_front_sprite",
+        "back_sprite": "witch_back_sprite",
+        "health": 500,
+        "xp_value": 0,
+        "move_speed": 0,
+        "contact_damage": 0,
+        "behavior": "caster",
+        "attack_range": 0,
+        "cast_cooldown": 0.5,
+        "cast_time": 0.5,
+        "abilities": [],
+        "drop_pool": None,
+        "show_hit_stats": True,
+        "defence": {"fire_resistance": 50, "frost_resistance": 25, "elemental_protection": 10, "shadow_protection": 50},
+    },
+
+"target_dummy_3": {
+        "base_sprite": "witch_front_sprite",
+        "back_sprite": "witch_back_sprite",
+        "health": 500,
+        "xp_value": 0,
+        "move_speed": 0,
+        "contact_damage": 0,
+        "behavior": "caster",
+        "attack_range": 0,
+        "cast_cooldown": 0.5,
+        "cast_time": 0.5,
+        "abilities": [],
+        "drop_pool": None,
+        "show_hit_stats": True,
+        "defence": {"fire_resistance": 0, "frost_resistance": 25, "elemental_protection": 0, "shadow_protection": 50},
+    },
 })
 
 

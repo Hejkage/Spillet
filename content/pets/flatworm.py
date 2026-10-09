@@ -6,7 +6,7 @@ Drop chances for each version are in content/drops.py (flatworm_group).
 """
 from core.state import world
 from systems.status import register_status, register_hit_effect
-from systems.pets import make_pet_projectile_ability, make_pet_heal_ability, register_pet, register_pet_movement, pet_item_key
+from systems.pets import make_pet_projectile_ability, make_pet_heal_ability, register_pet, register_pet_movement, pet_item_key, register_pet_group
 from systems.gemtree import register_gem_node, register_gem_edge
 from systems.rarity import rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary
 
@@ -160,3 +160,13 @@ for damage_type, variant in flatworm_variants.items():
     # Skill tree - every version gets the same start node for now
     tree = pet_item_key(key)                           # "fire_flatworm_pet"
     register_gem_node(tree, "start", variant["name"], position=(800, 800), is_root=True)
+
+    # --- 6. How likely each version is, wherever "flatworm" is used as a group. ---
+register_pet_group("flatworm", {
+    "fire_flatworm":     24,
+    "frost_flatworm":    24,
+    "nature_flatworm":   24,
+    "physical_flatworm": 24,
+    "shadow_flatworm":    1,
+    "pure_flatworm":      1,
+})

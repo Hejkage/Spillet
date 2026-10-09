@@ -10,10 +10,12 @@ def build_home(area):
     area.add("shop", 1100, 500, container=gemsmith)
 
     area.add_enemy("target_dummy", 1555, 1555)
+    area.add_enemy("target_dummy_2", 1350, 1555, rank="normal", tier=0)
+    area.add_enemy("target_dummy_3", 1250, 1555, rank="normal", tier=0)
 
     area.portal(400, 300, "forest", spawn=(1500, 1100))
     area.portal(400, 500, "cave",   spawn=(400, 400))
 
 register_area(Area("home", 2000, 2000, spawn=(500, 500),
-                   tier=1, persistent=True,
+                   tier=0, persistent=True,
                    tile="grass_tile_sprite", build=build_home))
