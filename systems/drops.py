@@ -12,6 +12,7 @@ class DropEntry:
         self.max_amount = max_amount
         # Which monster tiers may drop this at all. This is how a unique is
         # held back until tier 5, or an early item stops dropping late.
+        # item_drop() below fills min_tier from the item itself.
         self.min_tier = min_tier
         self.max_tier = max_tier
 
@@ -21,6 +22,17 @@ class DropEntry:
         if self.max_tier is not None and monster_tier > self.max_tier:
             return False
         return True
+
+def item_drop(base_key, weight=1, min_amount=1, max_amount=1, min_tier=None, max_tier=None):
+    """A DropEntry for a base item or a unique: item_drop("swarmcaller", weight=0.5).
+    The lowest monster tier comes from the item's own "min_monster_tier",
+    so that rule lives next to the item. min_tier= overrides it here."""
+    from systems.items import resolve_base
+    from systems.rarity import roll_item
+    if min_tier is None:
+        min_tier = resolve_base(base_key).get("min_monster_tier", 0)
+    return DropEntry(lambda: roll_item(base_key), weight=weight, min_amount=min_amount,
+                     max_amount=max_amount, min_tier=min_tier, max_tier=max_tier)
 
 def entries_for_tier(entries, monster_tier):
     return [e for e in entries if e.allowed_at(monster_tier)]

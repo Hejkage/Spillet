@@ -161,9 +161,9 @@ def tree_stats(item, allocated=None):
 
 def supports_gem(support_item, gem_item):
     from systems.abilities import active_gem_templates
-    from systems.supports import support_gem_types
     t = active_gem_templates.get(gem_item.template_key)
     if t is None:
         return False          # e.g. a pet: support gems don't fit it
-    allowed = t.get("support_tags", set())
-    return bool(support_gem_types[support_item.gem_type]["tags"] & allowed)
+    from systems.abilities import ability_tags, ability_blocked
+    from systems.supports import support_fits
+    return support_fits(support_item.gem_type, ability_tags(t), ability_blocked(t))

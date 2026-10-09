@@ -71,10 +71,18 @@ def handle_events():
                 app.debug_hitboxes = not app.debug_hitboxes
 
         elif event.type == pygame.MOUSEWHEEL:
-            equipment.scroll_stats(event.y)
+            if gem_tree_panel.open:
+                gem_tree_panel.handle_wheel(event.y)          # zoom the tree
+            elif skill_tree_panel.open:
+                skill_tree_panel.handle_wheel(event.y)
+            else:
+                equipment.scroll_stats(event.y)
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             handle_mouse(to_game_pos(event.pos), event.button)
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            handle_mouse_up(to_game_pos(event.pos), event.button)
         
 #Button actions 
 def handle_mouse(pos, button):
@@ -182,6 +190,13 @@ def handle_mouse(pos, button):
         
         app.attack_input_blocked = False
         player.use_ability("primary", pos, camera)
+
+def handle_mouse_up(pos, button):
+    """Tree screens act on RELEASE, so holding the button can drag the tree instead."""
+    if gem_tree_panel.open:
+        gem_tree_panel.handle_release(pos, button, drag_state)
+    elif skill_tree_panel.open:
+        skill_tree_panel.handle_release(pos, button)
 
 app.previous_game_state = "menu"
 app.attack_input_blocked = False

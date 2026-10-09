@@ -14,7 +14,7 @@ and pets can all change it:
              using the "burn_chance" mod (systems/mods.py)
 
 What a TARGET can resist is read from the target itself, so an enemy only needs
-e.g. "poison_immune": True in its config. The player gets the defaults.
+e.g. "immune": {"poison"} in its config. The player gets the defaults.
 
 A new ailment = one entry in ailment_stats + a register_ailment() call at the bottom.
 """
@@ -73,7 +73,7 @@ def attacker_value(attacker, stat, hit_stats=None):
     return own + hit_stats.get(stat, 0)
 
 def target_value(target, key, default):
-    """What the TARGET says about an ailment, e.g. "poison_immune". Missing = default."""
+    """What the TARGET says about an ailment, e.g. "poison_stack_mult". Missing = default."""
     return getattr(target, key, default)
 
 def deal_damage(target, amount):
@@ -151,7 +151,7 @@ def register_ailment(name, apply, tick, label, color, describe=None):
     apply    apply(target, attacker, hit_stats, landed_parts) - puts it on the target
     tick     tick(target, status, dt) - every frame while active
     label    text above the target. A function gets the status: lambda s: f"Poison x{s['stacks']}"
-    A target with "<name>_immune": True never gets it."""
+    A target with the name in its "immune" set never gets it."""
     ailment_types[name] = {"apply": apply}
     register_status(name, tick=tick, label=label, color=color, describe=describe)
 
@@ -159,7 +159,7 @@ def try_ailments(target, attacker, hit_stats, landed_parts):
     """Called once for every hit that lands. landed_parts = the damage per type the hit
     actually DEALT (after crit, resistance and protection), e.g. {"fire": 80, "physical": 15}."""
     for name, ailment in ailment_types.items():
-        if target_value(target, f"{name}_immune", False):
+        if name in target_value(target, "immune", ()):
             continue
         chance = attacker_value(attacker, f"{name}_chance", hit_stats)
         if chance > 0 and random.uniform(0, 100) < chance:

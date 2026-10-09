@@ -92,7 +92,7 @@ class StatusHolder:
     The class must set  self.statuses = {}  in its __init__."""
 
     def apply_status(self, name, duration, **params):
-        if name not in status_effect_types:
+        if name not in status_effect_types or name in getattr(self, "immune", ()):
             return
         status = self.statuses.get(name)
         if status is None:
@@ -178,19 +178,34 @@ def dot_tick(enemy, status, dt):
     from systems.player import player
     enemy.enemy_take_damage(resolve_damage(status.get("dps", 0) * dt, status.get("hit_stats"), enemy, player, protectable=False))
 
+def own_effect_damage(effect, attacker=None):
+    """(damage, damage_type) of an effect that is NOT part of a hit - an on-kill
+    explosion... Only increased damage of its own type counts (systems/damage.py).
+    The stats panel uses this too, so it shows the real number."""
+    from systems.damage import increased_only, default_damage_type
+    if attacker is None:
+        from systems.player import player as attacker
+    damage_type = effect.get("damage_type", default_damage_type)
+    damage = increased_only(effect.get("damage", 0), damage_type,
+                            lambda name, default: getattr(attacker, name, default))
+    return damage, damage_type
+
 def explode(target, effect, source):
     """Damage everything near the target. Works from a projectile, a melee
     swing, a pet, an on-kill effect - anything that carries effect data."""
     from core.state import world
-    from systems.damage import resolve_damage
-    from systems.player import player
+    from systems.enemies import deal_effect_damage
     radius = effect.get("radius", 100)
     damage = effect.get("damage", 0)
     hit_stats = getattr(source, "hit_stats", None)
+    if hit_stats is None or effect.get("damage_type"):
+        # its own explosion (on kill...), not part of a hit: the effect picks the type
+        damage, damage_type = own_effect_damage(effect)
+        hit_stats = {"damage_type": damage_type}
     for enemy in world.enemies:
         if enemy is not target and enemy.alive:
             if (enemy.x - target.x) ** 2 + (enemy.y - target.y) ** 2 <= radius ** 2:
-                enemy.enemy_take_damage(resolve_damage(damage, hit_stats, enemy, player))
+                deal_effect_damage(enemy, damage, hit_stats, label="Explosion")
 
 def heal_caster(target, effect, source):
     """Heal the player. `percent` of max health, or a flat `amount`."""
@@ -205,5 +220,5 @@ register_status("dot", tick=dot_tick, label="Damage over time TEST TEST REMOVE",
 register_status("silence", blocks={"spell"}, label="Silenced", color=(190, 120, 255),
                 describe=lambda e: f"Silences the target for {e.get('duration', 0):.1f}s")
 
-register_hit_effect("explode", explode, describe=lambda e: f"Explodes for {e.get('damage', 0):.0f} damage in a {e.get('radius', 0):.0f} radius")
+register_hit_effect("explode", explode, describe=lambda e: f"Explodes for {e.get('damage', 0):.0f} {e.get('damage_type', '')} damage in a {e.get('radius', 0):.0f} radius".replace("  ", " "))
 register_hit_effect("heal_caster", heal_caster, describe=lambda e: (f"Heals you for {e.get('percent')}% of maximum life" if e.get("percent") else f"Heals you for {e.get('amount', 0):.0f}"))

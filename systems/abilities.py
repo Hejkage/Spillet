@@ -6,7 +6,7 @@ from systems.projectiles import Projectile, projectile_default_lifetime
 from systems.facing import face_direction
 
 # region Active Gems
-standard_gem_fields = {"always", "name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "support_tags", "damage_scaling", "rarity_stats", "speed_stat", "hit_kind",
+standard_gem_fields = {"always", "name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "rarity_stats", "speed_stat", "hit_kind",
                     "locks_movement", "lock_duration", "uses_aoe", "action_group", "icon"}
 
 global_action_lockout = 0.2
@@ -27,10 +27,10 @@ class ActiveGem:
          # mods this ability always has (systems/mods.py)
         self.always_mods = []      # from the gem template's "always" list
         self.outside_mods = []     # from the skill tree, uniques...
-        self.mod_tags = set()      # what it accepts from outside
+        self.tags = set()          # what this ability IS (ability_tags) - decides which mods/supports fit
+        self.blocked = set()       # what it can't scale with ("blocked" in its template)
         self.facing_flip = 1
         self.weapon_classes = None
-        self.damage_scaling = []
         self.speed_stat = None
         self.hit_kind = "projectile"
         self.uses_aoe = True
@@ -102,7 +102,6 @@ class ActiveGem:
         extra = dict(self.extra)
         extra["_always"] = self.always_mods
         extra["_mods"] = self.outside_mods
-        extra["_mod_tags"] = self.mod_tags
         extra["_stat"] = base["stat"]             # build_hit_packets() works out the final damage with these
         return extra
 
@@ -129,16 +128,16 @@ class ActiveGem:
 
         self.gem_function(player, target_pos, camera, base["damage"], base["aoe"], base["speed"], self.sprite_name, self.support_gems, extra=extra, facing_flip=self.facing_flip)
 
-def template_crit_type(t):
-    """"attack" or "spell". A gem can set crit_type; otherwise what it scales with decides."""
-    return t.get("crit_type") or ("spell" if "spell_damage" in t.get("damage_scaling", set()) else "attack")
+def template_hit_type(t):
+    """"attack" or "spell" - every gem template says which with "hit_type"."""
+    return t.get("hit_type", "attack")
 
 def template_speed_stat(t):
     """What makes this ability faster: an ATTACK uses attack speed, a SPELL uses
     cooldown reduction. A gem can override it with its own "speed_stat"."""
     if "speed_stat" in t:
         return t["speed_stat"]
-    return "attack_speed" if template_crit_type(t) == "attack" else None
+    return "attack_speed" if template_hit_type(t) == "attack" else None
 
 def template_uses_aoe(t):
     if "uses_aoe" in t:
@@ -147,9 +146,32 @@ def template_uses_aoe(t):
             or t.get("aoe_scales_range", False)
             or t.get("aoe_scales_arc", False))
 
+def ability_tags(t):
+    """Everything an ability IS, worked out from its template (tags: systems/tags.py).
+    Only what can't be worked out goes in the template's own "tags"."""
+    from systems.tags import with_groups
+    tags = set(t.get("tags", ()))
+    tags.add(template_hit_type(t))                                          # attack / spell
+    tags.add("melee" if t.get("hit_kind", "projectile") == "melee" else "projectile")
+    tags |= set(t.get("damage_split") or {t.get("damage_type", "physical"): 1})   # its damage types
+    tags.add("damage")
+    if template_uses_aoe(t):
+        tags.add("aoe")
+    if "dot_duration" in t or any("dot_damage" in row for row in t.get("rarity_stats", {}).values()):
+        tags.add("dot")
+    tags |= set(t.get("weapon_tags", ()))                                   # caster / melee / ranged
+    return with_groups(tags)                                                # fire -> also elemental
+
+def ability_blocked(t):
+    """The template's "blocked" set, with groups opened up: {"elemental"} -> + fire, frost, nature."""
+    from systems.tags import with_members
+    return with_members(t.get("blocked", ()))
+
 def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         extra = {k: v for k, v in t.items() if k not in standard_gem_fields}
-        extra["crit_type"] = template_crit_type(t)
+        extra["hit_type"] = template_hit_type(t)
+        extra["tags"] = ability_tags(t)
+        extra["blocked"] = ability_blocked(t)
 
         rolled = gem_stats or {}
 
@@ -170,7 +192,7 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         if "dot_duration" in rolled:
             extra["dot_duration"] = rolled["dot_duration"]
         if "crit_chance" in rolled:
-            key = "spell_crit_chance" if extra["crit_type"] == "spell" else "attack_crit_chance"
+            key = "spell_crit_chance" if extra["hit_type"] == "spell" else "attack_crit_chance"
             extra[key] = rolled["crit_chance"]
         if "crit_damage" in rolled:
             extra["crit_damage"] = rolled["crit_damage"]
@@ -184,7 +206,6 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
             t["function"], t["sprite_name"], extra=extra, support_gems=supports
         )
         gem.facing_flip = t.get("facing_flip", 1)
-        gem.damage_scaling = t.get("damage_scaling", [])
         gem.speed_stat = template_speed_stat(t)
         gem.hit_kind = t.get("hit_kind", "projectile")
         gem.uses_aoe = template_uses_aoe(t)
@@ -198,7 +219,8 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         gem.base_projectiles = int(val("projectiles", 1))
         gem.always_mods = list(t.get("always", ()))        # what this gem always does
         gem.outside_mods = list(outside_mods)              # skill tree, uniques
-        gem.mod_tags = set(t.get("support_tags", set()))   # what it accepts from them
+        gem.tags = extra["tags"]                           # decides which mods / supports fit
+        gem.blocked = extra["blocked"]
         return gem
 
 

@@ -117,7 +117,7 @@ class EnemyAbility():
             world.enemy_projectiles.append(Projectile(
                 self.sprite_name, enemy.x, enemy.y, shot,
                 speed=self.speed, damage=self.damage, aoe=self.aoe,
-                hit_stats={"damage_type": self.damage_type}))
+                hit_stats={"damage_type": self.damage_type, "hit_type": self.hit_type}))
 
 class EnemyProjectileAbility(EnemyAbility):
     def __init__(self, cooldown, ability_range, damage, speed, sprite_name, aoe=1.0, projectiles=1, spread=12, damage_type="physical", hit_type="spell"):
@@ -149,8 +149,7 @@ enemy_defaults = {
     "tier_stats_sticky": False,    # True = a row applies from its tier UPWARDS
     "defence": {},                 # e.g. {"fire_resistance": 50, "grass_protection": 20}
     "show_hit_stats": False,       # True = draws the last hit's damage above its head (target dummy)
-    "burn_immune": False,
-    "poison_immune": False,
+    "immune": set(),               # status names it never gets, e.g. {"poison", "slow", "silence"}
     "poison_stack_mult": 1.0,      # 0.5 = this enemy can only have half the max poison stacks
     "poison_duration_mult": 1.0,   # 0.5 = poison lasts half as long on it
     "burn_duration_mult": 1.0,
@@ -385,7 +384,8 @@ class Enemy(StatusHolder):
         raw, after = self.last_hit["raw"], self.last_hit["after"]
         font = get_font(max(14, int(18 * app.ui_scale)))
 
-        lines = [(f"Hit: {sum(after.values()):.0f}   (before resistance: {sum(raw.values()):.0f})", (255, 255, 255))]
+        label = self.last_hit.get("label", "Hit")              # "Explosion" for damage that isn't a hit
+        lines = [(f"{label}: {sum(after.values()):.0f}   (before resistance: {sum(raw.values()):.0f})", (255, 255, 255))]
         for damage_type, amount in after.items():
             lines.append((f"{damage_type.title()}: {amount:.0f}   (from {raw[damage_type]:.0f})",
                           damage_colors.get(damage_type, (255, 255, 255))))
@@ -472,6 +472,21 @@ def credit_gem_kill():
             after = level_from_kills(gem.kills)
             if after > before:
                 spawn_floating_text(f"{gem.name} +1 Point", player.x, player.y - 40, color=(120, 200, 255))
+
+def deal_effect_damage(enemy, damage, hit_stats=None, attacker=None, label="Effect"):
+    """Damage that is NOT a hit: explosions, burning ground... It is reduced by
+    resistance and protection like a hit, but never crits, never leeches, never
+    burns/poisons and never triggers on-hit effects.
+    label = what the target dummy calls it ("Explosion")."""
+    from systems.damage import damage_split, resolve_damage_parts
+    attacker = attacker or player
+    parts = resolve_damage_parts(damage, hit_stats, enemy, attacker)
+    if enemy.show_hit_stats:
+        enemy.last_hit = {"raw": {t: damage * share for t, share in damage_split(hit_stats).items()},
+                          "after": parts, "label": label}
+    total = sum(parts.values())
+    enemy.enemy_take_damage(total)
+    return total
 
 def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None, attacker=None):
     """A hit from the player's side. attacker = whose stats it uses (a pet), None = the player."""

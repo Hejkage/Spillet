@@ -3,15 +3,17 @@ import random
 from core.state import app, world
 from core.assets import scaled_sprites
 from systems.weapons import weapon_class_tags
-from systems.supports import support_gem_types
-from systems.items import active_gem_slots, equipment, pet_equip_slots, stat_defs
+from systems.supports import support_gem_types, support_fits
+from systems.items import active_gem_slots, equipment, pet_equip_slots, stat_defs, immunity_stats
 from systems.damage import fold_damage_stats
-from systems.abilities import active_gem_templates, basic_attacks_by_weapon, build_active_gem
+from systems.abilities import active_gem_templates, basic_attacks_by_weapon, build_active_gem, ability_tags, ability_blocked
 from systems.world_objects import world_rect_at, nearest_free_point, move_with_collision, feet_y
 from systems.pets import Pet
+from systems.rarity import rarity_common
 from core.screen import camera
 from systems.facing import face_direction, facing_sprite_name, facing_surface
-from systems.skilltree import (allocated_effects, allocated_grants, allocated_mods, allocated_nodes, skill_nodes)
+from systems.skilltree import allocated_points, allocated_sources
+from systems.bonuses import collect_bonuses
 from systems.status import StatusHolder, draw_statuses
 import systems.ailments        # registers the burn / poison stats BEFORE the player is created
 
@@ -25,6 +27,22 @@ class MoveOrder:
         self.radius = radius                    
         self.on_arrive = on_arrive            
         self.is_valid = is_valid or (lambda: True)  
+
+def equipment_items():
+    """Every equipped gear item and gem, working or not."""
+    return [i for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()) if i]
+
+def weapon_allows(ability, weapon_class):
+    """Does this weapon class let you use this ability? (its weapon_classes / weapon_tags)"""
+    required = getattr(ability, "weapon_classes", None)
+    if required and weapon_class not in required:
+        return False
+    required_tags = getattr(ability, "weapon_tags", None)
+    if required_tags and not (weapon_class_tags(weapon_class) & set(required_tags)):
+        return False
+    return True
+
+summon_rarity = rarity_common     # rarity of pets from "summons" on items and tree nodes
 
 class Player(StatusHolder):
     def __init__(self, sprite_name, player_x, player_y):
@@ -131,8 +149,8 @@ class Player(StatusHolder):
 
     def crit_stats(self, hit_stats=None):
         s = hit_stats or {}
-        crit_type = s.get("crit_type", "attack")
-        chance_stat = "spell_crit_chance" if crit_type == "spell" else "attack_crit_chance"
+        hit_type = s.get("hit_type", "attack")
+        chance_stat = "spell_crit_chance" if hit_type == "spell" else "attack_crit_chance"
 
         flat = (self.base_stats[chance_stat] + self.added_flat[chance_stat]
                 + self.base_stats["crit_chance"] + self.added_flat["crit_chance"]
@@ -156,38 +174,46 @@ class Player(StatusHolder):
         """The effect data the tree attached to this event, e.g. "on_kill"."""
         return getattr(self, "event_effects", {}).get(event, ())
 
+    def bonus_sources(self):
+        """[(key, item_or_node), ...] - everything that gives the player bonuses.
+        Disabled items (red slot, e.g. an offhand after losing Titan Grip) give nothing."""
+        return [(id(item), item) for _, item in equipment.working_items()] + allocated_sources()
+
     def recalculate_stats(self, force=False):
-        from systems.skilltree import (allocated_effects, allocated_grants, allocated_mods, allocated_nodes, skill_nodes)
         equip_signature = tuple(id(i) if i else None for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()))
         from systems.pets import pet_signature, update_pet_stats
-        signature = (equip_signature, frozenset(allocated_nodes), pet_signature(self.pets))
+        signature = (equip_signature, tuple(sorted(allocated_points.items())), pet_signature(self.pets))   # a respec changes the points
         if not force and signature == getattr(self, "_stat_signature", None):
             return
         self._stat_signature = signature
         for stat in self.base_stats:
             self.added_flat[stat] = 0
             self.increased[stat] = 0
-        for item in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()):
-            if not item:
-                continue
-            for mod in item.stats:
-                self.apply_modifier(mod)
-        for key in allocated_nodes:
-            for mod in skill_nodes[key]["stats"]:
-                self.apply_modifier(mod)
+        # Grants decide which slots work (a third ring, Titan Grip), and working
+        # slots decide the bonuses. So: grants from the tree and everything worn
+        # first, then collect the bonuses of only the items that still work.
+        self.grants = collect_bonuses([(id(i), i) for i in equipment_items()] + allocated_sources())["grants"]
+        # everything equipped items and allocated tree nodes give (systems/bonuses.py)
+        bonuses = collect_bonuses(self.bonus_sources())
+        for mod in bonuses["stats"]:
+            self.apply_modifier(mod)
         # pets read your "pet_..." stats from above, then their auras land on you
         for mod in update_pet_stats(self):
             self.apply_modifier(mod)
         for stat in self.base_stats:
             setattr(self, stat, self.resolve_stat(stat))
+        # immunities: "poison_immunity" above 0 -> poison is in self.immune
+        self.immune = {status for stat, status in immunity_stats.items() if getattr(self, stat, 0) > 0}
+        for status in self.immune:
+            self.statuses.pop(status, None)          # becoming immune removes it right away
         self.damage_totals = fold_damage_stats(lambda s: getattr(self, s, 0))
         if hasattr(self, "current_health"):
             self.current_health = min(self.current_health, self.max_health)
 
-        # what the tree gives besides plain stats
-        self.tree_mods = allocated_mods()
-        self.grants = allocated_grants()
-        self.event_effects = allocated_effects()
+        # what items and the tree give besides plain stats
+        self.outside_mods = bonuses["mods"]
+        self.grants = bonuses["grants"]
+        self.event_effects = bonuses["effects"]
 
     def rebuild_basic_attack(self):
         weapon_class = self.equipped_weapon_class()
@@ -201,12 +227,12 @@ class Player(StatusHolder):
 
     def rebuild_gem_ability(self):
         from systems.gemtree import tree_supports
-        tree_mods = list(getattr(self, "tree_mods", ()))
+        outside_mods = list(getattr(self, "outside_mods", ()))
         signature = []
         for slot in active_gem_slots:
             item = equipment.extra_slots.get(slot)
             socket_ids = tuple(sorted((k, id(v)) for k, v in getattr(item, "sockets", {}).items())) if item else ()
-            signature.append((id(item) if item else None, socket_ids, tuple(tree_mods)))
+            signature.append((id(item) if item else None, socket_ids, tuple(outside_mods)))
         signature = tuple(signature)
         if signature == self.gem_signature:      # <-- without this the gem is rebuilt every frame
             return
@@ -222,22 +248,22 @@ class Player(StatusHolder):
             if built_in is not None:
                 supports = [built_in] + supports
             t = active_gem_templates[active_item.template_key]
-            allowed_tags = t.get("support_tags", set())
-            supports = [s for s in supports if support_gem_types[s.gem_type]["tags"] & allowed_tags]
+            tags, blocked = ability_tags(t), ability_blocked(t)
+            supports = [s for s in supports if support_fits(s.gem_type, tags, blocked)]
             self.abilities[slot] = build_active_gem(
                 t, supports,
                 gem_stats=getattr(active_item, "gem_stats", None),
-                outside_mods=tree_mods)
+                outside_mods=outside_mods)
 
     def rebuild_pets(self):
         equipped = [equipment.pet_slots[s] for s in pet_equip_slots]
 
-        weapon = equipment.main_slots.get("weapon")
-        summon_types = getattr(weapon, "summon_pets", []) if weapon else []
+        # pets from "summons" on items and tree nodes: [(source, pet_type, number), ...]
+        summons = collect_bonuses(self.bonus_sources())["summons"]
 
         signature = (
             tuple(id(item) if item else None for item in equipped),
-            (id(weapon), tuple(summon_types)) if summon_types else None,   # tuple: a reroll changes it
+            tuple(summons),
         )
         if signature == self.pet_signature:
             return
@@ -256,20 +282,14 @@ class Player(StatusHolder):
                 new_pet = Pet(item.pet_type, self.x, self.y, rarity=item.rarity, source_item=item)
                 new_pets.append(new_pet)
 
-        summon_existing = {id(p.summon_key): p for p in self.pets if getattr(p, "summon_key", None) is not None}
-        for i, pet_type in enumerate(summon_types):
-            key = (weapon, i, pet_type)
-            found = None
-            for p in self.pets:
-                if getattr(p, "summon_key", None) == key:
-                    found = p
-                    break
-            if found is not None:
-                new_pets.append(found)
-            else:
-                new_pet = Pet(pet_type, self.x, self.y, rarity=weapon.rarity)
-                new_pet.summon_key = key
-                new_pets.append(new_pet)
+        summoned = {p.summon_key: p for p in self.pets if getattr(p, "summon_key", None) is not None}
+        for key in summons:
+            pet = summoned.get(key)
+            if pet is None:
+                source_key, pet_type, number = key
+                pet = Pet(pet_type, self.x, self.y, rarity=summon_rarity)
+                pet.summon_key = key
+            new_pets.append(pet)
 
         self.pets = new_pets
     
@@ -401,24 +421,34 @@ class Player(StatusHolder):
         weapon = equipment.main_slots.get("weapon")
         return getattr(weapon, "weapon_class", None) if weapon else None
 
-    def use_ability(self, slot, target_pos, camera):
+    def equipped_weapons(self):
+        """[main weapon, offhand weapon] - only the ones that are there.
+        A shield in the offhand is not a weapon, so it is left out."""
+        found = []
+        for slot in ("weapon", "offhand"):
+            item = equipment.main_slots.get(slot)
+            if item is not None and getattr(item, "slot_type", None) == "weapon" and not equipment.is_disabled(slot):
+                found.append(item)
+        return found
+
+    def has_usable_ability(self, slot):
+        """True if this slot holds an ability one of your weapons allows - even
+        while it is on cooldown. With a wand + gun you can use wand AND gun
+        abilities (the basic attack still comes from the main weapon only)."""
         ability = self.abilities.get(slot)
         if not ability:
             return False
+        classes = [w.weapon_class for w in self.equipped_weapons()] or [None]    # None = no weapon
+        return any(weapon_allows(ability, weapon_class) for weapon_class in classes)
+
+    def use_ability(self, slot, target_pos, camera):
+        if not self.has_usable_ability(slot):
+            return False
+        ability = self.abilities[slot]
 
         if ability.timer > 0:
             return False
         if self.is_action_busy(ability.action_group):
-            return False
-
-        weapon_class = self.equipped_weapon_class()
-
-        required = getattr(ability, "weapon_classes", None)
-        if required and weapon_class not in required:
-            return False
-
-        required_tags = getattr(ability, "weapon_tags", None)
-        if required_tags and not (weapon_class_tags(weapon_class) & set(required_tags)):
             return False
 
         self.move_target = None

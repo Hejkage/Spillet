@@ -62,14 +62,18 @@ def damage_split(hit_stats):
     return {hit_stats.get("damage_type") or default_damage_type: 1.0}
 
 
-def part_keys(damage_type, hit_stats):
-    """The keys ONE part of a hit counts as, e.g. {"fire", "elemental", "spell"}."""
+def hit_tags(hit_stats):
+    """The tags of the WHOLE hit that are not damage types: "spell"/"attack",
+    "projectile", "melee"... (systems/tags.py). Each damage part adds its own type."""
     hit_stats = hit_stats or {}
-    keys = {damage_type, *damage_types.get(damage_type, ())}
-    if hit_stats.get("crit_type"):
-        keys.add(hit_stats["crit_type"])            # "spell" or "attack"
-    keys |= set(hit_stats.get("damage_tags", ()))   # anything extra a gem adds
-    return keys
+    tags = set(hit_stats.get("tags", ())) - set(damage_types) - set(damage_groups)
+    if hit_stats.get("hit_type"):
+        tags.add(hit_stats["hit_type"])             # "spell" or "attack"
+    return tags
+
+def part_keys(damage_type, hit_stats):
+    """The keys ONE part of a hit counts as, e.g. {"fire", "elemental", "spell", "projectile"}."""
+    return {damage_type, *damage_types.get(damage_type, ())} | hit_tags(hit_stats)
 
 
 def attacker_stat(attacker, stat, hit_stats):
@@ -82,10 +86,10 @@ def attacker_stat(attacker, stat, hit_stats):
         return attacker.resolve_stat(stat, hit_stats)
     return (hit_stats or {}).get(stat, 0)
 
-def cannot_scale_keys(hit_stats):
-    """What a hit refuses to scale with: its "cannot_scale" set, plus every type
+def blocked_keys(hit_stats):
+    """What a hit refuses to scale with: its "blocked" set, plus every type
     inside a blocked group. {"elemental"} -> {"elemental", "fire", "frost", "nature"}."""
-    blocked = set((hit_stats or {}).get("cannot_scale", ()))
+    blocked = set((hit_stats or {}).get("blocked", ()))
     for t, tags in damage_types.items():
         if blocked & set(tags):
             blocked.add(t)
@@ -96,8 +100,8 @@ def final_damage(base_damage, hit_stats, stat):
     Used by gems, basic attacks and pets alike.
 
     base_damage  the ability's number, shared out by its damage_type/damage_split
-    hit_stats    the ability's own fields: damage_type / damage_split, crit_type,
-                 damage_tags, cannot_scale
+    hit_stats    the ability's own fields: damage_type / damage_split, hit_type,
+                 tags, blocked
     stat         stat(name, default) -> the attacker's value for that stat
 
     Returns (total, parts) where parts = {"fire": 100.0, "frost": 60.0}.
@@ -109,24 +113,21 @@ def final_damage(base_damage, hit_stats, stat):
        OWN keys: its type, that type's groups, and the hit's attack/spell.
        Added fire on a sword swing is increased by fire, elemental and attack.
 
-    "cannot_scale": {"fire"} turns both off for that key: no added fire, and
+    "blocked": {"fire"} turns both off for that key: no added fire, and
     no increased fire. A group blocks every type in it; "spell"/"attack"
     blocks the conditional flat stats and that increased stat.
     """
     hit_stats = hit_stats or {}
-    blocked = cannot_scale_keys(hit_stats)
+    blocked = blocked_keys(hit_stats)
     parts = {t: base_damage * share for t, share in damage_split(hit_stats).items()}
-
-    hit_tags = set(hit_stats.get("damage_tags", ()))
-    if hit_stats.get("crit_type"):
-        hit_tags.add(hit_stats["crit_type"])
+    whole_hit = hit_tags(hit_stats)
 
     for t in damage_types:
         if t in blocked:
             continue
         flat = stat(f"added_{t}", 0)
         for condition in flat_conditions:
-            if condition in hit_tags and condition not in blocked:
+            if condition in whole_hit and condition not in blocked:
                 flat += stat(f"added_{t}_{condition}", 0)
         if flat:
             parts[t] = parts.get(t, 0) + flat
@@ -136,6 +137,17 @@ def final_damage(base_damage, hit_stats, stat):
         parts[t] *= max(0, 1 + increased)
 
     return sum(parts.values()), parts
+
+def increased_only(base_damage, damage_type, stat):
+    """Damage that is neither a spell nor an attack - an on-kill explosion,
+    burning ground... Only the INCREASED stats of its own type and that type's
+    groups count: a fire explosion uses increased fire and increased elemental.
+    No added flat damage, and no increased spell / attack damage.
+
+    stat(name, default) -> the attacker's value of a stat."""
+    keys = {damage_type, *damage_types.get(damage_type, ())}
+    increased = sum((stat(f"{k}_damage", 100) - 100) / 100 for k in keys)
+    return base_damage * max(0, 1 + increased)
 
 def finish_hit_damage(packets, base_damage, stat):
     """The real damage of each hit, worked out AFTER every support, tree node and mod

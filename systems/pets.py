@@ -147,11 +147,11 @@ def pet_hit(values):
     from systems.damage import final_damage
     damage_type = values.get("damage_type", "physical")
     hit_type = values.get("hit_type", "attack")           # "attack" or "spell"
-    hit_stats = {"damage_type": damage_type, "crit_type": hit_type}
+    hit_stats = {"damage_type": damage_type, "hit_type": hit_type}
     if values.get("damage_split"):
         hit_stats["damage_split"] = dict(values["damage_split"])      # e.g. {"nature": 60, "fire": 40}
-    if values.get("cannot_scale"):
-        hit_stats["cannot_scale"] = set(values["cannot_scale"])        # e.g. {"elemental"}
+    if values.get("blocked"):
+        hit_stats["blocked"] = set(values["blocked"])                  # e.g. {"elemental"}
     total, parts = final_damage(values.get("ability_damage", 0), hit_stats,
                                 lambda name, default: values.get(name, default))
     mult = values.get("damage", 100) / 100
@@ -601,12 +601,34 @@ def pet_item_key(pet_type):
     """"spider" -> "spider_pet": the item key AND the key of its tree."""
     return pet_type + "_pet"
 
+# ---------------------------------------------------------------
+# PET GROUPS - a name for several pets with their own odds, e.g. every flatworm.
+# Use the group name anywhere roll_pets() takes a pet:
+#     {"spider": 1, "bing_bong": 1, "flatworm": 1}
+# -> "flatworm" is picked as often as a spider, THEN one flatworm is picked
+#    by the group's own odds. A group may contain other groups.
+# ---------------------------------------------------------------
+pet_groups = {}
+
+def register_pet_group(name, weights):
+    """weights = {pet_type or group name: weight}. Higher = more common."""
+    if name in pet_configs:
+        raise ValueError(f"Pet group '{name}' has the same name as a pet")
+    pet_groups[name] = dict(weights)
+
 def roll_pets(weights, count):
-    """Pick `count` pet types from a {pet_type: weight} dict, e.g. {"spider": 10, "ghost": 5}."""
-    unknown = [k for k in weights if k not in pet_configs]
+    """Pick `count` pets from {pet_type or group name: weight}, e.g. {"spider": 10, "flatworm": 5}."""
+    unknown = [k for k in weights if k not in pet_configs and k not in pet_groups]
     if unknown:
-        raise KeyError(f"Unknown pet(s) {unknown} in weights. Known pets: {sorted(pet_configs)}")
-    return random.choices(list(weights), weights=list(weights.values()), k=count)
+        raise KeyError(f"Unknown pet(s) {unknown} in weights. Known pets: {sorted(pet_configs)}, groups: {sorted(pet_groups)}")
+    picked = random.choices(list(weights), weights=list(weights.values()), k=count)
+    result = []
+    for name in picked:
+        if name in pet_groups:
+            result.extend(roll_pets(pet_groups[name], 1))      # pick one pet inside the group
+        else:
+            result.append(name)
+    return result
 
 def pet_display_name(pet_type, count=1):
     config = pet_configs.get(pet_type, {})

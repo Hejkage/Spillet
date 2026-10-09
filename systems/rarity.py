@@ -9,8 +9,14 @@ rarity_uncommon = "uncommon"
 rarity_rare = "rare"
 rarity_epic = "epic"
 rarity_legendary = "legendary"
+rarity_unique = "unique"
 
+# The LADDER that random items roll on. Unique is not on it: a unique always
+# is unique (its base item says "rarity": rarity_unique), it is never rolled.
 rarity_order = [rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary]
+
+# Every rarity, in the order the loot filter and sorting show them.
+all_rarities = rarity_order + [rarity_unique]
 
 # ---------------------------------------------------------------
 # MONSTER TIER -> HOW GOOD A DROP CAN BE
@@ -98,33 +104,44 @@ def roll_affix_value(affix, tier_rarity):
     return round(random.uniform(low, high), 3)
 
 def roll_item(base_key, rarity=None, monster_tier=None):
-    from systems.items import EquippableItem, affix_count_by_rarity, affix_entries, affix_pool, base_items
-    base = base_items[base_key]
+    """Make an item from base_items[base_key]. Normal bases and uniques both go here.
+
+    A base with a fixed "rarity" (every unique) always has that rarity.
+    Otherwise the rarity is rolled and capped by the monster's tier.
+    The item gets the base's fixed parts ("stats", "mods", "grants", "effects",
+    "summons", with every (low, high) rolled) plus random affixes from "affixes"."""
+    from systems.items import EquippableItem, affix_count_by_rarity, affix_entries, affix_pool, resolve_base
+    from systems.bonuses import roll_bonuses
+    base = resolve_base(base_key)
     if monster_tier is None:
         monster_tier = drop_context.monster_tier
-    if rarity is None:
-        rarity = roll_rarity(drop_context.rank and rank_item_rarity_weights(drop_context.rank))
-    # the monster's tier is the ceiling: no legendary vests off a tier 1 monster
-    rarity = cap_rarity(rarity, max_item_rarity(base, monster_tier))
+    if "rarity" in base:
+        rarity = base["rarity"]
+    else:
+        if rarity is None:
+            rarity = roll_rarity(drop_context.rank and rank_item_rarity_weights(drop_context.rank))
+        # the monster's tier is the ceiling: no legendary vests off a tier 1 monster
+        rarity = cap_rarity(rarity, max_item_rarity(base, monster_tier))
 
-    lo, hi = affix_count_by_rarity[rarity]
-    count = random.randint(lo, hi)
+    rolled = roll_bonuses(base)
+    stats = rolled.pop("stats", [])
 
-    entries = affix_entries(base)          # groups expanded, weights resolved
-    available = [key for key, _ in entries]
-    weights = [weight for _, weight in entries]
+    lo, hi = affix_count_by_rarity.get(rarity, (0, 0))      # uniques: (0, 0) = no random affixes
+    entries = affix_entries(base) if base.get("affixes") and hi > 0 else []
+    if entries:
+        available = [key for key, _ in entries]
+        weights = [weight for _, weight in entries]
+        allowed_tiers = roll_rarity_tier_range(rarity)
+        for _ in range(random.randint(lo, hi)):
+            affix_key = random.choices(available, weights=weights, k=1)[0]
+            affix = affix_pool[affix_key]
+            tier = random.choice(allowed_tiers)
+            amount = roll_affix_value(affix, tier)
+            stats.append({"stat": affix["stat"], "type": affix["type"], "amount": amount, "tier": tier})
 
-    allowed_tiers = roll_rarity_tier_range(rarity)
-
-    stats = []
-    for _ in range(count):
-        affix_key = random.choices(available, weights=weights, k=1)[0]
-        affix = affix_pool[affix_key]
-        tier = random.choice(allowed_tiers)
-        amount = roll_affix_value(affix, tier)
-        stats.append({"stat": affix["stat"], "type": affix["type"], "amount": amount, "tier": tier})
-
-    return EquippableItem(base["name"], base["sprite"], base["slot"], stats=stats, rarity=rarity, weapon_class=base.get("weapon_class"), swing_sprite_name=base.get("swing_sprite"))
+    return EquippableItem(base["name"], base["sprite"], base["slot"], stats=stats, rarity=rarity,
+                          weapon_class=base.get("weapon_class"), swing_sprite_name=base.get("swing_sprite"),
+                          base_key=base_key, **rolled)
 
 def rank_item_rarity_weights(rank):
     """A rank may push dropped items towards higher rarities. None = normal odds."""
@@ -138,5 +155,5 @@ rarity_colors = {
     rarity_rare: (70, 130, 255),
     rarity_epic: (170, 70, 255),
     rarity_legendary: (255, 165, 0),
+    rarity_unique: (200, 60, 60),
 }
-unique_color = (200, 60, 60)

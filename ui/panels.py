@@ -3,7 +3,7 @@ import random
 from core.state import app
 from core.screen import get_font, place_centre_window, place_bottom_right_window
 from core.assets import get_ui_scaled, scaled_sprites, draw_window, window_size, check_window_fits
-from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
+from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, rarity_unique
 from systems.items import equipment, hover_state, scale_item_sprite
 from systems.player import player
 from ui.skilltree import skill_tree_panel
@@ -231,7 +231,9 @@ shop_rarity_price_mult = {
     rarity_rare:      4,
     rarity_epic:      8,
     rarity_legendary: 20,
+    rarity_unique:    40,
 }
+
 
 def default_shop_price(item):
     mult = shop_rarity_price_mult.get(item.rarity, 1)

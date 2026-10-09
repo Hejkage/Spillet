@@ -32,15 +32,33 @@ clock = pygame.time.Clock()
 draw_view_scale = 1.5          # draw this many screens around the player
 world_object_draw_pad = 200    # extra room so tall sprites (trees) don't pop in
 
+# Basic attack and abilities: only ONE is used at a time - the input pressed
+# LAST that is still held. Holding the mouse and pressing "1" switches to the
+# ability; let go of "1" and the basic attack continues.
+held_order = []     # ability slots, in the order their input was pressed
+
+def held_ability_slots():
+    """Every ability slot whose input is held right now."""
+    held = set()
+    if pygame.mouse.get_pressed()[0] and not app.attack_input_blocked:
+        held.add("primary")
+    keys = pygame.key.get_pressed()
+    for slot, key in ability_keybinds.items():
+        if keys[key]:
+            held.add(slot)
+    return held
+
 def update_player_input(dt):
-    if pygame.mouse.get_pressed()[0] and not app.attack_input_blocked and not attack_blocking_panel_open():
-        player.use_ability("primary", pygame.mouse.get_pos(), camera)
-    if not attack_blocking_panel_open():
-        held_keys = pygame.key.get_pressed() 
-        mouse_pos = pygame.mouse.get_pos()
-        for slot, key in ability_keybinds.items():
-            if held_keys[key]:
-                player.use_ability(slot, mouse_pos, camera)
+    if attack_blocking_panel_open():
+        held_order.clear()
+        return
+    held = held_ability_slots()
+    held_order[:] = [slot for slot in held_order if slot in held]            # forget released inputs
+    held_order.extend(slot for slot in sorted(held) if slot not in held_order)  # newly pressed go last
+    for slot in reversed(held_order):
+        if player.has_usable_ability(slot):              # skip empty slots / wrong weapon
+            player.use_ability(slot, pygame.mouse.get_pos(), camera)
+            break
 
 def update_projectiles(dt):
     for pb in pending_bursts:

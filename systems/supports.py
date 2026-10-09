@@ -1,6 +1,6 @@
 import random
 
-from systems.mods import apply_mod, apply_mods, describe_mod, mod_combine, mod_tags, spread_packets
+from systems.mods import apply_mod, apply_mods, describe_mod, mod_combine, mod_needs, mod_scales, spread_packets
 
 # region Support gems
 #
@@ -11,13 +11,14 @@ from systems.mods import apply_mod, apply_mods, describe_mod, mod_combine, mod_t
 support_gem_types = {}
 
 def register_support_gem(gem_type, name, tiers, mod=None, apply=None, describe=None,
-                         tags=None, combine=None):
+                         needs=None, combine=None):
     """
     mod       the name of a mod in systems/mods.py. The mechanic lives there,
               so a skill tree node or an always-on gem can name the same one.
     apply     only for something nothing else will ever want. Takes the old
               (gem, packets) shape.
-    tags      defaults to the mod's own tags, so you rarely write it.
+    needs     tags a skill must ALL have to take this support (systems/tags.py).
+              Defaults to the mod's own needs, so you rarely write it.
     describe  defaults to the mod's own description.
     combine   defaults to the mod's own setting. Only used by the gem tree UI.
     """
@@ -29,9 +30,17 @@ def register_support_gem(gem_type, name, tiers, mod=None, apply=None, describe=N
         "mod": mod,
         "apply": apply,
         "describe": describe,
-        "tags": set(tags) if tags else (set(mod_tags(mod)) if mod else set()),
+        "needs": set(needs) if needs else (set(mod_needs(mod)) if mod else set()),
+        "scales": set(mod_scales(mod)) if mod else set(),
         "combine": combine if combine is not None else (mod_combine(mod) if mod else "add"),
     }
+
+def support_fits(gem_type, ability_tags, blocked=()):
+    """Can this support type be used on an ability with these tags? The ONE check
+    used by socketing, the gem tree, built-in supports and rebuilding abilities."""
+    from systems.tags import fits
+    config = support_gem_types[gem_type]
+    return fits(config["needs"], config["scales"], ability_tags, blocked)
 
 def combine_support_values(gem_type, values):
     mode = support_gem_types[gem_type].get("combine", "add")
@@ -77,7 +86,7 @@ def build_hit_packets(base_direction, base_speed, base_damage, base_aoe, sprite_
       2. the gem's own "always" mods (extra["_always"]), which you chose
          yourself so they are not filtered, then mods from OUTSIDE the gem
          (extra["_mods"]: the skill tree, uniques), which only apply if the
-         gem accepts their tags (extra["_mod_tags"]).
+         ability has every tag they need (extra["tags"], see systems/tags.py).
       3. the support gems sitting in its sockets
     """
     packet = {
@@ -95,7 +104,7 @@ def build_hit_packets(base_direction, base_speed, base_damage, base_aoe, sprite_
 
     if extra:
         packets = apply_mods(packets, extra.get("_always", ()), None)
-        packets = apply_mods(packets, extra.get("_mods", ()), extra.get("_mod_tags"))
+        packets = apply_mods(packets, extra.get("_mods", ()), extra.get("tags", set()), extra.get("blocked", ()))
 
     for gem in support_gems:
         packets = gem.apply_gem(packets)

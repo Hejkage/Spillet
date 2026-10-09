@@ -9,9 +9,9 @@ from systems.gemtree import (gem_tree_edges, nodes_for, allocate, can_allocate, 
                               enter_tree, has_pending_changes, pending_respec_cost, commit_changes,
                               discard_changes, respec_cost_per_node, can_deallocate, deallocate)
 
-canvas_width = 1600
-canvas_height = 1000
-base_node_radius = 28
+from ui.treeview import TreeView
+
+gem_node_size = 48          # node size in tree pixels (zoom changes it)
 
 _WHITE = (255, 255, 255)
 _GRAY = (200, 200, 200)
@@ -20,7 +20,9 @@ class GemTreePanel:
     def __init__(self):
         self.open = False
         self.item = None
+        self.view = TreeView()
         self.node_rects = {}
+        self.hovered = None
         self.reset_rect = None
         self.respec_rect = None
         self.respec_mode = False
@@ -35,6 +37,7 @@ class GemTreePanel:
         open_center_panel(None)
         self.item = item
         enter_tree(item)
+        self.view.fit(d["position"] for d in nodes_for(item).values())   # every gem has its own tree
         self.respec_mode = False
         self.confirm_open = False
         self.open = True
@@ -51,11 +54,6 @@ class GemTreePanel:
             self.item = None
             self.respec_mode = False
 
-    def canvas_to_screen(self, x, y):
-        scale = min(app.screen_width / canvas_width, app.screen_height / canvas_height)
-        offset_x = (app.screen_width - canvas_width * scale) / 2
-        offset_y = (app.screen_height - canvas_height * scale) / 2
-        return int(offset_x + x * scale), int(offset_y + y * scale), scale
 
     def draw(self):
         if not self.open or self.item is None:
@@ -66,10 +64,13 @@ class GemTreePanel:
         hover_state.ability = None
         item = self.item
         nodes = nodes_for(item)
+        if not self.confirm_open:
+            self.view.update()
 
         overlay = pygame.Surface((app.screen_width, app.screen_height), pygame.SRCALPHA)
         overlay.fill((10, 10, 15, 235))
         app.screen.blit(overlay, (0, 0))
+        self.draw_tree(item, nodes)
 
         font = get_font(max(16, int(22 * app.ui_scale)))
         level = item.gem_level()
@@ -96,6 +97,28 @@ class GemTreePanel:
                 combined = SupportGem(gem_type, combine_support_values(gem_type, values), rarity_common)
                 app.screen.blit(font.render(combined.describe(), True, _GRAY), (40, list_y + font.get_height() * (i + 1)))
 
+        btn_w, btn_h = 200, 50
+        self.reset_rect = pygame.Rect(app.screen_width - btn_w - 40, app.screen_height - btn_h - 40, btn_w, btn_h)
+        pygame.draw.rect(app.screen, (120, 40, 40), self.reset_rect, border_radius=8)
+        pygame.draw.rect(app.screen, (220, 220, 220), self.reset_rect, width=2, border_radius=8)
+        app.screen.blit(font.render("Reset All", True, _WHITE), font.render("Reset All", True, _WHITE).get_rect(center=self.reset_rect.center))
+
+        self.respec_rect = pygame.Rect(self.reset_rect.left - btn_w - 20, self.reset_rect.top, btn_w, btn_h)
+        respec_fill = (60, 110, 60) if self.respec_mode else (60, 60, 90)
+        pygame.draw.rect(app.screen, respec_fill, self.respec_rect, border_radius=8)
+        pygame.draw.rect(app.screen, (220, 220, 220), self.respec_rect, width=2, border_radius=8)
+        respec_label = font.render(f"Respec ({respec_cost_per_node}G/node)", True, _WHITE)
+        app.screen.blit(respec_label, respec_label.get_rect(center=self.respec_rect.center))
+
+        if self.hovered and not self.confirm_open:
+            self.draw_node_tooltip(self.hovered)
+
+        if self.confirm_open:
+            self.draw_confirm_prompt()
+
+    def draw_tree(self, item, nodes):
+        """The lines and nodes, placed by the TreeView (zoom and drag)."""
+        font = get_font(max(14, int(18 * app.ui_scale)))
         edges = gem_tree_edges.get(item.template_key, {})
         drawn = set()
         for key, neighbor_keys in edges.items():
@@ -104,17 +127,17 @@ class GemTreePanel:
                 if edge in drawn:
                     continue
                 drawn.add(edge)
-                x1, y1, _ = self.canvas_to_screen(*nodes[key]["position"])
-                x2, y2, _ = self.canvas_to_screen(*nodes[other]["position"])
                 both = key in item.pending_allocated and other in item.pending_allocated
-                pygame.draw.line(app.screen, (120, 200, 120) if both else (80, 80, 90), (x1, y1), (x2, y2), 4)
+                pygame.draw.line(app.screen, (120, 200, 120) if both else (80, 80, 90),
+                                 self.view.to_screen(*nodes[key]["position"]),
+                                 self.view.to_screen(*nodes[other]["position"]), max(2, int(4 * self.view.zoom)))
 
         self.node_rects = {}
-        hovered = None
+        self.hovered = None
         mouse_pos = pygame.mouse.get_pos()
         for key, data in nodes.items():
-            x, y, scale = self.canvas_to_screen(*data["position"])
-            radius = max(10, int(base_node_radius * scale))
+            x, y = self.view.to_screen(*data["position"])
+            radius = max(3, int(gem_node_size * self.view.zoom / 2))
             if key in item.pending_allocated:
                 color = (240, 200, 60)
             elif can_allocate(item, key):
@@ -140,30 +163,12 @@ class GemTreePanel:
                 else:
                     pygame.draw.circle(app.screen, (30, 30, 35), (x, y), int(radius * 0.55))
 
-            label = font.render(data["name"], True, _WHITE)
-            app.screen.blit(label, label.get_rect(midtop=(x, y + radius + 6)))
+            if self.view.zoom >= 1:                    # names only when zoomed in enough to read
+                label = font.render(data["name"], True, _WHITE)
+                app.screen.blit(label, label.get_rect(midtop=(x, y + radius + 6)))
             self.node_rects[key] = pygame.Rect(x - radius, y - radius, radius * 2, radius * 2)
-            if self.node_rects[key].collidepoint(mouse_pos):
-                hovered = key
-
-        btn_w, btn_h = 200, 50
-        self.reset_rect = pygame.Rect(app.screen_width - btn_w - 40, app.screen_height - btn_h - 40, btn_w, btn_h)
-        pygame.draw.rect(app.screen, (120, 40, 40), self.reset_rect, border_radius=8)
-        pygame.draw.rect(app.screen, (220, 220, 220), self.reset_rect, width=2, border_radius=8)
-        app.screen.blit(font.render("Reset All", True, _WHITE), font.render("Reset All", True, _WHITE).get_rect(center=self.reset_rect.center))
-
-        self.respec_rect = pygame.Rect(self.reset_rect.left - btn_w - 20, self.reset_rect.top, btn_w, btn_h)
-        respec_fill = (60, 110, 60) if self.respec_mode else (60, 60, 90)
-        pygame.draw.rect(app.screen, respec_fill, self.respec_rect, border_radius=8)
-        pygame.draw.rect(app.screen, (220, 220, 220), self.respec_rect, width=2, border_radius=8)
-        respec_label = font.render(f"Respec ({respec_cost_per_node}G/node)", True, _WHITE)
-        app.screen.blit(respec_label, respec_label.get_rect(center=self.respec_rect.center))
-
-        if hovered and not self.confirm_open:
-            self.draw_node_tooltip(hovered)
-
-        if self.confirm_open:
-            self.draw_confirm_prompt()
+            if self.node_rects[key].collidepoint(mouse_pos) and not self.view.dragging:
+                self.hovered = key
 
     def draw_confirm_prompt(self):
         font = get_font(max(16, int(22 * app.ui_scale)))
@@ -241,7 +246,6 @@ class GemTreePanel:
             return False
         from systems.player import player
         item = self.item
-        nodes = nodes_for(item)
 
         if self.confirm_open:
             if self.confirm_keep_rect and self.confirm_keep_rect.collidepoint(pos):
@@ -267,6 +271,17 @@ class GemTreePanel:
             self.respec_mode = not self.respec_mode
             return True
 
+        self.view.press(pos)                       # a click or a drag: decided on release
+        return True
+
+    def handle_release(self, pos, button, drag_state):
+        """Mouse UP. A left click that didn't drag uses the node under the mouse."""
+        if not self.open or button != 1 or self.confirm_open or self.item is None:
+            return False
+        if not self.view.release(pos):
+            return True                                # it was a drag
+        item = self.item
+        nodes = nodes_for(item)
         for key, rect in self.node_rects.items():
             if not rect.collidepoint(pos):
                 continue
@@ -294,6 +309,12 @@ class GemTreePanel:
             else:
                 allocate(item, key)
             return True
+        return True
+
+    def handle_wheel(self, steps):
+        if not self.open or self.confirm_open:
+            return False
+        self.view.scroll(steps, pygame.mouse.get_pos())
         return True
 
 gem_tree_panel = GemTreePanel()

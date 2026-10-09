@@ -1,13 +1,12 @@
 import copy
 import pygame
 import random
-from collections import Counter
 from core.state import app, world
 from core.screen import camera, get_font, wrap_text, place_centre_window, window_gap
 from systems.weapons import get_weapon_geometry, player_body_radius, weapon_class_tags
 from systems.supports import SupportGem, roll_support_value, support_gem_types
 from core.assets import get_ui_scaled, scaled_sprites, sprites, draw_window, window_size, check_window_fits
-from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, roll_rarity, rarity_colors, rarity_order, unique_color
+from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon, roll_rarity, rarity_colors, rarity_order
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -27,15 +26,31 @@ gem_slot_support = "support_gem"
 equip_slots = {}
 
 def register_equip_slot(name, group, accepts, background=None, requires_grant=None):
-    """requires_grant names a grant the player must have before the slot works,
-    so a skill tree node can open a third ring or a fourth pet."""
+    """requires_grant: a grant the player must have before the slot works, so a
+    skill tree node can open a third ring or a fourth pet.
+        requires_grant="ring_slots"         needs at least 1
+        requires_grant=("ring_slots", 2)    needs at least 2 (a fourth ring)
+    A locked slot is hidden while it is empty."""
     equip_slots[name] = {"group": group, "accepts": accepts, "background": background, "requires_grant": requires_grant}
+    group_slots = slot_groups.setdefault(group, [])
+    if name not in group_slots:
+        group_slots.append(name)
+    if "equipment" in globals():
+        equipment.add_slot(name, group)      # registered from content/ after the equipment exists
 
 def slots_in_group(group):
-    return [n for n, d in equip_slots.items() if d["group"] == group]
+    return list(slot_groups.get(group, []))
 
-def accepts_slot_type(t):
-    return lambda item: getattr(item, "slot_type", None) == t
+# The slot names of each group, in order. These lists GROW when content/ registers
+# a slot (ring3 in content/items.py), so always use them - never a copy.
+main_equip_slots  = []
+extra_equip_slots = []
+pet_equip_slots   = []
+slot_groups = {"main": main_equip_slots, "extra": extra_equip_slots, "pet": pet_equip_slots}
+
+def accepts_slot_type(*types):
+    """accepts_slot_type("ring") or several: accepts_slot_type("offhand", "weapon")."""
+    return lambda item: getattr(item, "slot_type", None) in types
 
 def accepts_gem(kind):
     return lambda item: getattr(item, "gem_slot", None) == kind
@@ -51,7 +66,7 @@ register_equip_slot("belt",         "main", accepts_slot_type("belt"),      "inv
 register_equip_slot("pants",        "main", accepts_slot_type("pants"),     "inventory_slot_pants_sprite")
 register_equip_slot("boots",        "main", accepts_slot_type("boots"),     "inventory_slot_boots_sprite")
 register_equip_slot("weapon",       "main", accepts_slot_type("weapon"),    "inventory_slot_sprite")
-register_equip_slot("offhand",      "main", accepts_slot_type("offhand"),   "inventory_slot_sprite")
+register_equip_slot("offhand",      "main", accepts_slot_type("offhand",    "weapon"), "inventory_slot_sprite")   # shields AND a second weapon
 
 register_equip_slot("gem_active1", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
 register_equip_slot("gem_active2", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
@@ -63,21 +78,57 @@ register_equip_slot("pet1", "pet", lambda i: getattr(i, "is_pet", False),   "inv
 register_equip_slot("pet2", "pet", lambda i: getattr(i, "is_pet", False),   "inventory_slot_sprite")
 register_equip_slot("pet3", "pet", lambda i: getattr(i, "is_pet", False),   "inventory_slot_sprite")
 
-main_equip_slots  = slots_in_group("main")
-extra_equip_slots = slots_in_group("extra")
-pet_equip_slots   = slots_in_group("pet")
+# ---------------------------------------------------------------
+# EQUIP RULES - extra rules on top of what a slot accepts.
+# A rule is  fn(equipment, item, slot_name, player)  and returns None if it is
+# fine, or a short reason it is not ("Two-handed weapon equipped").
+# Add a rule with @equip_rule.
+#
+# A rule given item=None asks "is this slot usable at all right now?" - a slot
+# that says no is drawn darkened (the offhand while holding a two-hander).
+# Rules are ALSO checked for items already equipped (after a respec, say).
+# An equipped item that breaks a rule is DISABLED: red slot, no bonuses at all.
+# ---------------------------------------------------------------
+equip_rules = []
+
+def equip_rule(fn):
+    equip_rules.append(fn)
+    return fn
+
+def is_two_handed(item):
+    """A weapon whose weapon class has the "two_hand" tag (content/items.py)."""
+    return item is not None and "two_hand" in weapon_class_tags(getattr(item, "weapon_class", None))
+
+@equip_rule
+def _two_handed_weapons(equipment, item, slot_name, player):
+    """Without Titan Grip (the "dual_wield_two_handers" grant, content/skilltree.py):
+    a two-handed weapon can't share your hands with an offhand item, and can't
+    go in the offhand itself. One-handed weapons can always go in the offhand."""
+    if player.has_grant("dual_wield_two_handers"):
+        return None
+    if slot_name == "offhand" and is_two_handed(equipment.main_slots.get("weapon")):
+        return "Two-handed weapon equipped"
+    if slot_name == "offhand" and is_two_handed(item):
+        return "Two-handed weapons need both hands"
+    if slot_name == "weapon" and is_two_handed(item) and equipment.main_slots.get("offhand") \
+            and equipment.main_slots.get("weapon") is not item:      # only when putting it ON
+        return "Remove your offhand first"
+    return None
+
 active_gem_slots = [s for s in extra_equip_slots if s.startswith("gem_active")]
 
 stat_defs = {}
 
 def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_label=None,
-                  tab=None, always=False, cap=None, color=None):
+                  tab=None, always=False, cap=None, color=None, flag=False):
     """
     tab    which tab of the stats panel shows it: "defence", "offence" or "misc".
            None = not shown. (show_in_panel=True with no tab puts it on "misc".)
     always show it even at zero. Without this a zero row is hidden.
     cap    the highest value that counts. The panel shows the rest as "(x total)".
     color  the row's colour in the panel
+    flag   a yes/no stat: any amount above 0 = yes. Items and the panel show
+           only the label, e.g. "Immune to Poison" instead of "+1 Immune to Poison"
     """
     if tab is None and show_in_panel:
         tab = "misc"
@@ -91,6 +142,7 @@ def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_l
         "always": always,
         "cap": cap,
         "color": color,
+        "flag": flag,
     }
     return key
 
@@ -110,6 +162,22 @@ register_stat("aoe",                "Area of Effect",                   base=100
 register_stat("physical_damage",    "Physical Damage",                  base=100,   tab="offence", panel_label="Increased Physical Damage")
 register_stat("attack_speed",       "Attack Speed",                     base=100,   tab="offence", panel_label="Increased Attack Speed", always=True)
 register_stat("attack_range",       "Attack Range",                     base=0)
+
+# ---------------------------------------------------------------
+# IMMUNITIES - gives the stat "<status>_immunity". Any amount above 0 = the
+# player never gets that status. Items, the tree and pet auras give it like
+# any other stat:  {"stat": "poison_immunity", "type": "flat", "amount": 1}
+# One line per status you want to be able to give immunity to.
+# ---------------------------------------------------------------
+immunity_stats = {}          # stat -> status name
+
+def register_immunity(status, label):
+    key = register_stat(f"{status}_immunity", label, tab="defence", flag=True)
+    immunity_stats[key] = status
+    return key
+
+register_immunity("poison", "Immune to Poison")
+register_immunity("burn",   "Immune to Burn")
 
 from systems.damage import (damage_colors, damage_groups, damage_keys, damage_types, flat_conditions, max_protection, max_resistance)
 
@@ -184,6 +252,10 @@ def stat_rows(player, tab):
         if d["tab"] != tab:
             continue
         value = player.stat_value(stat)
+        if d["flag"]:
+            if value > 0:
+                rows.append((d["panel_label"], d["color"] or (255, 255, 255)))
+            continue
         if d["base"] == 100:
             value -= 100                          # 130 is shown as "30% increased"
         if value == 0 and not d["always"]:
@@ -200,17 +272,17 @@ def stat_rows(player, tab):
 @panel_rows("offence")
 def _rows_total_crit(player):
     """What an attack or a spell really crits with. A gem's own bonuses come on top (see its tooltip)."""
-    attack, _ = player.crit_stats({"crit_type": "attack"})
-    spell, _ = player.crit_stats({"crit_type": "spell"})
+    attack, _ = player.crit_stats({"hit_type": "attack"})
+    spell, _ = player.crit_stats({"hit_type": "spell"})
     return [(f"Crit chance with attacks: {attack:.1f}%", (255, 255, 255)),
             (f"Crit chance with spells: {spell:.1f}%", (255, 255, 255))]
 
 @panel_rows("misc")
 def _rows_global_mods(player):
-    """Mods the skill tree gives every ability that accepts them: pierce, extra projectiles..."""
+    """Mods the skill tree and items give every ability that accepts them: pierce, extra projectiles..."""
     from systems.mods import describe_mod, mod_combine
     grouped = {}
-    for name, value in getattr(player, "tree_mods", ()):
+    for name, value in getattr(player, "outside_mods", ()):
         grouped.setdefault(name, []).append(value)
     rows = []
     for name, values in grouped.items():
@@ -225,11 +297,14 @@ def _rows_global_mods(player):
 
 @panel_rows("misc")
 def _rows_event_effects(player):
-    """On-kill effects and the like, from the skill tree."""
-    from systems.status import describe_effect
+    """On-kill effects and the like, from the skill tree and items."""
+    from systems.status import describe_effect, own_effect_damage
     rows = []
     for event, effects in getattr(player, "event_effects", {}).items():
         for effect in effects:
+            if "damage" in effect:                     # show the damage WITH your increased stats
+                damage, _ = own_effect_damage(effect, player)
+                effect = dict(effect, damage=damage)
             rows.append((f"{describe_effect(effect)} ({event.replace('_', ' ')})", (255, 255, 255)))
     return rows
 
@@ -261,23 +336,34 @@ class Item:
         return cls(d["name"], d["sprite_name"], category=d.get("category", item_category_generic), rarity=d.get("rarity", rarity_common))
 
 class EquippableItem(Item):
+    """Gear. Besides stats it can carry the other bonus parts from
+    systems/bonuses.py: mods, grants, effects and summons.
+    base_key = the base_items key it was made from (None for item_templates)."""
     save_kind = "equippable"
 
-    def __init__(self, name, sprite_name, slot_type, layer_sprite_name=None, stats=None, rarity=rarity_common, weapon_class=None, swing_sprite_name=None):
+    def __init__(self, name, sprite_name, slot_type, layer_sprite_name=None, stats=None, rarity=rarity_common, weapon_class=None, swing_sprite_name=None,
+                 base_key=None, mods=None, grants=None, effects=None, summons=None):
         super().__init__(name, sprite_name, stats=stats, category=item_category_equipment, rarity=rarity)
         self.slot_type = slot_type
         self.layer_sprite_name = layer_sprite_name
         self.weapon_class = weapon_class
         self.swing_sprite_name = swing_sprite_name
+        self.base_key = base_key
+        self.mods = [tuple(m) for m in (mods or [])]
+        self.grants = dict(grants or {})
+        self.effects = copy.deepcopy(effects) if effects else {}
+        self.summons = dict(summons or {})
 
     def to_dict(self):
         d = super().to_dict()
-        d.update(slot_type=self.slot_type, layer_sprite_name=self.layer_sprite_name, stats=self.stats, weapon_class=self.weapon_class, swing_sprite=self.swing_sprite_name)
+        d.update(slot_type=self.slot_type, layer_sprite_name=self.layer_sprite_name, stats=self.stats, weapon_class=self.weapon_class, swing_sprite=self.swing_sprite_name,
+                 base_key=self.base_key, mods=self.mods, grants=self.grants, effects=self.effects, summons=self.summons)
         return d
 
     @classmethod
     def from_dict(cls, d):
-        return cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", []), rarity=d.get("rarity", rarity_common), weapon_class=d.get("weapon_class"), swing_sprite_name=d.get("swing_sprite"))
+        return cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", []), rarity=d.get("rarity", rarity_common), weapon_class=d.get("weapon_class"), swing_sprite_name=d.get("swing_sprite"),
+                   base_key=d.get("base_key"), mods=d.get("mods"), grants=d.get("grants"), effects=d.get("effects"), summons=d.get("summons"))
 
 class GemItem(Item):
     def __init__(self, name, sprite_name, gem_slot, rarity=rarity_common):
@@ -383,96 +469,6 @@ class PetItem(Item, LevelsFromKills):
         item.tree_from_dict(d)
         return item
 
-class UniqueItem(EquippableItem):
-    """A unique item. Its random parts are rolled ONCE when the item is made
-    (dropped / put in a shop) and stored in self.rolled, which is saved with the
-    item. They never change again unless reroll_unique() is called on it
-    (e.g. by a Divine Orb-style currency). See register_unique() below."""
-    save_kind = "unique"
-
-    def __init__(self, name, sprite_name, slot_type, layer_sprite_name=None, stats=None, weapon_class=None, summon_pets=None, swing_sprite_name=None, unique_key=None):
-        super().__init__(name, sprite_name, slot_type, layer_sprite_name=layer_sprite_name, stats=stats, rarity=rarity_common, weapon_class=weapon_class, swing_sprite_name=swing_sprite_name)
-        self.summon_pets = list(summon_pets) if summon_pets else []
-        self.is_unique = True
-        self.unique_key = unique_key
-        self.rolled = {}
-
-    def apply_rolled(self, rolled):
-        """Store rolled values and put them on the item (rolled["summon_pets"] -> self.summon_pets)."""
-        self.rolled = copy.deepcopy(rolled)
-        for attr, value in self.rolled.items():
-            setattr(self, attr, copy.deepcopy(value))
-
-    def to_dict(self):
-        d = super().to_dict()
-        d["summon_pets"] = self.summon_pets
-        d["unique_key"] = self.unique_key
-        # Save what the item has NOW (not the original roll), so later changes
-        # to e.g. item.summon_pets are saved too.
-        d["rolled"] = {attr: getattr(self, attr) for attr in self.rolled}
-        return d
-
-    @classmethod
-    def from_dict(cls, d):
-        item = cls(d["name"], d["sprite_name"], d["slot_type"], layer_sprite_name=d.get("layer_sprite_name"), stats=d.get("stats", []), weapon_class=d.get("weapon_class"), summon_pets=d.get("summon_pets", []), swing_sprite_name=d.get("swing_sprite"), unique_key=d.get("unique_key"))
-        if item.unique_key is None:
-            # Saves from before unique_key existed: find the template by name.
-            item.unique_key = next((k for k, t in unique_templates.items() if t["name"] == item.name), None)
-        if d.get("rolled"):
-            item.apply_rolled(d["rolled"])
-        return item
-
-# ---------------------------------------------------------------
-# UNIQUES - fixed base + a roll function for the random parts.
-#
-#   register_unique("swarmcaller", roll=roll_swarmcaller_pets,
-#                   name="Swarmcaller", sprite_name="wand_item_sprite",
-#                   slot_type="weapon", weapon_class="wand")
-#
-# roll() returns a dict of the random parts, e.g. {"summon_pets": [...]}.
-# Each key becomes an attribute on the item and is saved with it.
-# ---------------------------------------------------------------
-unique_templates = {}
-
-unique_template_fields = {"roll", "min_monster_tier"}   # settings, not UniqueItem arguments
-
-def register_unique(key, roll=None, min_monster_tier=0, **base):
-    """base = everything UniqueItem takes (name, sprite_name, slot_type, stats...).
-
-    min_monster_tier  the lowest monster tier that may drop it. unique_drop()
-                      reads this, so the rule lives next to the unique.
-    """
-    if key in unique_templates:
-        raise ValueError(f"Unique '{key}' is registered twice")
-    unique_templates[key] = {"roll": roll, "min_monster_tier": min_monster_tier, **base}
-    return key
-
-def unique_min_tier(key):
-    return unique_templates[key].get("min_monster_tier", 0)
-
-def unique_drop(key, weight=1, min_tier=None):
-    """A DropEntry for a unique, already gated by its own min_monster_tier."""
-    from systems.drops import DropEntry
-    return DropEntry(lambda: make_unique(key), weight=weight, min_tier=unique_min_tier(key) if min_tier is None else min_tier)
-
-def make_unique(key):
-    """Create a new copy of a unique and roll its random parts."""
-    t = {k: copy.deepcopy(v) for k, v in unique_templates[key].items()
-         if k not in unique_template_fields}
-    roll = unique_templates[key]["roll"]
-    item = UniqueItem(unique_key=key, **t)
-    if roll:
-        item.apply_rolled(roll())
-    return item
-
-def reroll_unique(item):
-    """Re-roll the random parts of an existing unique (Divine Orb). Returns True if it worked."""
-    t = unique_templates.get(getattr(item, "unique_key", None))
-    if not t or not t["roll"]:
-        return False
-    item.apply_rolled(t["roll"]())
-    return True
-
 # ---------------------------------------------------------------
 # EQUIPMENT PANEL LAYOUT
 # Where each MAIN slot sits on the paper doll: (column, row) on a grid.
@@ -480,7 +476,7 @@ def reroll_unique(item):
 # Move a slot = change its numbers. New slot = register_equip_slot() + one line here.
 #
 #   col:  0        1     2      3     4
-#   row0  neck     .     head   .     ring1
+#   row0  neck     .     head   ring3 ring1      (ring3 only shows once unlocked)
 #   row1  body     [            ]     ring2
 #   row2  belt     [   model    ]     gloves
 #   row3  pants    [            ]     .
@@ -489,13 +485,16 @@ def reroll_unique(item):
 equip_doll_columns = 5
 equip_doll_rows = 5
 equip_doll_layout = {
-    "neck":   (0, 0),                     "head": (2, 0),                         "ring1":  (4, 0),
+    "neck":   (0, 0),                     "head": (2, 0),       "ring3": (3, 0),  "ring1":  (4, 0),
     "body":   (0, 1),                                                             "ring2":  (4, 1),
     "belt":   (0, 2),                                                             "gloves": (4, 2),
     "pants":  (0, 3),                                                             "boots":  (4, 3),
                        "weapon": (1, 4),                    "offhand": (3, 4),
 }
 equip_model_area = ((1, 1), (3, 3))     # (top-left cell, bottom-right cell) kept empty
+
+blocked_slot_color  = (0, 0, 0, 150)       # empty slot you can't use right now
+disabled_slot_color = (200, 30, 30, 140)    # item equipped but disabled (red)
 
 class Equipment:
     def __init__(self):
@@ -512,14 +511,57 @@ class Equipment:
 
     def toggle(self):
         self.open = not self.open
+
+    def add_slot(self, name, group):
+        """A slot registered after the equipment was made (from content/)."""
+        slots = {"main": self.main_slots, "extra": self.extra_slots, "pet": self.pet_slots}[group]
+        slots.setdefault(name, None)
     
-    def can_equip(self, item, slot_name):
+    def equip_problem(self, item, slot_name):
+        """None if `item` may go in `slot_name`, else the reason it may not.
+        item=None asks whether the slot is usable at all right now."""
         from systems.player import player      # late: player.py imports this file
         d = equip_slots.get(slot_name)
-        if not d or not d["accepts"](item):
-            return False
-        needed = d.get("requires_grant")
-        return not needed or player.has_grant(needed)
+        if not d:
+            return "No such slot"
+        if item is not None and not d["accepts"](item):
+            return "Doesn't fit here"
+        if not self.slot_unlocked(slot_name):
+            return "Slot locked"
+        for rule in equip_rules:
+            reason = rule(self, item, slot_name, player)
+            if reason:
+                return reason
+        return None
+
+    def can_equip(self, item, slot_name):
+        return self.equip_problem(item, slot_name) is None
+
+    def slot_unlocked(self, slot_name):
+        """False while the slot's requires_grant is missing (e.g. no third ring yet)."""
+        from systems.player import player
+        needed = equip_slots.get(slot_name, {}).get("requires_grant")
+        if not needed:
+            return True
+        name, amount = needed if isinstance(needed, tuple) else (needed, 1)
+        return player.grant_value(name) >= amount
+
+    def item_in(self, slot_name):
+        for slots in (self.main_slots, self.extra_slots, self.pet_slots):
+            if slot_name in slots:
+                return slots[slot_name]
+        return None
+
+    def is_disabled(self, slot_name):
+        """True if the item IN this slot breaks a rule right now - e.g. the offhand
+        after a respec took away Titan Grip. It stays equipped but does nothing."""
+        item = self.item_in(slot_name)
+        return item is not None and self.equip_problem(item, slot_name) is not None
+
+    def working_items(self):
+        """Equipped gear and gems that count: [(slot_name, item), ...]. Disabled ones are left out."""
+        return [(slot, item) for slots in (self.main_slots, self.extra_slots)
+                for slot, item in slots.items() if item is not None and not self.is_disabled(slot)]
     
     def draw(self, scaled_sprites, player):
         if not self.open:
@@ -576,6 +618,8 @@ class Equipment:
         for slot in main_equip_slots:
             if slot not in equip_doll_layout:
                 continue                                   # not placed yet: add it to equip_doll_layout
+            if self.main_slots[slot] is None and not self.slot_unlocked(slot):
+                continue                                   # locked and empty: hidden until a grant opens it
             col, row = equip_doll_layout[slot]
             rect = pygame.Rect(doll_x + col * cell, doll_y + row * cell, slot_size, slot_size)
             self.main_slot_rects[slot] = rect
@@ -600,6 +644,15 @@ class Equipment:
         if slot_sprite:
             scaled_slot = pygame.transform.scale(slot_sprite, (rect.width, rect.height))
             app.screen.blit(scaled_slot, rect)
+
+        if slot_name and item is not None and self.is_disabled(slot_name):
+            shade = pygame.Surface(rect.size, pygame.SRCALPHA)
+            shade.fill(disabled_slot_color)                # equipped but breaking a rule: does nothing
+            app.screen.blit(shade, rect)
+        elif slot_name and item is None and self.equip_problem(None, slot_name):
+            shade = pygame.Surface(rect.size, pygame.SRCALPHA)
+            shade.fill(blocked_slot_color)                 # unusable right now, e.g. offhand with a two-hander
+            app.screen.blit(shade, rect)
 
         if item:
             item_sprite = scaled_sprites.get(item.sprite_name)
@@ -740,12 +793,20 @@ def _format_mod_line(mod):
     label = stat_label(stat)
     amount = mod.get("amount", 0)
     mod_type = mod.get("type")
+    if stat in stat_defs and stat_defs[stat]["flag"]:
+        return label                                   # "Immune to Poison"
     if mod_type == "flat":
         suffix = "%" if stat_is_percent(stat) else ""
-        return f"+{amount}{suffix} {label}"
+        return f"{amount:+g}{suffix} {label}"                     # +20 / -20
     elif mod_type == "increased":
+        if amount < 0:
+            return f"{-int(amount)}% reduced {label}"             # -10 -> "10% reduced"
         return f"+{int(amount)}% increased {label}"
-    return f"{amount} {label}"
+
+@tooltip_section
+def _tt_two_handed(item, lines):
+    if is_two_handed(item):
+        lines.append(("Two-handed weapon", _GRAY))
 
 @tooltip_section
 def _tt_stats(item, lines):
@@ -782,12 +843,12 @@ def _tt_attack_range(item, lines):
     lines.append((f"{player_body_radius + geom['reach']:.0f} Base attack range", _GRAY))
 
 @tooltip_section
-def _tt_summons(item, lines):
-    from systems.pets import pet_display_name
-    if getattr(item, "is_unique", False):
-        summon = getattr(item, "summon_pets", [])
-        for pet_type, n in Counter(summon).items():
-            lines.append((f"Summons {n} {pet_display_name(pet_type, n)}", _WHITE))
+def _tt_bonuses(item, lines):
+    """Mods, grants, effects and summons (the stats are shown above)."""
+    if isinstance(item, EquippableItem):
+        from systems.bonuses import describe_bonuses
+        for text in describe_bonuses(item, include_stats=False):
+            lines.append((text, _WHITE))
 
 @tooltip_section
 def _tt_support_gem(item, lines):
@@ -866,9 +927,9 @@ def _tt_active_gem(item, lines):
     if gem_aoe is not None and template_uses_aoe(t):
         lines.append((f"{gem_aoe * 100:.0f}% area of effect", _WHITE))
 
-    cannot = t.get("cannot_scale")
-    if cannot:
-        lines.append((f"Cannot scale with: {', '.join(sorted(cannot))}", _GRAY))
+    blocked = t.get("blocked")
+    if blocked:
+        lines.append((f"Can't scale with: {', '.join(sorted(blocked))}", _GRAY))
 
     built_in = getattr(item, "built_in_support", None)
     if built_in is not None:
@@ -904,7 +965,7 @@ def draw_item_tooltip():
     item = hover_state.item
     if not item:
         return
-    name_color = unique_color if getattr(item, "is_unique", False) else rarity_colors.get(item.rarity, _WHITE)
+    name_color = rarity_colors.get(item.rarity, _WHITE)
     lines = [(item.name, name_color)]
     for section in tooltip_sections:
         section(item, lines)
@@ -1063,6 +1124,40 @@ def affix_entries(base):
                 found[affix_key] = affix.get("weight", base_affix_weight)
     return list(found.items())
 
+# ---------------------------------------------------------------
+# BASES THAT BUILD ON OTHER BASES (every unique does this)
+#
+#   "swarmcaller": {"base": "twig_wand", "name": "Swarmcaller", ...}
+#
+# Everything you write wins; everything you leave out comes from the base.
+# ---------------------------------------------------------------
+def resolve_base(key):
+    """base_items[key] with its "base" filled in (and that base's base...)."""
+    if key not in base_items:
+        raise KeyError(f"No base item '{key}'. Base items live in content/items.py and content/uniques/.")
+    base = base_items[key]
+    parent = base.get("base")
+    if parent is None:
+        return base
+    return {**resolve_base(parent), **base}
+
+def reroll_unique(item):
+    """Re-roll every range on an item that has fixed lines (a Divine Orb).
+    Its random affixes, if any, are left alone. Returns True if it worked.
+    Call player.recalculate_stats(force=True) afterwards if it is equipped."""
+    from systems.bonuses import roll_bonuses
+    base = resolve_base(item.base_key) if item.base_key in base_items else None
+    if base is None:
+        return False
+    rolled = roll_bonuses(base)
+    affixes = [line for line in item.stats if "tier" in line]
+    item.stats = rolled.pop("stats", []) + affixes
+    item.mods = [tuple(m) for m in rolled.get("mods", [])]
+    item.grants = rolled.get("grants", {})
+    item.effects = rolled.get("effects", {})
+    item.summons = rolled.get("summons", {})
+    return True
+
 item_templates = {}
 
 gem_built_in_support_chance = 1
@@ -1087,8 +1182,10 @@ def roll_gem(template_key, rarity=None, sprite_name=None):
 
     built_in = None
     if random.uniform(0, 100) < gem_built_in_support_chance:
-        allowed_tags = t.get("support_tags", set())
-        compatible = [gt for gt, cfg in support_gem_types.items() if cfg["tags"] & allowed_tags]
+        from systems.abilities import ability_tags, ability_blocked
+        from systems.supports import support_fits
+        tags, blocked = ability_tags(t), ability_blocked(t)
+        compatible = [gt for gt in support_gem_types if support_fits(gt, tags, blocked)]
         if compatible:
             gem_type = random.choice(compatible)
             support_rarity = roll_rarity()
@@ -1104,7 +1201,8 @@ def make_item(key, rarity=None):
     r = rarity if rarity is not None else t.get("rarity", rarity_common)
 
     if kind == "equippable":
-        return EquippableItem(t["name"], t["sprite"], t["slot"], stats=t.get("stats"), rarity=r, weapon_class=t.get("weapon_class"), swing_sprite_name=t.get("swing_sprite"))
+        return EquippableItem(t["name"], t["sprite"], t["slot"], stats=t.get("stats"), rarity=r, weapon_class=t.get("weapon_class"), swing_sprite_name=t.get("swing_sprite"),
+                              mods=t.get("mods"), grants=t.get("grants"), effects=t.get("effects"), summons=t.get("summons"))
     if kind == "active_gem":
         return roll_gem(t["template_key"], rarity=r, sprite_name=t.get("sprite"))
     if kind == "support_gem":

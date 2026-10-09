@@ -7,7 +7,13 @@ from systems.items import active_gem_slots, equipment, hover_state
 # region Hotbar
 
 hotbar_slot_size = 56
+hotbar_slot_size = 56
 hotbar_padding = 8
+
+# Pets: a column on the LEFT of the screen, from the top down. When the column
+# reaches the HUD at the bottom, the next pets start a new column to the right.
+pet_bar_left = 12        # distance from the left edge
+pet_bar_top = 50         # distance from the top (below the FPS counter)
 
 hotbar_slots = [("primary", "MB1")] + [(slot, str(i + 1)) for i, slot in enumerate(active_gem_slots)]
 ability_keybinds = {slot: getattr(pygame, f"K_{i + 1}") for i, slot in enumerate(active_gem_slots)}
@@ -62,17 +68,29 @@ def draw_hotbar(player):
         if rect.collidepoint(pygame.mouse.get_pos()) and ability:
             hover_state.ability = ability
 
-    draw_pet_slots(player, start_x + total_width + padding * 3, y, slot_size, padding)
+    draw_pet_slots(player, slot_size, padding)
 
-def draw_pet_slots(player, start_x, y, slot_size, padding):
-    """Your pets, to the right of the abilities. Hover one to see its REAL
+def pet_slot_rect(index, slot_size, padding):
+    """Where pet number `index` goes: down the left side, then the next column."""
+    from core.screen import hud_height
+    scale = app.ui_scale
+    top = int(pet_bar_top * scale)
+    bottom = app.screen_height - int(hud_height * scale)
+    per_column = max(1, (bottom - top + padding) // (slot_size + padding))
+    column, row = divmod(index, per_column)
+    x = int(pet_bar_left * scale) + column * (slot_size + padding)
+    y = top + row * (slot_size + padding)
+    return pygame.Rect(x, y, slot_size, slot_size)
+
+def draw_pet_slots(player, slot_size, padding):
+    """Your pets, down the left side. Hover one to see its REAL
     stats (gear, its tree and auras included) - like an ability."""
     from core.assets import scaled_sprites
     from systems.items import scale_item_sprite
     from systems.rarity import rarity_colors
     background = get_ui_scaled("inventory_slot_sprite", slot_size, slot_size)
     for i, pet in enumerate(player.pets):
-        rect = pygame.Rect(start_x + i * (slot_size + padding), y, slot_size, slot_size)
+        rect = pet_slot_rect(i, slot_size, padding)
         if background:
             app.screen.blit(background, rect)
         icon = scale_item_sprite(scaled_sprites[pet.sprite_name], slot_size * 0.8)

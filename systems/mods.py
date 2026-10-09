@@ -22,39 +22,42 @@ import random
 #     does it            "always": [("pierce", 3)]   in content/gems.py
 #     a unique item      the same (name, value) pairs
 #
-# TAGS decide where a mod is allowed to land. A gem template lists what it
-# accepts in "support_tags", and a mod only applies if they overlap. That is
+# NEEDS decide where a mod is allowed to land (tags: systems/tags.py). A mod
+# lands on an ability only if the ability has EVERY tag the mod needs. That is
 # why a pierce node does nothing to a sword swing, with no extra code in the
-# skill tree. A mod with no tags applies to everything.
+# skill tree. A mod that needs nothing applies to everything.
+# SCALES is the damage a mod adds ("added_fire" scales {"fire"}): an ability
+# that has it in "blocked" refuses the mod.
 #
 # A new mechanic is ONE function plus ONE register_mod call here. All four
 # sources can use it the same day.
 
 mod_types = {}
 
-def register_mod(name, apply, tags=None, describe=None, combine="add"):
+def register_mod(name, apply, needs=None, scales=None, describe=None, combine="add"):
     """apply(packets, value) -> packets
-    tags      which hits it may change: {"projectile"}, {"melee"}, {"damage"}...
-              Matched against a gem's "support_tags". Empty = applies to all.
+    needs     tags the ability must ALL have: {"projectile"}, {"melee"}, {"damage", "spell"}...
+              Empty = applies to everything.
+    scales    damage types it adds, e.g. {"fire"}. An ability that blocks them refuses it.
     describe  describe(value) -> the line shown in tooltips
     combine   how two sources stack IN THE UI: "add" or "mul"
     """
     mod_types[name] = {
         "apply": apply,
-        "tags": set(tags) if tags else set(),
+        "needs": set(needs or ()),
+        "scales": set(scales or ()),
         "describe": describe,
         "combine": combine,
     }
     return name
 
-def mod_allowed(name, allowed_tags):
-    """True if this mod may touch a hit that accepts `allowed_tags`."""
+def mod_allowed(name, ability_tags, blocked=()):
+    """True if this mod may land on an ability with these tags / blocked set."""
+    from systems.tags import fits
     mod = mod_types.get(name)
     if mod is None:
         return False
-    if not mod["tags"]:
-        return True
-    return bool(mod["tags"] & set(allowed_tags or ()))
+    return fits(mod["needs"], mod["scales"], ability_tags, blocked)
 
 def apply_mod(name, packets, value):
     mod = mod_types.get(name)
@@ -63,12 +66,12 @@ def apply_mod(name, packets, value):
         return packets
     return mod["apply"](packets, value)
 
-def apply_mods(packets, mods, allowed_tags=None):
+def apply_mods(packets, mods, ability_tags=None, blocked=()):
     """mods = [(name, value), ...] applied in order.
-    allowed_tags=None means "no filtering" (used for a gem's own `always`
+    ability_tags=None means "no filtering" (used for a gem's own `always`
     list, which the author chose deliberately)."""
     for name, value in mods or ():
-        if allowed_tags is not None and not mod_allowed(name, allowed_tags):
+        if ability_tags is not None and not mod_allowed(name, ability_tags, blocked):
             continue
         packets = apply_mod(name, packets, value)
     return packets
@@ -79,9 +82,13 @@ def describe_mod(name, value):
         return mod["describe"](value)
     return f"{name} {value}"
 
-def mod_tags(name):
+def mod_needs(name):
     mod = mod_types.get(name)
-    return mod["tags"] if mod else set()
+    return mod["needs"] if mod else set()
+
+def mod_scales(name):
+    mod = mod_types.get(name)
+    return mod["scales"] if mod else set()
 
 def mod_combine(name):
     mod = mod_types.get(name)
@@ -149,7 +156,7 @@ def add_projectiles(packets, value):
 
 def add_crit_chance(packets, value):
     for p in packets:
-        key = "spell_crit_chance_increase" if p.get("crit_type", "attack") == "spell" else "attack_crit_chance_increase"
+        key = "spell_crit_chance_increase" if p.get("hit_type", "attack") == "spell" else "attack_crit_chance_increase"
         p[key] = p.get(key, 0) + value
     return packets
 
@@ -180,7 +187,7 @@ def add_effect(name, **defaults):
 
         register_mod("explode_on_hit",
                      add_effect("explode", radius=150, scales="damage"),
-                     tags={"damage"})
+                     needs={"damage"})
     """
     scales = defaults.pop("scales", None)
     def apply(packets, value):
@@ -193,56 +200,56 @@ def add_effect(name, **defaults):
     return apply
 
 # --- works on any hit ----------------------------------------------------
-register_mod("damage", multiply_key("damage_more"), tags={"damage"}, combine="mul",
+register_mod("damage", multiply_key("damage_more"), needs={"damage"}, combine="mul",
              describe=lambda v: f"x{v:.2f} damage")
-register_mod("aoe", scale_key("aoe"), tags={"aoe"}, combine="mul",
+register_mod("aoe", scale_key("aoe"), needs={"aoe"}, combine="mul",
              describe=lambda v: f"x{v:.2f} area of effect")
-register_mod("dot_damage", scale_key("dot_damage"), tags={"dot"}, combine="mul",
+register_mod("dot_damage", scale_key("dot_damage"), needs={"dot"}, combine="mul",
              describe=lambda v: f"x{v:.2f} damage over time")
-register_mod("crit_damage", add_key("crit_damage"), tags={"crit"},
+register_mod("crit_damage", add_key("crit_damage"), needs={"damage"},
              describe=lambda v: f"+{int(v)}% critical strike damage")
-register_mod("crit_chance", add_crit_chance, tags={"crit"},
+register_mod("crit_chance", add_crit_chance, needs={"damage"},
              describe=lambda v: f"+{v:.1f}% critical strike chance")
-register_mod("attack_speed", add_attack_speed, tags={"attack"},
+register_mod("attack_speed", add_attack_speed, needs={"attack"},
              describe=lambda v: f"+{int(v)}% attack speed")
-register_mod("burst", burst_fire,
+register_mod("burst", burst_fire, needs={"projectile"},
              describe=lambda v: f"Fires {int(v)} extra times")
 register_mod("explode_on_hit", add_effect("explode", radius=150, scales="damage"),
-             tags={"damage"},
+             needs={"damage"},
              describe=lambda v: f"Hits explode for {int(v)} in a 150 radius")
 # --- ailments (systems/ailments.py) - added to the hit, on top of the attacker's own stat ---
-register_mod("burn_chance", add_key("burn_chance"), tags={"damage"},
+register_mod("burn_chance", add_key("burn_chance"), needs={"damage"},
              describe=lambda v: f"+{v:g}% chance to burn")
-register_mod("burn_damage", add_key("burn_damage"), tags={"damage"},
+register_mod("burn_damage", add_key("burn_damage"), needs={"damage"},
              describe=lambda v: f"Burns deal +{v:g}% of the hit's fire damage per second")
-register_mod("poison_chance", add_key("poison_chance"), tags={"damage"},
+register_mod("poison_chance", add_key("poison_chance"), needs={"damage"},
              describe=lambda v: f"+{v:g}% chance to poison")
-register_mod("poison_damage", add_key("poison_damage"), tags={"damage"},
+register_mod("poison_damage", add_key("poison_damage"), needs={"damage"},
              describe=lambda v: f"Poison deals +{v:g}% of max health per stack")
 # --- flat added damage: "added_fire", "added_nature_spell", "added_frost_attack"... ---
 # These only ADD to the hit. finish_hit_damage() in systems/damage.py adds all flat
 # damage together first and multiplies afterwards, so socket order never matters.
 from systems.damage import damage_types, flat_conditions
 for _type in damage_types:
-    register_mod(f"added_{_type}", add_key(f"added_{_type}"), tags={"damage"},
+    register_mod(f"added_{_type}", add_key(f"added_{_type}"), needs={"damage"}, scales={_type},
                  describe=lambda v, t=_type: f"Adds {v:g} {t} damage")
     for _cond in flat_conditions:
-        register_mod(f"added_{_type}_{_cond}", add_key(f"added_{_type}_{_cond}"), tags={"damage"},
+        register_mod(f"added_{_type}_{_cond}", add_key(f"added_{_type}_{_cond}"), needs={"damage", _cond}, scales={_type},
                      describe=lambda v, t=_type, c=_cond: f"Adds {v:g} {t} damage to {c}s")
 # --- projectiles only ----------------------------------------------------
-register_mod("projectiles", add_projectiles, tags={"projectile"},
+register_mod("projectiles", add_projectiles, needs={"projectile"},
              describe=lambda v: f"+{int(v)} projectiles")
-register_mod("pierce", add_key("pierce", to_int=True), tags={"projectile"},
+register_mod("pierce", add_key("pierce", to_int=True), needs={"projectile"},
              describe=lambda v: f"Pierces {int(v)} more targets")
-register_mod("speed", scale_key("speed"), tags={"projectile"}, combine="mul",
+register_mod("speed", scale_key("speed"), needs={"projectile"}, combine="mul",
              describe=lambda v: f"x{v:.2f} projectile speed")
-register_mod("orbit", set_orbit, tags={"projectile"},
+register_mod("orbit", set_orbit, needs={"projectile"},
              describe=lambda v: f"Orbits you at {int(v)} range")
 
 # --- melee only ----------------------------------------------------------
-register_mod("arc", add_key("arc"), tags={"melee"},
+register_mod("arc", add_key("arc"), needs={"melee"},
              describe=lambda v: f"+{int(v)} degree swing arc")
-register_mod("reach", scale_key("range_mult"), tags={"melee"}, combine="mul",
+register_mod("reach", scale_key("range_mult"), needs={"melee"}, combine="mul",
              describe=lambda v: f"x{v:.2f} swing reach")
-register_mod("max_targets", add_key("max_targets", to_int=True), tags={"melee"},
+register_mod("max_targets", add_key("max_targets", to_int=True), needs={"melee"},
              describe=lambda v: f"+{int(v)} targets hit")

@@ -3,7 +3,7 @@ import random
 from core.state import app, world
 from core.screen import get_font
 from core.assets import scaled_sprites
-from systems.rarity import rarity_colors, rarity_common, rarity_epic, rarity_legendary, rarity_order, rarity_rare, rarity_uncommon, unique_color
+from systems.rarity import rarity_colors, all_rarities
 from systems.items import item_category_currency, scale_item_sprite
 from systems.drops import generic_drop_pool
 
@@ -30,7 +30,7 @@ def ground_item_sprite(item):
     _ground_sprite_cache[key] = fitted
     return fitted
 
-loot_filter_levels = [rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary]
+loot_filter_levels = list(all_rarities)      # common ... legendary, unique
 app.loot_filter_index = 0
 app.loot_filter_enabled = False
 
@@ -63,8 +63,6 @@ def ground_label_text(g):
 def ground_label_color(g):
     if g.item.category == item_category_currency:
         return (255, 215, 0)
-    if getattr(g.item, "is_unique", False):
-        return unique_color
     return rarity_colors.get(g.item.rarity, (255, 255, 255))
 
 def assign_label_slots():
@@ -115,7 +113,9 @@ def item_passes_filter(item):
         return True
     if getattr(item, "built_in_support", None) is not None:
         return True
-    return rarity_order.index(item.rarity) >= app.loot_filter_index
+    if item.rarity not in loot_filter_levels:
+        return True
+    return loot_filter_levels.index(item.rarity) >= app.loot_filter_index
 
 class GroundItem:
     def __init__(self, item, x, y):
