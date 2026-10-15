@@ -21,6 +21,7 @@ edge_color_on        = (120, 200, 120)
 edge_color_off       = (80, 80, 90)
 node_flavour_color   = (200, 160, 90)    # the lore / quote line at the bottom of a node tooltip
 labels_from_zoom     = 1                 # node names are shown from this zoom and up
+show_node_names      = False
 
 help_text = "Left click: add point   Right click: remove   Ctrl: all at once   Drag / WASD: move   Wheel: zoom"
 
@@ -122,7 +123,7 @@ class SkillTreePanel:
                 counter = small_font.render(f"{points}/{data['max_points']}", True, _WHITE)
                 app.screen.blit(counter, counter.get_rect(midtop=(x, text_y)))
                 text_y += counter.get_height()
-            if zoom >= labels_from_zoom:
+            if show_node_names and zoom >= labels_from_zoom:
                 label = small_font.render(data["name"], True, _GRAY)
                 app.screen.blit(label, label.get_rect(midtop=(x, text_y)))
 
@@ -197,22 +198,28 @@ class SkillTreePanel:
                 if max_points > 1:
                     lines.append(("Next point:", _WHITE))
                 lines += [(text, (170, 170, 255)) for text in next_lines] or [("Nothing", _GRAY)]
-            for at in sorted(data["at_points"]):              # milestones still to come
-                if at > points + 1:
-                    for text in describe_bonuses(data["at_points"][at]):
-                        lines.append((f"At {at} points: {text}", (150, 150, 160)))
+            # milestones still to come. The same text on several points in a row
+            # is one line: "Points 3-9: +1% Fire Resistance each"
+            upcoming = [(at, describe_bonuses(data["at_points"][at]))
+                        for at in sorted(data["at_points"]) if at > points + 1]
+            i = 0
+            while i < len(upcoming):
+                at, texts = upcoming[i]
+                last = at
+                while i + 1 < len(upcoming) and upcoming[i + 1][1] == texts and upcoming[i + 1][0] == last + 1:
+                    i += 1
+                    last = upcoming[i][0]
+                for text in texts:
+                    label = f"At {at} points: {text}" if last == at else f"Points {at}-{last}: {text} each"
+                    lines.append((label, (150, 150, 160)))
+                i += 1
 
             if max_points > 1 and points < data["points_to_pass"]:
                 lines.append((f"Needs {data['points_to_pass']} points to continue past it", (220, 170, 90)))
-            if can_allocate(player, key):
-                lines.append(("Left click: add a point", node_color_available))
-            elif points == 0:
+            if points == 0 and not can_allocate(player, key):
                 lines.append(("Locked - connect it to the tree first", (200, 80, 80)))
-            if points > 0:
-                if can_deallocate(key):
-                    lines.append((f"Right click: remove a point ({respec_cost_per_point}G if saved)", (255, 120, 90)))
-                else:
-                    lines.append(("Can't remove - other points depend on this", (200, 80, 80)))
+            if points > 0 and not can_deallocate(key):
+                lines.append(("Can't remove - other points depend on this", (200, 80, 80)))
 
         if data.get("description"):
             lines.append(("", _WHITE))                        # empty line before the flavour text

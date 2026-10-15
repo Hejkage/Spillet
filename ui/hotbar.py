@@ -7,7 +7,6 @@ from systems.items import active_gem_slots, equipment, hover_state
 # region Hotbar
 
 hotbar_slot_size = 56
-hotbar_slot_size = 56
 hotbar_padding = 8
 
 # Pets: a column on the LEFT of the screen, from the top down. When the column
@@ -29,7 +28,8 @@ def draw_hotbar(player):
 
     total_width = len(hotbar_slots) * slot_size + (len(hotbar_slots) - 1) * padding
     start_x = app.screen_width // 2 - total_width // 2
-    y = app.screen_height - slot_size - int(60 * scale)
+    from ui.menus import hud_layout
+    y = hud_layout()["xp"].top - slot_size - padding        # just above the xp bar
 
     font = get_font(max(14, int(18 * scale)))
 
@@ -142,6 +142,9 @@ def ability_tooltip_lines(ability, player):
         lines.append((f"Cooldown: {stats['cooldown']:.2f}s", white))
     if ability.action_time:
         lines.append((f"Cast time: {ability.action_time:.2f}s", white))
+    if ability.cost:
+        from systems.resources import describe_cost
+        lines.append((f"Cost: {describe_cost(ability.cost)}", (120, 160, 255)))
 
     chance, crit_damage = player.crit_stats(stats["hit_stats"])
     if chance > 0:
