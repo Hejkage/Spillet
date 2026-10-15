@@ -7,7 +7,8 @@ from systems.facing import face_direction
 
 # region Active Gems
 standard_gem_fields = {"always", "name", "cooldown", "attack_time", "action_time", "damage", "aoe", "projectile_speed", "function", "sprite_name", "facing_flip", "weapon_classes", "weapon_tags", "rarity_stats", "speed_stat", "hit_kind",
-                    "locks_movement", "lock_duration", "uses_aoe", "action_group", "icon"}
+                    "locks_movement", "lock_duration", "uses_aoe", "action_group", "icon",
+                    "cost", "requires"}
 
 global_action_lockout = 0.2
 
@@ -38,6 +39,7 @@ class ActiveGem:
         self.lock_duration = 1.0
         self.action_group = None
         self.weapon_tags = None
+        self.cost = {}                 # {"mana": 12} - empty = free
         self.icon_name = None     
         self.base_projectiles = 1
 
@@ -215,6 +217,7 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         gem.weapon_classes = t.get("weapon_classes")
         gem.weapon_tags = t.get("weapon_tags")
         gem.icon_name = t.get("icon")
+        gem.cost = dict(val("cost", None) or {})          # {"mana": 12}; nothing = free (systems/resources.py)
         gem.action_time = t.get("action_time", t.get("swing_time", 0))
         gem.base_projectiles = int(val("projectiles", 1))
         gem.always_mods = list(t.get("always", ()))        # what this gem always does

@@ -559,7 +559,7 @@ def _rows_pet_auras(player):
 pet_configs = {}
 
 def register_pet(key, name, sprite, stats, buffs=None, rarity_overrides=None, description=None,
-                 name_plural=None, item_name=None, item_sprite=None, item_rarity=None):
+                 name_plural=None, item_name=None, item_sprite=None, item_rarity=None, requires=None):
     """Define a pet and the item that equips it. Drops go in content/drops.py.
 
     key              - internal name, e.g. "spider"
@@ -572,6 +572,7 @@ def register_pet(key, name, sprite, stats, buffs=None, rarity_overrides=None, de
                        That is also the key its tree uses in register_gem_node().
     item_sprite      - inventory icon (default: same as the pet sprite)
     item_rarity      - the item's default rarity (default: common)
+    requires         - needed to equip the pet item, e.g. {"creation": 200} (systems/attributes.py)
     """
     from systems.items import item_templates
 
@@ -585,6 +586,7 @@ def register_pet(key, name, sprite, stats, buffs=None, rarity_overrides=None, de
         "buffs": buffs or [],
         "rarity_overrides": rarity_overrides or {},
         "description": description,
+        "requires": requires or {},
     }
 
     item_key = pet_item_key(key)

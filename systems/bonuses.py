@@ -82,6 +82,36 @@ def roll_bonuses(definition):
 
 
 # ---------------------------------------------------------------
+# SCALING - "per point" bonuses (skill tree nodes, attributes)
+# ---------------------------------------------------------------
+def scale_part(part, value, times):
+    """One part given `times` times: +5 health per point at 7 points = +35 health.
+    Used by skill tree nodes and attributes."""
+    if part == "stats":
+        return [dict(line, amount=line.get("amount", 0) * times) for line in value]
+    if part == "mods":
+        return [mod for mod in value for _ in range(times)]          # each point is its own copy
+    if part == "grants":
+        return {k: (v if v is True else v * times) for k, v in value.items()}
+    if part == "summons":
+        return {k: v * times for k, v in value.items()}
+    if part == "effects":
+        return {event: [e for e in effects for _ in range(times)] for event, effects in value.items()}
+    return value
+
+def add_part(total, part, value):
+    """Add one part into a {part: ...} total (lists extend, grants/summons add up)."""
+    if part in ("stats", "mods"):
+        total.setdefault(part, []).extend(value)
+    elif part == "effects":
+        for event, effects in value.items():
+            total.setdefault(part, {}).setdefault(event, []).extend(effects)
+    else:                                                            # grants / summons add up
+        bucket = total.setdefault(part, {})
+        for k, v in value.items():
+            bucket[k] = True if v is True else bucket.get(k, 0) + v
+
+# ---------------------------------------------------------------
 # COLLECTING - everything the player has, added together
 # ---------------------------------------------------------------
 def collect_bonuses(sources):
@@ -131,6 +161,31 @@ def describe_stat_line(line):
     suffix = "%" if stat_is_percent(stat) else ""
     return f"{amount:+g}{suffix} {label}"                         # +20 / -20
 
+def merged_stat_lines(stat_lines):
+    """+1 fire res and +2 fire res -> one line, +3 fire res. Only for showing; the
+    numbers the player gets are the same either way."""
+    merged = {}
+    for line in stat_lines:
+        key = (line.get("stat"), line.get("type"))
+        if key in merged:
+            merged[key] = dict(merged[key], amount=merged[key].get("amount", 0) + line.get("amount", 0))
+        else:
+            merged[key] = dict(line)
+    return list(merged.values())
+
+def merged_mods(mods):
+    """("pierce", 1) x 9 -> ("pierce", 9). Multiplying mods ("damage", 1.1) are multiplied."""
+    from systems.mods import mod_combine
+    merged = {}
+    for name, value in mods:
+        if name not in merged:
+            merged[name] = value
+        elif mod_combine(name) == "mul":
+            merged[name] *= value
+        else:
+            merged[name] += value
+    return list(merged.items())
+
 def describe_bonuses(source, include_stats=True):
     """-> [str, ...] one line for everything this item / node gives."""
     from systems.mods import describe_mod
@@ -138,8 +193,8 @@ def describe_bonuses(source, include_stats=True):
     from systems.pets import pet_display_name
     lines = []
     if include_stats:
-        lines += [describe_stat_line(line) for line in get_part(source, "stats") or ()]
-    for name, value in get_part(source, "mods") or ():
+        lines += [describe_stat_line(line) for line in merged_stat_lines(get_part(source, "stats") or ())]
+    for name, value in merged_mods(get_part(source, "mods") or ()):
         lines.append(describe_mod(name, value))
     for name, value in (get_part(source, "grants") or {}).items():
         lines.append(grant_label(name) if value is True else f"+{value:g} {grant_label(name).lower()}")

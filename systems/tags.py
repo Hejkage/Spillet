@@ -173,6 +173,32 @@ def check_all_content():
     for key, t in item_templates.items():
         if t.get("kind") == "equippable":
             check_bonuses(f"item '{key}'", t, problems)
+    # costs and requirements: unknown resources / attributes
+    from systems.resources import resource_types
+    from systems.attributes import attribute_types
+    def check_requires(where, requires):
+        for key in requires or {}:
+            if key != "level" and key not in attribute_types:
+                problems.append(f"{where}: requires unknown attribute '{key}' (attributes: {sorted(attribute_types)}, or 'level')")
+    for key, t in active_gem_templates.items():
+        check_requires(f"gem '{key}'", t.get("requires"))
+        costs = [t.get("cost") or {}] + [row.get("cost") or {} for row in t.get("rarity_stats", {}).values()]
+        for cost in costs:
+            for resource in cost:
+                if resource not in resource_types:
+                    problems.append(f"gem '{key}': costs unknown resource '{resource}' (resources: {sorted(resource_types)})")
+    for key in base_items:
+        try:
+            check_requires(f"item '{key}'", resolve_base(key).get("requires"))
+        except KeyError:
+            pass                                       # a bad "base" is already reported above
+    for key, p in pet_configs.items():
+        check_requires(f"pet '{key}'", p.get("requires"))
+    for key, config in attribute_types.items():
+        check_bonuses(f"attribute '{key}' per_point", config["per_point"], problems)
+        for at, bonus in config["checkpoints"].items():
+            check_bonuses(f"attribute '{key}' at {at}", bonus, problems)
+
     for key, node in skill_nodes.items():
         check_bonuses(f"skill node '{key}' per_point", node["per_point"], problems)
         for at, bonus in node["at_points"].items():

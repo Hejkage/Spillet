@@ -52,6 +52,17 @@ register_node_kind("notable",  size=48, frame="node_notable_frame",  max_points=
 register_node_kind("keystone", size=64, frame="node_keystone_frame", max_points=1,  points_to_pass=1)
 register_node_kind("root",     size=48, frame="node_root_frame",     max_points=0,  points_to_pass=0)
 
+def expand_points(at_points):
+    """at_points keys can be one point (5) or a range of points ((1, 4) = points 1, 2, 3 and 4).
+    Two entries for the same point are added together."""
+    from systems.bonuses import add_part
+    result = {}
+    for key, bonus in (at_points or {}).items():
+        points = range(key[0], key[1] + 1) if isinstance(key, tuple) else [key]
+        for point in points:
+            for part, value in bonus.items():
+                add_part(result.setdefault(int(point), {}), part, value)
+    return result
 
 def register_skill_node(key, name, position, kind="small", max_points=None, points_to_pass=None,
                         per_point=None, at_points=None,
@@ -62,6 +73,7 @@ def register_skill_node(key, name, position, kind="small", max_points=None, poin
     max_points   how many points it can take
     per_point    {part: ...} given for every point
     at_points    {points: {part: ...}} given when it reaches that many points
+    A key can be a range: (1, 4) = the same thing at points 1, 2, 3 and 4
     stats/mods/grants/effects/summons   shortcut: all given at the first point
     description  a lore / quote line, shown at the bottom of the tooltip
     sprite_name  the icon drawn inside the frame (draw it at the size you want it)
@@ -70,7 +82,7 @@ def register_skill_node(key, name, position, kind="small", max_points=None, poin
     otherwise its highest at_points - so a node never takes points that do nothing."""
     if kind not in node_kinds:
         raise ValueError(f"Skill node '{key}': unknown kind '{kind}'. Kinds: {sorted(node_kinds)}")
-    at_points = {int(k): dict(v) for k, v in (at_points or {}).items()}
+    at_points = expand_points(at_points)
     first = {part: value for part, value in (("stats", stats), ("mods", mods), ("grants", grants),
                                               ("effects", effects), ("summons", summons)) if value}
     if first:                                      # the old way: everything on the first point
@@ -114,30 +126,8 @@ def root_nodes():
 # ---------------------------------------------------------------
 # WHAT A NODE GIVES AT N POINTS
 # ---------------------------------------------------------------
-def _scaled(part, value, times):
-    """One per_point part, given `times` times."""
-    if part == "stats":
-        return [dict(line, amount=line.get("amount", 0) * times) for line in value]
-    if part == "mods":
-        return [mod for mod in value for _ in range(times)]          # each point is its own copy
-    if part == "grants":
-        return {k: (v if v is True else v * times) for k, v in value.items()}
-    if part == "summons":
-        return {k: v * times for k, v in value.items()}
-    if part == "effects":
-        return {event: [e for e in effects for _ in range(times)] for event, effects in value.items()}
-    return value
-
-def _add(total, part, value):
-    if part in ("stats", "mods"):
-        total.setdefault(part, []).extend(value)
-    elif part == "effects":
-        for event, effects in value.items():
-            total.setdefault(part, {}).setdefault(event, []).extend(effects)
-    else:                                                            # grants / summons add up
-        bucket = total.setdefault(part, {})
-        for k, v in value.items():
-            bucket[k] = True if v is True else bucket.get(k, 0) + v
+# _scaled / _add live in systems/bonuses.py now - attributes use them too
+from systems.bonuses import scale_part as _scaled, add_part as _add
 
 def node_bonuses(key, points):
     """{part: ...} - everything the node gives with this many points."""

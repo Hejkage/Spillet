@@ -16,6 +16,8 @@ from systems.skilltree import allocated_points, allocated_sources
 from systems.bonuses import collect_bonuses
 from systems.status import StatusHolder, draw_statuses
 import systems.ailments        # registers the burn / poison stats BEFORE the player is created
+from systems.resources import clamp_resources, fill_resources, regen_resources, can_pay, pay
+from systems.attributes import attribute_values, attribute_bonuses, attribute_lines
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -135,11 +137,13 @@ class Player(StatusHolder):
     def die(self):
         from systems.areas import areas, switch_area
         self.current_health = self.max_health
+        fill_resources(self)
         switch_area(areas["home"])
     
     def update_health(self, dt):
         if self.health_regen > 0 and self.current_health > 0:
             self.heal(self.health_regen * dt)
+        regen_resources(self, dt)                            # mana (and later other resources)
     
     def resolve_stat(self, key, hit_stats=None):
         s = hit_stats or {}
@@ -175,9 +179,11 @@ class Player(StatusHolder):
         return getattr(self, "event_effects", {}).get(event, ())
 
     def bonus_sources(self):
-        """[(key, item_or_node), ...] - everything that gives the player bonuses.
+        """[(key, item_or_node), ...] - everything that gives the player bonuses:
+        working items, allocated tree nodes, and what your attributes give.
         Disabled items (red slot, e.g. an offhand after losing Titan Grip) give nothing."""
-        return [(id(item), item) for _, item in equipment.working_items()] + allocated_sources()
+        return ([(id(item), item) for _, item in equipment.working_items()] + allocated_sources()
+                + [("attributes", attribute_bonuses(getattr(self, "attributes", {})))])
 
     def recalculate_stats(self, force=False):
         equip_signature = tuple(id(i) if i else None for i in list(equipment.main_slots.values()) + list(equipment.extra_slots.values()))
@@ -186,14 +192,32 @@ class Player(StatusHolder):
         if not force and signature == getattr(self, "_stat_signature", None):
             return
         self._stat_signature = signature
+        for key, d in stat_defs.items():                    # a stat registered from content/ after the player was made
+            if key not in self.base_stats:
+                self.base_stats[key] = d["base"]
+                self.added_flat[key] = 0
+                self.increased[key] = 0
         for stat in self.base_stats:
             self.added_flat[stat] = 0
             self.increased[stat] = 0
-        # Grants decide which slots work (a third ring, Titan Grip), and working
-        # slots decide the bonuses. So: grants from the tree and everything worn
-        # first, then collect the bonuses of only the items that still work.
-        self.grants = collect_bonuses([(id(i), i) for i in equipment_items()] + allocated_sources())["grants"]
-        # everything equipped items and allocated tree nodes give (systems/bonuses.py)
+        # Which items WORK depends on grants (a third ring, Titan Grip) and on
+        # attributes (requirements) - and those come from the items that work.
+        # So: start with everything worn, then repeat until nothing changes.
+        working = equipment_items()
+        for _ in range(5):
+            sources = [(id(i), i) for i in working] + allocated_sources()
+            totals = collect_bonuses(sources)
+            self.attribute_lines = attribute_lines(sources)              # (source, line) - for "what if I equip this"
+            self.attributes = attribute_values([line for _, line in self.attribute_lines])   # an item's own attributes count
+            from_attributes = attribute_bonuses(self.attributes)
+            self.grants = dict(totals["grants"])
+            for name, value in from_attributes.get("grants", {}).items():
+                self.grants[name] = self.grants.get(name, 0) + (1 if value is True else value)
+            still_working = [item for _, item in equipment.working_items()]
+            if [id(i) for i in still_working] == [id(i) for i in working]:
+                break
+            working = still_working
+        # everything working items, tree nodes and attributes give (systems/bonuses.py)
         bonuses = collect_bonuses(self.bonus_sources())
         for mod in bonuses["stats"]:
             self.apply_modifier(mod)
@@ -209,6 +233,7 @@ class Player(StatusHolder):
         self.damage_totals = fold_damage_stats(lambda s: getattr(self, s, 0))
         if hasattr(self, "current_health"):
             self.current_health = min(self.current_health, self.max_health)
+        clamp_resources(self)                                # mana can't stay above a lower max
 
         # what items and the tree give besides plain stats
         self.outside_mods = bonuses["mods"]
@@ -232,7 +257,7 @@ class Player(StatusHolder):
         for slot in active_gem_slots:
             item = equipment.extra_slots.get(slot)
             socket_ids = tuple(sorted((k, id(v)) for k, v in getattr(item, "sockets", {}).items())) if item else ()
-            signature.append((id(item) if item else None, socket_ids, tuple(outside_mods)))
+            signature.append((id(item) if item else None, socket_ids, tuple(outside_mods), equipment.is_disabled(slot)))
         signature = tuple(signature)
         if signature == self.gem_signature:      # <-- without this the gem is rebuilt every frame
             return
@@ -240,7 +265,7 @@ class Player(StatusHolder):
 
         for slot in active_gem_slots:
             active_item = equipment.extra_slots.get(slot)
-            if active_item is None:
+            if active_item is None or equipment.is_disabled(slot):   # red gem (requirement not met): no ability
                 self.abilities[slot] = None
                 continue
             supports = list(tree_supports(active_item))
@@ -256,7 +281,7 @@ class Player(StatusHolder):
                 outside_mods=outside_mods)
 
     def rebuild_pets(self):
-        equipped = [equipment.pet_slots[s] for s in pet_equip_slots]
+        equipped = [None if equipment.is_disabled(s) else equipment.pet_slots[s] for s in pet_equip_slots]
 
         # pets from "summons" on items and tree nodes: [(source, pet_type, number), ...]
         summons = collect_bonuses(self.bonus_sources())["summons"]
@@ -419,7 +444,9 @@ class Player(StatusHolder):
     
     def equipped_weapon_class(self):
         weapon = equipment.main_slots.get("weapon")
-        return getattr(weapon, "weapon_class", None) if weapon else None
+        if weapon is None or equipment.is_disabled("weapon"):    # a red weapon is like no weapon
+            return None
+        return getattr(weapon, "weapon_class", None)
 
     def equipped_weapons(self):
         """[main weapon, offhand weapon] - only the ones that are there.
@@ -450,9 +477,13 @@ class Player(StatusHolder):
             return False
         if self.is_action_busy(ability.action_group):
             return False
+        cost = getattr(ability, "cost", None)
+        if not can_pay(self, cost):                          # not enough mana
+            return False
 
         self.move_target = None
         ability.try_cast(self, target_pos, camera)
+        pay(self, cost)
         return True
     
     def get_sort_y(self):

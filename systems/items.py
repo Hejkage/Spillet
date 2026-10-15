@@ -66,7 +66,7 @@ register_equip_slot("belt",         "main", accepts_slot_type("belt"),      "inv
 register_equip_slot("pants",        "main", accepts_slot_type("pants"),     "inventory_slot_pants_sprite")
 register_equip_slot("boots",        "main", accepts_slot_type("boots"),     "inventory_slot_boots_sprite")
 register_equip_slot("weapon",       "main", accepts_slot_type("weapon"),    "inventory_slot_sprite")
-register_equip_slot("offhand",      "main", accepts_slot_type("offhand",    "weapon"), "inventory_slot_sprite")   # shields AND a second weapon
+register_equip_slot("offhand",      "main", accepts_slot_type("offhand", "weapon"), "inventory_slot_sprite")   # shields AND a second weapon
 
 register_equip_slot("gem_active1", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
 register_equip_slot("gem_active2", "extra", accepts_gem(gem_slot_active), "inventory_slot_sprite")
@@ -120,7 +120,7 @@ active_gem_slots = [s for s in extra_equip_slots if s.startswith("gem_active")]
 stat_defs = {}
 
 def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_label=None,
-                  tab=None, always=False, cap=None, color=None, flag=False):
+                  tab=None, always=False, cap=None, color=None, flag=False, as_increase=None):
     """
     tab    which tab of the stats panel shows it: "defence", "offence" or "misc".
            None = not shown. (show_in_panel=True with no tab puts it on "misc".)
@@ -129,6 +129,9 @@ def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_l
     color  the row's colour in the panel
     flag   a yes/no stat: any amount above 0 = yes. Items and the panel show
            only the label, e.g. "Immune to Poison" instead of "+1 Immune to Poison"
+    as_increase  the panel shows it as "30%" from a base of 100 (attack speed,
+           spell damage...). Left out: True when base is 100. Max mana starts at
+           100 too, so it sets as_increase=False.
     """
     if tab is None and show_in_panel:
         tab = "misc"
@@ -143,6 +146,7 @@ def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_l
         "cap": cap,
         "color": color,
         "flag": flag,
+        "as_increase": (base == 100) if as_increase is None else as_increase,
     }
     return key
 
@@ -256,11 +260,11 @@ def stat_rows(player, tab):
             if value > 0:
                 rows.append((d["panel_label"], d["color"] or (255, 255, 255)))
             continue
-        if d["base"] == 100:
+        if d["as_increase"]:
             value -= 100                          # 130 is shown as "30% increased"
         if value == 0 and not d["always"]:
             continue
-        suffix = "%" if (d["percent"] or d["base"] == 100) else ""
+        suffix = "%" if (d["percent"] or d["as_increase"]) else ""
         text = f"{d['panel_label']}: {_number(value)}{suffix}"
         if d["cap"] is not None and value > d["cap"]:
             text = f"{d['panel_label']}: {_number(d['cap'])}{suffix}  ({_number(value)}{suffix} total)"
@@ -562,7 +566,7 @@ class Equipment:
         """Equipped gear and gems that count: [(slot_name, item), ...]. Disabled ones are left out."""
         return [(slot, item) for slots in (self.main_slots, self.extra_slots)
                 for slot, item in slots.items() if item is not None and not self.is_disabled(slot)]
-    
+
     def draw(self, scaled_sprites, player):
         if not self.open:
             return
@@ -802,6 +806,7 @@ def _format_mod_line(mod):
         if amount < 0:
             return f"{-int(amount)}% reduced {label}"             # -10 -> "10% reduced"
         return f"+{int(amount)}% increased {label}"
+    return f"{amount} {label}"
 
 @tooltip_section
 def _tt_two_handed(item, lines):

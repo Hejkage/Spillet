@@ -30,6 +30,7 @@ def save_game():
         "xp_to_next_level": player.xp_to_next_level,
         "coins": player.coins,
         "current_health": player.current_health,
+        "resources": dict(player.resources),           # current mana etc.
         "equipment": {
             "main":  {s: item_to_dict(i) for s, i in equipment.main_slots.items()},
             "extra": {s: item_to_dict(i) for s, i in equipment.extra_slots.items()},
@@ -112,6 +113,9 @@ def load_game():
     player.pet_signature = None
     player.recalculate_stats()
     player.current_health = min(data.get("current_health", player.max_health), player.max_health)
+    player.resources.update(data.get("resources", {}))
+    from systems.resources import clamp_resources
+    clamp_resources(player)
 
     settings = data.get("settings", {})
     app.loot_filter_index = settings.get("loot_filter_index", app.loot_filter_index)
