@@ -22,6 +22,9 @@ def load_folder(folder):
         if not mod.name.startswith("_"):
             importlib.import_module(f"{__name__}.{folder}.{mod.name}")
 
+
+from . import attributes          # first: items and gems may need them
+from . import gems
 from . import gems
 from . import gem_trees
 from . import items

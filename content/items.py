@@ -60,11 +60,23 @@ affix_pool.update({
         "stat": "max_health",
         "type": "flat",
         "tiers": {
-            rarity_common:    (1, 100),
-            rarity_uncommon:  (101, 200),
-            rarity_rare:      (201, 300),
-            rarity_epic:      (301, 500),
-            rarity_legendary: (500, 1000),
+            rarity_common:    (1, 50),
+            rarity_uncommon:  (51, 100),
+            rarity_rare:      (101, 150),
+            rarity_epic:      (151, 200),
+            rarity_legendary: (201, 250),
+        },
+    },
+
+    "max_mana": {
+        "stat": "max_mana",
+        "type": "flat",
+        "tiers": {
+            rarity_common:    (1, 40),
+            rarity_uncommon:  (41, 90),
+            rarity_rare:      (91, 120),
+            rarity_epic:      (121, 149),
+            rarity_legendary: (150, 200),
         },
     },
 
@@ -653,6 +665,41 @@ affix_pool.update({
         },
     },
 
+    "domination": {
+        "stat": "domination",
+        "type": "flat",
+        "tiers": {
+            rarity_common:    (1, 10),
+            rarity_uncommon:  (11, 19),
+            rarity_rare:      (20, 30),
+            rarity_epic:      (31, 45),
+            rarity_legendary: (46, 65),
+        },
+    },
+
+    "creation": {
+        "stat": "domination",
+        "type": "flat",
+        "tiers": {
+            rarity_common:    (1, 10),
+            rarity_uncommon:  (11, 19),
+            rarity_rare:      (20, 30),
+            rarity_epic:      (31, 45),
+            rarity_legendary: (46, 65),
+        },
+    },
+
+    "efficiency": {
+        "stat": "efficiency",
+        "type": "flat",
+        "tiers": {
+            rarity_common:    (1, 10),
+            rarity_uncommon:  (11, 19),
+            rarity_rare:      (20, 30),
+            rarity_epic:      (31, 45),
+            rarity_legendary: (46, 65),
+        },
+    },
 })
 
 # ---------------------------------------------------------------

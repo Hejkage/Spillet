@@ -64,6 +64,7 @@ register_pet(
     sprite="ember_fox_sprite",
     item_rarity=rarity_epic,       # rarity of the pet item
     drop_weight=0.1,               # 0 = never drops (shop only)
+    requires={"creation": 200},
     stats={
         "ability": make_pet_projectile_ability("fireball_sprite", effects=[
             {"name": "ember_burn", "duration": 3.0, "dps": 4},

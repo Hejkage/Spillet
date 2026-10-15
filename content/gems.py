@@ -87,12 +87,13 @@ active_gem_templates.update({
         "burn_chance": 5,
         "aoe": 1,
         "projectile_speed": 600,
+        "cost": {"mana": 1},
         "rarity_stats": {
-        rarity_common:    {"damage": 70,  "cooldown": 1},
-        rarity_uncommon:  {"damage": 95,  "cooldown": 0.90},
-        rarity_rare:      {"damage": 130, "cooldown": 0.85},
-        rarity_epic:      {"damage": 175, "cooldown": 0.80},
-        rarity_legendary: {"damage": 240, "cooldown": 0.75},
+        rarity_common:    {"damage": 70,  "cooldown": 1,    "cost": {"mana": 1}},
+        rarity_uncommon:  {"damage": 95,  "cooldown": 0.90, "cost": {"mana": 2}},
+        rarity_rare:      {"damage": 130, "cooldown": 0.85, "cost": {"mana": 3}},
+        rarity_epic:      {"damage": 175, "cooldown": 0.80, "cost": {"mana": 4}},
+        rarity_legendary: {"damage": 240, "cooldown": 0.75, "cost": {"mana": 5}},
         },
     },
 
@@ -105,6 +106,8 @@ active_gem_templates.update({
         "damage_split": {"fire": 33, "frost": 33, "nature": 33},
         "aoe": 1,
         "projectile_speed": 600,
+        "requires": {"efficiency": 100, "level": 10},
+        "cost": {"mana": 3},
         "rarity_stats": {
         rarity_common:    {"damage": 70,  "cooldown": 1},
         rarity_uncommon:  {"damage": 95,  "cooldown": 0.90},
