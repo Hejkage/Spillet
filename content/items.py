@@ -1001,6 +1001,8 @@ item_templates.update({
     "support_added_pure_attack":    {"kind": "support_gem", "gem_type": "added_pure_attack",    "rarity": rarity_common},
     "support_added_shadow_attack":  {"kind": "support_gem", "gem_type": "added_shadow_attack",  "rarity": rarity_common},
     "support_added_physical_attack":{"kind": "support_gem", "gem_type": "added_physical_attack","rarity": rarity_common},
+    "support_chain":                {"kind": "support_gem", "gem_type": "chain",                "rarity": rarity_common},
+    "support_split":                {"kind": "support_gem", "gem_type": "split",                "rarity": rarity_common},
 
     # Currency
     "gold_coin": {

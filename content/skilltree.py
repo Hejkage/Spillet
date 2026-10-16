@@ -7,7 +7,8 @@ register_grant_label("dual_wield_two_handers", "Can wield two two-handed weapons
 register_grant_label("ring_slots", "extra ring slot")
 register_grant_label("pet_slots", "extra pet slot")
 
-register_skill_node("start", "Origin", position=(0, 0), is_root=True)
+register_skill_node("start", "Origin", position=(0, 0), is_root=True,
+    frame="root_border", sprite_name="fjol_to_sprite")
 
 H = lambda amount, kind="flat": {"stats": [{"stat": "max_health", "type": kind, "amount": amount}]}
 # +5 health per point, extra at 10, need 5 to pass

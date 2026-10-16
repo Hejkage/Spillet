@@ -146,7 +146,7 @@ active_gem_templates.update({
         "uses_aoe": False,
         "weapon_tags": {"melee"},
         "hit_type": "attack",
-        "projectile_speed": 0,
+        "damage_type": "physical",
         "range_mult": 1.1,
         "arc": 140,
         "swing_time": 0.3,
@@ -172,7 +172,7 @@ active_gem_templates.update({
         "uses_aoe": False,
         "weapon_tags": {"melee"},
         "hit_type": "attack",
-        "projectile_speed": 0,
+        "damage_type": "physical",
         "range_mult": 1,
         "arc": 1080,
         "swing_time": 1,
@@ -322,6 +322,30 @@ register_support_gem(
         rarity_legendary: (5, 5),
     },
     mod="pierce",
+)
+
+register_support_gem(
+    "split", "Splitting Projectiles",
+    tiers={
+        rarity_common:    (2, 3),
+        rarity_uncommon:  (4, 5),
+        rarity_rare:      (6, 7),
+        rarity_epic:      (8, 9),
+        rarity_legendary: (10, 10),
+    },
+    mod="split",
+)
+
+register_support_gem(
+    "chain", "Chain",
+    tiers={
+        rarity_common:    (1, 1),
+        rarity_uncommon:  (2, 2),
+        rarity_rare:      (3, 3),
+        rarity_epic:      (4, 4),
+        rarity_legendary: (5, 5),
+    },
+    mod="chain",
 )
 
 register_support_gem(

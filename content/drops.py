@@ -27,6 +27,8 @@ flat_to_attack_group = [
 
 support_gem_group = [
     DropEntry(lambda: make_item("support_projectiles",       rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_chain",             rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_split",             rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("support_speed",             rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("support_aoe",               rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("support_damage",            rarity=roll_rarity()), weight=5),
