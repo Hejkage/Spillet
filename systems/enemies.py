@@ -471,7 +471,7 @@ def credit_gem_kill():
             gem.kills += 1
             after = level_from_kills(gem.kills)
             if after > before:
-                spawn_floating_text(f"{gem.name} +1 Point", player.x, player.y - 40, color=(120, 200, 255))
+                spawn_floating_text(f"{gem.name} reached level {after}", player.x, player.y - 40, color=(120, 200, 255))
 
 def deal_effect_damage(enemy, damage, hit_stats=None, attacker=None, label="Effect"):
     """Damage that is NOT a hit: explosions, burning ground... It is reduced by

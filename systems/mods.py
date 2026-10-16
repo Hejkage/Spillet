@@ -190,28 +190,63 @@ def add_effect(name, **defaults):
                      needs={"damage"})
     """
     scales = defaults.pop("scales", None)
+    stack = defaults.pop("stack", False)
     def apply(packets, value):
         for p in packets:
-            effect = {"name": name, **defaults}
-            if scales:
-                effect[scales] = value
-            p["effects"] = list(p.get("effects", ())) + [effect]
+            effects = list(p.get("effects", ()))
+            same = [i for i, e in enumerate(effects) if e["name"] == name] if (stack and scales) else []
+            if same:
+                # stack=True: add to the one already there (split 5 + split 3 = ONE split of 8)
+                old = effects[same[0]]
+                effects[same[0]] = {**old, scales: old.get(scales, 0) + value}
+            else:
+                effect = {"name": name, **defaults}
+                if scales:
+                    effect[scales] = value
+                effects.append(effect)
+            p["effects"] = effects
         return packets
     return apply
 
+def add_flat_crit_chance(packets, value):
+    """FLAT crit chance (+5 = 5% more chance on top of the base), for this hit's spell/attack."""
+    for p in packets:
+        key = "spell_crit_chance" if p.get("hit_type", "attack") == "spell" else "attack_crit_chance"
+        p[key] = p.get(key, 0) + value
+    return packets
+
+def more_text(value, label):
+    """1.12 -> "12% more damage", 0.9 -> "10% less damage"."""
+    percent = round((value - 1) * 100, 1)
+    return f"{percent:g}% more {label}" if percent >= 0 else f"{-percent:g}% less {label}"
+
+# HOW TO TELL THEM APART - the NAME of a mod says what kind of bonus it is:
+#   added_...      FLAT: adds a number.            ("added_fire", 10)        +10 fire damage
+#                                                  ("added_crit_chance", 5)  +5% crit chance
+#   increased_...  INCREASED: a percent. All increased bonuses are ADDED together
+#                  first, then applied once.       ("increased_damage", 2)   2% increased damage
+#   damage, aoe, speed, reach, dot_damage
+#                  MORE: a multiplier. Each one multiplies separately, so they
+#                  are stronger together.           ("damage", 1.12)          12% more damage
+#   crit_chance    INCREASED crit chance            ("crit_chance", 80)       80% increased crit chance
+
 # --- works on any hit ----------------------------------------------------
 register_mod("damage", multiply_key("damage_more"), needs={"damage"}, combine="mul",
-             describe=lambda v: f"x{v:.2f} damage")
+             describe=lambda v: more_text(v, "damage"))
 register_mod("aoe", scale_key("aoe"), needs={"aoe"}, combine="mul",
-             describe=lambda v: f"x{v:.2f} area of effect")
+             describe=lambda v: more_text(v, "area of effect"))
 register_mod("dot_damage", scale_key("dot_damage"), needs={"dot"}, combine="mul",
-             describe=lambda v: f"x{v:.2f} damage over time")
+             describe=lambda v: more_text(v, "damage over time"))
 register_mod("crit_damage", add_key("crit_damage"), needs={"damage"},
              describe=lambda v: f"+{int(v)}% critical strike damage")
 register_mod("crit_chance", add_crit_chance, needs={"damage"},
-             describe=lambda v: f"+{v:.1f}% critical strike chance")
+             describe=lambda v: f"{v:g}% increased critical strike chance")
+register_mod("added_crit_chance", add_flat_crit_chance, needs={"damage"},
+             describe=lambda v: f"+{v:g}% critical strike chance")
 register_mod("attack_speed", add_attack_speed, needs={"attack"},
              describe=lambda v: f"+{int(v)}% attack speed")
+register_mod("cooldown_reduction", add_key("cooldown_reduction"), needs={"spell"},
+             describe=lambda v: f"{v:g}% cooldown reduction")
 register_mod("burst", burst_fire, needs={"projectile"},
              describe=lambda v: f"Fires {int(v)} extra times")
 register_mod("explode_on_hit", add_effect("explode", radius=150, scales="damage"),
@@ -236,20 +271,51 @@ for _type in damage_types:
     for _cond in flat_conditions:
         register_mod(f"added_{_type}_{_cond}", add_key(f"added_{_type}_{_cond}"), needs={"damage", _cond}, scales={_type},
                      describe=lambda v, t=_type, c=_cond: f"Adds {v:g} {t} damage to {c}s")
+# --- increased damage on THIS hit only: "increased_damage", "increased_fire", "increased_spell"... ---
+# Added to the player's own increased stats for the same key (finish_hit_damage in systems/damage.py).
+from systems.damage import damage_keys
+for _key in ["damage", *damage_keys]:
+    register_mod(f"increased_{_key}", add_key(f"increased_{_key}"), needs={"damage"},
+                 describe=lambda v, k=_key: f"{v:g}% increased {'' if k == 'damage' else k + ' '}damage")
+# --- increased for things that aren't damage --------------------------------
+# "increased_projectile_speed", 5  ->  added to the player's own Projectile Speed stat.
+# A new one = one line in this list (the player's stat, the key on the hit) + a register_mod.
+increased_hit_stats = [("projectile_speed", "speed"), ("aoe", "aoe")]
+
+def finish_increased_stats(packets, stat):
+    """Run once at the end of build_hit_packets(): the player's stat + the
+    increased_ mods on this hit are ADDED, then applied once."""
+    for p in packets:
+        for player_stat, key in increased_hit_stats:
+            extra = p.get(f"increased_{player_stat}", 0)
+            if extra:
+                have = stat(player_stat, 100) or 100
+                p[key] = p[key] * (have + extra) / have
+
+register_mod("increased_aoe", add_key("increased_aoe"), needs={"aoe"},
+             describe=lambda v: f"{v:g}% increased area of effect")
 # --- projectiles only ----------------------------------------------------
+register_mod("increased_projectile_speed", add_key("increased_projectile_speed"), needs={"projectile"},
+             describe=lambda v: f"{v:g}% increased projectile speed")
 register_mod("projectiles", add_projectiles, needs={"projectile"},
              describe=lambda v: f"+{int(v)} projectiles")
 register_mod("pierce", add_key("pierce", to_int=True), needs={"projectile"},
              describe=lambda v: f"Pierces {int(v)} more targets")
 register_mod("speed", scale_key("speed"), needs={"projectile"}, combine="mul",
-             describe=lambda v: f"x{v:.2f} projectile speed")
+             describe=lambda v: more_text(v, "projectile speed"))
 register_mod("orbit", set_orbit, needs={"projectile"},
              describe=lambda v: f"Orbits you at {int(v)} range")
+register_mod("split", add_effect("split", damage_mult=0.25, size_mult=0.6, scales="count", stack=True),
+             needs={"projectile"},
+             describe=lambda v: f"On hit, fires {int(v)} smaller projectiles in a circle (25% damage)")
+register_mod("chain", add_effect("chain", damage_mult=0.8, range=400, scales="count", stack=True),
+             needs={"projectile"},
+             describe=lambda v: f"Chains to {int(v)} more enemies (-20% damage per chain)")
 
 # --- melee only ----------------------------------------------------------
 register_mod("arc", add_key("arc"), needs={"melee"},
              describe=lambda v: f"+{int(v)} degree swing arc")
 register_mod("reach", scale_key("range_mult"), needs={"melee"}, combine="mul",
-             describe=lambda v: f"x{v:.2f} swing reach")
+             describe=lambda v: more_text(v, "swing reach"))
 register_mod("max_targets", add_key("max_targets", to_int=True), needs={"melee"},
              describe=lambda v: f"+{int(v)} targets hit")

@@ -165,6 +165,8 @@ def finish_hit_damage(packets, base_damage, stat):
             value = stat(name, default)
             if name.startswith("added_"):
                 value += p.get(name, 0)          # flat damage a support added to this hit
+            elif name.endswith("_damage"):       # "fire_damage" -> "increased_fire" a mod put on this hit
+                value += p.get("increased_" + name[:-len("_damage")], 0)
             return value
         total, parts = final_damage(base_damage, p, total_stat)
         more = p.get("damage_more", 1.0)

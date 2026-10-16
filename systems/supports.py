@@ -112,9 +112,10 @@ def build_hit_packets(base_direction, base_speed, base_damage, base_aoe, sprite_
     # 4. only now the real damage: all flat, then increased, then all multipliers
     if extra and "_stat" in extra:
         from systems.damage import finish_hit_damage
+        from systems.mods import finish_increased_stats
         finish_hit_damage(packets, base_damage, extra["_stat"])
+        finish_increased_stats(packets, extra["_stat"])        # increased speed / area
     return packets
-
 # the old name, so nothing breaks while you rename the call sites
 apply_support_gems = build_hit_packets
 #endregion

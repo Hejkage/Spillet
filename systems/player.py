@@ -251,13 +251,14 @@ class Player(StatusHolder):
         )
 
     def rebuild_gem_ability(self):
-        from systems.gemtree import tree_supports
+        from systems.gemtree import tree_supports, tree_mods
         outside_mods = list(getattr(self, "outside_mods", ()))
         signature = []
         for slot in active_gem_slots:
             item = equipment.extra_slots.get(slot)
-            socket_ids = tuple(sorted((k, id(v)) for k, v in getattr(item, "sockets", {}).items())) if item else ()
-            signature.append((id(item) if item else None, socket_ids, tuple(outside_mods), equipment.is_disabled(slot)))
+            socket_ids = tuple(sorted((k, id(v)) for k, v in item.tree.sockets.items())) if item else ()
+            tree_points = tuple(sorted(item.tree.saved.items())) if item else ()    # a respec of THIS gem
+            signature.append((id(item) if item else None, socket_ids, tree_points, tuple(outside_mods), equipment.is_disabled(slot)))
         signature = tuple(signature)
         if signature == self.gem_signature:      # <-- without this the gem is rebuilt every frame
             return
@@ -278,7 +279,8 @@ class Player(StatusHolder):
             self.abilities[slot] = build_active_gem(
                 t, supports,
                 gem_stats=getattr(active_item, "gem_stats", None),
-                outside_mods=outside_mods)
+                outside_mods=outside_mods,
+                tree_mods=tree_mods(active_item))            # only THIS gem's tree
 
     def rebuild_pets(self):
         equipped = [None if equipment.is_disabled(s) else equipment.pet_slots[s] for s in pet_equip_slots]

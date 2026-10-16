@@ -378,11 +378,10 @@ class LevelsFromKills:
     """For items that level up from kills and have their own tree (systems/gemtree.py).
     Used by active gems AND pets, so the tree code works on both."""
     def init_tree(self, template_key):
-        self.template_key = template_key      # which tree: register_gem_node(template_key, ...)
+        from systems.gemtree import make_item_tree
+        self.template_key = template_key      # which tree layout: gem_tree(template_key)
         self.kills = 0
-        self.allocated = set()
-        self.pending_allocated = set()
-        self.sockets = {}
+        self.tree = make_item_tree(self)      # THIS item's own points and sockets
 
     def gem_level(self):
         from systems.gemtree import level_from_kills
@@ -390,15 +389,17 @@ class LevelsFromKills:
 
     def tree_to_dict(self, d):
         d["kills"] = self.kills
-        d["allocated"] = list(self.allocated)
-        d["sockets"] = {k: (v.to_dict() if v is not None else None) for k, v in self.sockets.items()}
+        d["allocated"] = self.tree.points_to_save()        # node -> points
+        d["sections"] = self.tree.sections_to_save()       # unlocked sections
+        d["choices"] = self.tree.choices_to_save()         # choice node -> picked option
+        d["sockets"] = {k: (v.to_dict() if v is not None else None) for k, v in self.tree.sockets.items()}
 
     def tree_from_dict(self, d):
         self.kills = d.get("kills", 0)
-        self.allocated = set(d.get("allocated", []))
-        self.sockets = {}
+        self.tree.load_points(d.get("allocated", {}), d.get("sections", ()), d.get("choices", {}))   # old saves (a list) still load
+        self.tree.sockets = {}
         for k, sd in d.get("sockets", {}).items():
-            self.sockets[k] = item_kinds[sd["kind"]].from_dict(sd) if sd else None
+            self.tree.sockets[k] = item_kinds[sd["kind"]].from_dict(sd) if sd else None
 
 class ActiveGemItem(GemItem, LevelsFromKills):
     save_kind = "active_gem"

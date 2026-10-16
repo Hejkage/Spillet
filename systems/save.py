@@ -5,7 +5,7 @@ from systems.player import player
 from ui.widgets import loot_filter_dropdown
 from ui.panels import shops
 from ui.chest import chest
-from systems.skilltree import allocated_points, load_points
+from systems.skilltree import allocated_points, load_points, passive_progress
 
 # NOTE: imports for the modules below are done inside the functions that
 # need them, because those modules are created after this one.
@@ -53,6 +53,7 @@ def save_game():
             "start_completed": app.start_completed,
         },
         "skilltree":  dict(allocated_points),          # node -> points
+        "skilltree_choices": passive_progress.choices_to_save(),   # choice node -> picked option
     }
 
     with open(save_path, "w") as f:
@@ -107,7 +108,7 @@ def load_game():
             shop.prices[i] = saved_prices[i] if i < len(saved_prices) else 0
         shop.stocked = sdata.get("stocked", True)
 
-    load_points(data.get("skilltree", {}))
+    load_points(data.get("skilltree", {}), data.get("skilltree_choices", {}))
 
     player.gem_signature = None
     player.pet_signature = None

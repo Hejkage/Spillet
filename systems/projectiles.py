@@ -1,5 +1,6 @@
 import pygame
 import math
+import random
 from core.state import app, world
 from core.assets import scaled_sprites
 from core.screen import is_near_view
@@ -151,3 +152,64 @@ def update_orbit_ring(dt):
         p.x = center.x + offset.x
         p.y = center.y + offset.y
 #endregion ##################################################################################################################################################################
+
+# region On-hit projectile effects (split, chain)
+#
+# Both are HIT EFFECTS (systems/status.py): a mod puts them on the hit, and they
+# run when the hit lands. They spawn COPIES of the projectile that hit, so the
+# copies keep its sprite, speed, damage types, burn chance and every other effect.
+
+def spawn_copy(p, x, y, direction, damage_mult=1.0, size_mult=1.0, effects=None, already_hit=()):
+    """A new projectile just like p, starting at (x, y).
+    effects      None = the same effects as p
+    already_hit  enemies the copy flies through without hitting"""
+    copy = Projectile(p.sprite_name, x, y, direction, p.speed, p.damage * damage_mult, p.aoe * size_mult,
+                      effects=p.effects if effects is None else effects,
+                      hit_stats=p.hit_stats, from_player=p.from_player, pierce=p.pierce, attacker=p.attacker)
+    copy.pierced = set(already_hit)
+    (world.projectiles if p.from_player else world.enemy_projectiles).append(copy)
+    return copy
+
+def without_effect(effects, name):
+    return [e for e in effects if e["name"] != name]
+
+def split_on_hit(target, effect, source):
+    """Fire `count` smaller copies outwards in a circle from the target."""
+    if not isinstance(source, Projectile) or source.orbit:
+        return
+    count = int(effect.get("count", 0))
+    effects = without_effect(without_effect(source.effects, "split"), "chain")   # copies never split or chain
+    start = random.uniform(0, 360)                          # a different circle every time
+    for i in range(count):
+        direction = pygame.Vector2(1, 0).rotate(start + 360 / count * i)
+        spawn_copy(source, target.x, target.y, direction,
+                   damage_mult=effect.get("damage_mult", 1), size_mult=effect.get("size_mult", 1),
+                   effects=effects, already_hit={target})
+
+def chain_on_hit(target, effect, source):
+    """Fire one copy at the closest enemy this projectile hasn't hit yet."""
+    if not isinstance(source, Projectile) or source.orbit:
+        return
+    already_hit = set(source.pierced) | {target}
+    reach = effect.get("range", 400)
+    nearest, nearest_dist = None, reach * reach
+    for enemy in world.enemies:
+        if enemy.alive and enemy not in already_hit:
+            dist = (enemy.x - target.x) ** 2 + (enemy.y - target.y) ** 2
+            if dist <= nearest_dist:
+                nearest, nearest_dist = enemy, dist
+    if nearest is None:
+        return
+    effects = without_effect(source.effects, "chain")
+    if effect.get("count", 0) > 1:                          # chains left after this one
+        effects.append({**effect, "count": effect["count"] - 1})
+    direction = pygame.Vector2(nearest.x - target.x, nearest.y - target.y)
+    spawn_copy(source, target.x, target.y, direction,
+               damage_mult=effect.get("damage_mult", 1), effects=effects, already_hit=already_hit)
+
+from systems.status import register_hit_effect
+register_hit_effect("split", split_on_hit,
+                    describe=lambda e: f"Splits into {int(e.get('count', 0))} projectiles on hit")
+register_hit_effect("chain", chain_on_hit,
+                    describe=lambda e: f"Chains {int(e.get('count', 0))} times")
+#endregion

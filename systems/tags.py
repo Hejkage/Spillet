@@ -154,7 +154,6 @@ def check_all_content():
 
     # items and skill tree nodes: unknown stats, mods, effects, pets, bases
     from systems.items import base_items, item_templates, resolve_base
-    from systems.skilltree import skill_nodes, adjacency
     from systems.bonuses import check_bonuses
     from systems.rarity import all_rarities
     for key, base in base_items.items():
@@ -199,15 +198,28 @@ def check_all_content():
         for at, bonus in config["checkpoints"].items():
             check_bonuses(f"attribute '{key}' at {at}", bonus, problems)
 
-    for key, node in skill_nodes.items():
-        check_bonuses(f"skill node '{key}' per_point", node["per_point"], problems)
-        for at, bonus in node["at_points"].items():
-            check_bonuses(f"skill node '{key}' at {at} points", bonus, problems)
-            if at > node["max_points"]:
-                problems.append(f"skill node '{key}': at_points {at} is more than max_points {node['max_points']}")
-        for other in adjacency.get(key, ()):
-            if other not in skill_nodes:
-                problems.append(f"skill edge '{key}' - '{other}': '{other}' is not a skill node")
+    # every tree: the passive tree, every gem tree, every pet tree
+    from systems.trees import trees
+    for tree in trees.values():
+        for key, node in tree.nodes.items():
+            where = f"tree '{tree.key}', node '{key}'"
+            tables = node["choices"] or [node]                 # a choice node: check every option
+            for at, bonus in [(at, b) for t in tables for at, b in [("per_point", t["per_point"])] + list(t["at_points"].items())]:
+                if tree.pet_stats:                     # pet stats aren't player stats: check the rest only
+                    bonus = {part: value for part, value in bonus.items() if part != "stats"}
+                check_bonuses(f"{where} at {at}", bonus, problems)
+                if at != "per_point" and at > node["max_points"]:
+                    problems.append(f"{where}: at_points {at} is more than max_points {node['max_points']}")
+        for key, others in tree.adjacency.items():
+            for other in [key] + others:
+                if other not in tree.nodes:
+                    problems.append(f"tree '{tree.key}': a line goes to '{other}', which is not a node")
+        if tree.nodes and not tree.roots():
+            problems.append(f"tree '{tree.key}': has no is_root node, so nothing can ever be allocated")
+        for section in tree.sections:
+            roots = [k for k in tree.section_nodes(section) if tree.nodes[k]["is_root"]]
+            if len(roots) != 1:
+                problems.append(f"tree '{tree.key}': section '{section}' needs exactly one is_root node, has {len(roots)}")
 
     if problems:
         raise ValueError("Problems found in content/:\n  " + "\n  ".join(problems))

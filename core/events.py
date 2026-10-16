@@ -141,11 +141,12 @@ def handle_mouse(pos, button):
             if gem_tree_panel.open_for(hovered):
                 return
 
-    if gem_tree_panel.open and button == 1:
-        for c in grid_containers:
-            if c.handle_click(pos, button, drag_state):
-                return
-        gem_tree_panel.handle_click(pos, button, drag_state)
+    if gem_tree_panel.open:
+        if button == 1:
+            for c in grid_containers:
+                if c.handle_click(pos, button, drag_state):
+                    return
+        gem_tree_panel.handle_click(pos, button, drag_state)    # right click removes a point
         return
     
     if app.game_state == "" and skill_tree_button.rect and skill_tree_button.rect.collidepoint(pos):

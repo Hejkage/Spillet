@@ -66,6 +66,17 @@ class ActiveGem:
             "count": self.base_projectiles,
         }
 
+    def final_cooldown(self, player, base, probe):
+        """The real cooldown, after supports and mods.
+        Spells: the player's cooldown reduction + every "cooldown_reduction" mod on
+        this gem are ADDED together, then applied once (90% at most).
+        Then any cooldown_mult from supports (burst fire, attack speed) on top."""
+        cooldown = base["cooldown"]
+        if not self.speed_stat:
+            reduction = player.cooldown + max((p.get("cooldown_reduction", 0) for p in probe), default=0)
+            cooldown = self.base_cooldown * max(0.1, 1 - reduction / 100)
+        return cooldown * min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
+
     def get_effective_stats(self, player):
         base = self.get_base_effective(player)
 
@@ -78,8 +89,7 @@ class ActiveGem:
         count = len(probe)
         burst_extra = max((p.get("burst_extra", 0) for p in probe), default=0)
         total_shots = count * (1 + burst_extra)
-        cooldown_mult = min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
-        cooldown = base["cooldown"] * cooldown_mult
+        cooldown = self.final_cooldown(player, base, probe)
 
         return {
             "damage": per_hit,
@@ -116,8 +126,7 @@ class ActiveGem:
         base = self.get_base_effective(player)
 
         probe = build_hit_packets(pygame.Vector2(1, 0), base["speed"], base["damage"], base["aoe"], self.sprite_name, self.support_gems, extra=self.mod_extra(base))
-        cooldown_mult = min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
-        self.timer = base["cooldown"] * cooldown_mult
+        self.timer = self.final_cooldown(player, base, probe)
 
         player.begin_action(self.action_group, max(global_action_lockout, self.action_time))
 
@@ -169,7 +178,7 @@ def ability_blocked(t):
     from systems.tags import with_members
     return with_members(t.get("blocked", ()))
 
-def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
+def build_active_gem(t, supports, gem_stats=None, outside_mods=(), tree_mods=()):
         extra = {k: v for k, v in t.items() if k not in standard_gem_fields}
         extra["hit_type"] = template_hit_type(t)
         extra["tags"] = ability_tags(t)
@@ -220,7 +229,7 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=()):
         gem.cost = dict(val("cost", None) or {})          # {"mana": 12}; nothing = free (systems/resources.py)
         gem.action_time = t.get("action_time", t.get("swing_time", 0))
         gem.base_projectiles = int(val("projectiles", 1))
-        gem.always_mods = list(t.get("always", ()))        # what this gem always does
+        gem.always_mods = list(t.get("always", ())) + list(tree_mods)   # what this gem always does + its own tree
         gem.outside_mods = list(outside_mods)              # skill tree, uniques
         gem.tags = extra["tags"]                           # decides which mods / supports fit
         gem.blocked = extra["blocked"]
