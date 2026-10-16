@@ -4,7 +4,7 @@ A tree panel owns one TreeView and asks it where things go:
     view.fit(positions)          zoom so the whole tree fits, centred
     view.to_screen(x, y)         tree position -> screen position
     view.zoom                    the current zoom (multiply sizes by it)
-    view.sprite(name)            a sprite at the current zoom (pixel-perfect)
+    view.sprite(name, size)      a sprite at the current zoom. size = its size at 100% (optional)
 
 Input, all forwarded by the panel:
     view.press(pos)              left mouse down
@@ -71,17 +71,26 @@ class TreeView:
                 self.zoom_index = i
         self.fitted = True
 
-    def sprite(self, name):
-        """The sprite at the current zoom, or None if it doesn't exist."""
+    def sprite(self, name, size=None):
+        """The sprite at the current zoom, or None if it doesn't exist.
+        size = how big it should be at 100% zoom (its longest side, in tree pixels).
+        Left out = the picture's own size. So art can be drawn at any size."""
         from core.assets import sprites
         base = sprites.get(name)
         if base is None:
             return None
-        key = (name, self.zoom)
+        key = (name, self.zoom, size)
         if key not in self._sprite_cache:
             w, h = base.get_size()
-            self._sprite_cache[key] = pygame.transform.scale(
-                base, (max(1, int(w * self.zoom)), max(1, int(h * self.zoom))))
+            factor = self.zoom
+            if size is not None:
+                factor *= size / max(w, h)
+            new_size = (max(1, round(w * factor)), max(1, round(h * factor)))
+            if factor < 1:
+                # Shrinking: blend pixels so detail and thin lines don't vanish
+                self._sprite_cache[key] = pygame.transform.smoothscale(base, new_size)
+            else:
+                self._sprite_cache[key] = pygame.transform.scale(base, new_size)
         return self._sprite_cache[key]
 
     # --- input ------------------------------------------------------------
