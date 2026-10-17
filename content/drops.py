@@ -40,6 +40,8 @@ support_gem_group = [
     DropEntry(lambda: make_item("support_crit_damage",       rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("support_attack_speed",      rarity=roll_rarity()), weight=5),
     DropEntry(lambda: make_item("support_burn_chance",       rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_fire_explosion",    rarity=roll_rarity()), weight=5),
+    DropEntry(lambda: make_item("support_return",            rarity=roll_rarity()), weight=5),
     DropEntry(roll_from_group(flat_to_spell_group),                                 weight=5),
     DropEntry(roll_from_group(flat_to_attack_group),                                weight=5),
 ]
@@ -90,7 +92,8 @@ low_level_jewelry_group = [
 unique_group = [
     #Omega god tier 0.1 weighting!
     item_drop("swarmcaller", weight=0.001),
-    item_drop("ember_crown", weight=0.001)
+    item_drop("ember_crown", weight=0.001),
+    item_drop("herbicide",   weight=0.001),
 ]
 
 wand_group = [

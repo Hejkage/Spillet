@@ -22,10 +22,15 @@ register_pack("mixed_camp", [
     PackEntry("slime_frog", count=(2, 4)),
 ], spread=200)
 
+register_pack("ghostly_pack", [
+    PackEntry("ghost", count=(1, 3)),
+], spread=150)
+
 # A pool decides WHICH pack spawns at a spot. Weights work like drop weights.
 forest_packs = PackPool([
     ("witch_coven", 5),
     ("mixed_camp",  1),
+    ("ghostly_pack", 100000),
 ])
 
 cave_packs = PackPool([

@@ -9,8 +9,7 @@ from systems.items import (accepts_slot_type, affix_count_by_rarity, affix_group
 
 affix_pool.update({
     "attack_speed": {
-        "stat": "attack_speed",
-        "type": "increased",
+        "mod": "increased_attack_speed",
         "tiers": {
             rarity_common:    (1, 6),
             rarity_uncommon:  (6, 10),
@@ -20,45 +19,74 @@ affix_pool.update({
         },
     },
 
-    "flat_movement_speed": {
-        "stat": "movement_speed",
-        "type": "flat",
+    "poison_immunity": {
+        "mod": "poison_immunity",
         "tiers": {
-            rarity_common:    (1, 15),
-            rarity_uncommon:  (15, 30),
-            rarity_rare:      (30, 50),
-            rarity_epic:      (50, 75),
-            rarity_legendary: (75, 110),
+            rarity_common:    (5, 9),
+            rarity_uncommon:  (10, 14),
+            rarity_rare:      (15, 19),
+            rarity_epic:      (20, 24),
+            rarity_legendary: (25, 40),
+        },
+    },
+
+    "burn_immunity": {
+        "mod": "burn_immunity",
+        "tiers": {
+            rarity_common:    (5, 9),
+            rarity_uncommon:  (10, 14),
+            rarity_rare:      (15, 19),
+            rarity_epic:      (20, 24),
+            rarity_legendary: (25, 40),
+        },
+    },
+
+    "slow_immunity": {
+        "mod": "slow_immunity",
+        "tiers": {
+            rarity_common:    (5, 9),
+            rarity_uncommon:  (10, 14),
+            rarity_rare:      (15, 19),
+            rarity_epic:      (20, 24),
+            rarity_legendary: (25, 40),
+        },
+    },
+
+    "flat_movement_speed": {
+        "mod": "movement_speed",
+        "tiers": {
+            rarity_common:    (1, 11),
+            rarity_uncommon:  (12, 21),
+            rarity_rare:      (22, 30),
+            rarity_epic:      (31, 39),
+            rarity_legendary: (40, 50),
         },
     },
 
     "increased_movement_speed": {
-        "stat": "movement_speed",
-        "type": "increased",
+        "mod": "increased_movement_speed",
         "tiers": {
-            rarity_common:    (1, 10),
-            rarity_uncommon:  (10, 18),
-            rarity_rare:      (18, 30),
-            rarity_epic:      (30, 45),
-            rarity_legendary: (45, 65),
+            rarity_common:    (1, 2),
+            rarity_uncommon:  (3, 4),
+            rarity_rare:      (5, 6),
+            rarity_epic:      (7, 8),
+            rarity_legendary: (9, 10),
         },
     },
 
     "aoe": {
-        "stat": "aoe",
-        "type": "flat",
+        "mod": "aoe",
         "tiers": {
-            rarity_common:    (1, 15),
-            rarity_uncommon:  (15, 30),
-            rarity_rare:      (30, 50),
-            rarity_epic:      (50, 75),
-            rarity_legendary: (75, 110),
+            rarity_common:    (1, 9),
+            rarity_uncommon:  (10, 16),
+            rarity_rare:      (17, 22),
+            rarity_epic:      (23, 28),
+            rarity_legendary: (29, 35),
         },
     },
 
     "max_health": {
-        "stat": "max_health",
-        "type": "flat",
+        "mod": "max_health",
         "tiers": {
             rarity_common:    (1, 50),
             rarity_uncommon:  (51, 100),
@@ -69,8 +97,7 @@ affix_pool.update({
     },
 
     "max_mana": {
-        "stat": "max_mana",
-        "type": "flat",
+        "mod": "max_mana",
         "tiers": {
             rarity_common:    (1, 40),
             rarity_uncommon:  (41, 90),
@@ -80,9 +107,52 @@ affix_pool.update({
         },
     },
 
+    "increased_max_mana": {
+        "mod": "increased_max_mana",
+        "tiers": {
+            rarity_common:    (1, 3),
+            rarity_uncommon:  (4, 7),
+            rarity_rare:      (8, 10),
+            rarity_epic:      (11, 15),
+            rarity_legendary: (16, 20),
+        },
+    },
+
+    "increased_max_health": {
+        "mod": "increased_max_health",
+        "tiers": {
+            rarity_common:    (1, 2),
+            rarity_uncommon:  (3, 4),
+            rarity_rare:      (5, 6),
+            rarity_epic:      (7, 8),
+            rarity_legendary: (9, 10),
+        },
+    },
+
+    "mana_regen": {
+        "mod": "mana_regen",
+        "tiers": {
+            rarity_common:    (1, 3),
+            rarity_uncommon:  (4, 7),
+            rarity_rare:      (8, 10),
+            rarity_epic:      (11, 15),
+            rarity_legendary: (16, 20),
+        },
+    },
+
+    "increased_mana_regen": {
+        "mod": "increased_mana_regen",
+        "tiers": {
+            rarity_common:    (1, 2),
+            rarity_uncommon:  (3, 4),
+            rarity_rare:      (5, 6),
+            rarity_epic:      (7, 8),
+            rarity_legendary: (9, 10),
+        },
+    },
+
     "health_regen": {
-        "stat": "health_regen",
-        "type": "flat",
+        "mod": "health_regen",
         "tiers": {
             rarity_common:    (1, 2),
             rarity_uncommon:  (3, 5),
@@ -92,9 +162,19 @@ affix_pool.update({
         },
     },
 
+    "increased_health_regen": {
+        "mod": "health_regen",
+        "tiers": {
+            rarity_common:    (1, 2),
+            rarity_uncommon:  (3, 4),
+            rarity_rare:      (5, 6),
+            rarity_epic:      (7, 8),
+            rarity_legendary: (9, 10),
+        },
+    },
+
     "cooldown": {
-        "stat": "cooldown",
-        "type": "flat",
+        "mod": "cooldown",
         "tiers": {
             rarity_common:    (1, 2),
             rarity_uncommon:  (3, 4),
@@ -105,32 +185,62 @@ affix_pool.update({
     },
 
     "lifesteal": {
-        "stat": "lifesteal",
-        "type": "flat",
+        "mod": "lifesteal",
         "tiers": {
-            rarity_common:    (1, 3),
-            rarity_uncommon:  (3, 5),
-            rarity_rare:      (5, 8),
-            rarity_epic:      (8, 12),
-            rarity_legendary: (12, 18),
+            rarity_common:    (0.1, 0.5),
+            rarity_uncommon:  (0.5, 0.6),
+            rarity_rare:      (0.6, 0.7),
+            rarity_epic:      (0.7, 0.8),
+            rarity_legendary: (0.8, 1),
+        },
+    },
+
+    "spell_leech": {
+        "mod": "spell_leech",
+        "tiers": {
+            rarity_common:    (0.1, 0.5),
+            rarity_uncommon:  (0.5, 0.6),
+            rarity_rare:      (0.6, 0.7),
+            rarity_epic:      (0.7, 0.8),
+            rarity_legendary: (0.8, 1),
         },
     },
 
     "increased_crit_chance": {
-        "stat": "crit_chance",
-        "type": "increased",
+        "mod": "increased_crit_chance",
         "tiers": {
-            rarity_common:    (1, 20),
-            rarity_uncommon:  (20, 35),
-            rarity_rare:      (35, 55),
-            rarity_epic:      (55, 80),
-            rarity_legendary: (80, 120),
+            rarity_common:    (1, 10),
+            rarity_uncommon:  (11, 20),
+            rarity_rare:      (21, 30),
+            rarity_epic:      (31, 40),
+            rarity_legendary: (41, 50),
+        },
+    },
+
+    "increased_attack_crit_chance": {
+        "mod": "increased_attack_crit_chance",
+        "tiers": {
+            rarity_common:    (1, 15),
+            rarity_uncommon:  (16, 30),
+            rarity_rare:      (31, 40),
+            rarity_epic:      (41, 50),
+            rarity_legendary: (51, 65),
+        },
+    },
+
+    "increased_spell_crit_chance": {
+        "mod": "increased_spell_crit_chance",
+        "tiers": {
+            rarity_common:    (1, 15),
+            rarity_uncommon:  (16, 30),
+            rarity_rare:      (31, 40),
+            rarity_epic:      (41, 50),
+            rarity_legendary: (51, 65),
         },
     },
 
     "flat_crit_chance": {
-        "stat": "crit_chance",
-        "type": "flat",
+        "mod": "crit_chance",
         "tiers": {
             rarity_common:    (0.5, 1),
             rarity_uncommon:  (1, 1.5),
@@ -141,8 +251,7 @@ affix_pool.update({
     },
 
     "crit_damage": {
-        "stat": "crit_damage",
-        "type": "flat",
+        "mod": "crit_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (10, 20),
@@ -153,8 +262,7 @@ affix_pool.update({
     },
 
     "attack_range": {
-        "stat": "attack_range",
-        "type": "flat",
+        "mod": "attack_range",
         "tiers": {
             rarity_common:    (1, 12),
             rarity_uncommon:  (12, 22),
@@ -166,8 +274,7 @@ affix_pool.update({
 # -------------------------------- PENETRATION ------------------------------------------ 
 
     "fire_penetration": {
-        "stat": "fire_penetration",
-        "type": "flat",
+        "mod": "fire_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -178,8 +285,7 @@ affix_pool.update({
     },
 
     "frost_penetration": {
-        "stat": "frost_penetration",
-        "type": "flat",
+        "mod": "frost_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -190,8 +296,7 @@ affix_pool.update({
     },
 
     "nature_penetration": {
-        "stat": "nature_penetration",
-        "type": "flat",
+        "mod": "nature_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -202,8 +307,7 @@ affix_pool.update({
     },
 
     "shadow_penetration": {
-        "stat": "shadow_penetration",
-        "type": "flat",
+        "mod": "shadow_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -214,8 +318,7 @@ affix_pool.update({
     },
 
     "elemental_penetration": {
-        "stat": "elemental_penetration",
-        "type": "flat",
+        "mod": "elemental_penetration",
         "tiers": {
             rarity_common:    (1, 2),
             rarity_uncommon:  (3, 4),
@@ -227,8 +330,7 @@ affix_pool.update({
 # -------------------------------- PROTECTION PENETRATION ------------------------------------------ 
 
     "elemental_protection_penetration": {
-        "stat": "elemental_protection_penetration",
-        "type": "flat",
+        "mod": "elemental_protection_penetration",
         "tiers": {
             rarity_common:    (1, 2),
             rarity_uncommon:  (3, 4),
@@ -239,8 +341,7 @@ affix_pool.update({
     },
 
     "shadow_protection_penetration": {
-        "stat": "shadow_protection_penetration",
-        "type": "flat",
+        "mod": "shadow_protection_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -251,8 +352,7 @@ affix_pool.update({
     },
 
     "fire_protection_penetration": {
-        "stat": "fire_protection_penetration",
-        "type": "flat",
+        "mod": "fire_protection_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -263,8 +363,7 @@ affix_pool.update({
     },
 
     "frost_protection_penetration": {
-        "stat": "frost_protection_penetration",
-        "type": "flat",
+        "mod": "frost_protection_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -275,8 +374,7 @@ affix_pool.update({
     },
 
     "nature_protection_penetration": {
-        "stat": "shadow_protection_penetration",
-        "type": "flat",
+        "mod": "shadow_protection_penetration",
         "tiers": {
             rarity_common:    (1, 3),
             rarity_uncommon:  (3, 5),
@@ -287,8 +385,7 @@ affix_pool.update({
     },
 # -------------------------------- FLAT TO SPELLS ------------------------------------------ 
     "added_frost_to_spells": {
-        "stat": "added_frost_spell",
-        "type": "flat",
+        "mod": "added_frost_spell",
         "tiers": {
             rarity_common:    (1, 6),
             rarity_uncommon:  (6, 12),
@@ -299,8 +396,7 @@ affix_pool.update({
     },
 
     "added_fire_to_spells": {
-        "stat": "added_nature_spell",
-        "type": "flat",
+        "mod": "added_nature_spell",
         "tiers": {
             rarity_common:    (1, 6),
             rarity_uncommon:  (6, 12),
@@ -311,8 +407,7 @@ affix_pool.update({
     },
 
     "added_nature_to_spells": {
-        "stat": "added_nature_spell",
-        "type": "flat",
+        "mod": "added_nature_spell",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 6),
@@ -324,8 +419,7 @@ affix_pool.update({
     },
 
     "added_shadow_to_spells": {
-        "stat": "added_shadow_spell",
-        "type": "flat",
+        "mod": "added_shadow_spell",
         "tiers": {
             rarity_common:    (1, 6),
             rarity_uncommon:  (6, 12),
@@ -336,8 +430,7 @@ affix_pool.update({
     },
 
     "added_pure_to_spells": {
-        "stat": "added_pure_spell",
-        "type": "flat",
+        "mod": "added_pure_spell",
         "tiers": {
             rarity_common:    (1, 2),
             rarity_uncommon:  (3, 4),
@@ -348,8 +441,7 @@ affix_pool.update({
     },
 
     "added_physical_to_spells": {
-        "stat": "added_physical_spell",
-        "type": "flat",
+        "mod": "added_physical_spell",
         "tiers": {
             rarity_common:    (1, 4),
             rarity_uncommon:  (5, 10),
@@ -360,8 +452,7 @@ affix_pool.update({
     },
 # -------------------------------- FLAT TO ATTACKS ------------------------------------------ 
     "added_nature_to_attacks": {
-        "stat": "added_nature_attack",
-        "type": "flat",
+        "mod": "added_nature_attack",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 5),
@@ -373,8 +464,7 @@ affix_pool.update({
     },
 
     "added_shadow_to_attacks": {
-        "stat": "added_shadow_attack",
-        "type": "flat",
+        "mod": "added_shadow_attack",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 5),
@@ -386,8 +476,7 @@ affix_pool.update({
     },
 
     "added_frost_to_attacks": {
-        "stat": "added_frost_attack",
-        "type": "flat",
+        "mod": "added_frost_attack",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 5),
@@ -399,8 +488,7 @@ affix_pool.update({
     },
 
     "added_fire_to_attacks": {
-        "stat": "added_fire_attack",
-        "type": "flat",
+        "mod": "added_fire_attack",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 5),
@@ -412,8 +500,7 @@ affix_pool.update({
     },
 
     "added_physical_to_attacks": {
-        "stat": "added_physical_attack",
-        "type": "flat",
+        "mod": "added_physical_attack",
         "weight": 10,
         "tiers": {
             rarity_common:    (5, 10),
@@ -425,21 +512,19 @@ affix_pool.update({
     },
 
     "added_pure_to_attacks": {
-        "stat": "added_pure_attack",
-        "type": "flat",
+        "mod": "added_pure_attack",
         "weight": 10,
         "tiers": {
-            rarity_common:    (1, 3),
-            rarity_uncommon:  (4, 8),
-            rarity_rare:      (9, 13),
-            rarity_epic:      (14, 18),
-            rarity_legendary: (19, 22),
+            rarity_common:    (1, 2),
+            rarity_uncommon:  (3, 4),
+            rarity_rare:      (5, 7),
+            rarity_epic:      (8, 10),
+            rarity_legendary: (11, 12),
         },
     },
 # -------------------------------- RESISTANCES ------------------------------------------ 
     "nature_resistance": {
-        "stat": "nature_resistance",
-        "type": "flat",
+        "mod": "nature_resistance",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -451,8 +536,7 @@ affix_pool.update({
     },
 
     "fire_resistance": {
-        "stat": "fire_resistance",
-        "type": "flat",
+        "mod": "fire_resistance",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -464,8 +548,7 @@ affix_pool.update({
     },
 
     "frost_resistance": {
-        "stat": "frost_resistance",
-        "type": "flat",
+        "mod": "frost_resistance",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -477,8 +560,7 @@ affix_pool.update({
     },
 
     "shadow_resistance": {
-        "stat": "shadow_resistance",
-        "type": "flat",
+        "mod": "shadow_resistance",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -490,8 +572,7 @@ affix_pool.update({
     },
 
     "elemental_resistance": {
-        "stat": "elemental_resistance",
-        "type": "flat",
+        "mod": "elemental_resistance",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 2),
@@ -504,8 +585,7 @@ affix_pool.update({
 # -------------------------------- PROTECTION ------------------------------------------ 
 
     "elemental_protection": {
-        "stat": "elemental_protection",
-        "type": "flat",
+        "mod": "elemental_protection",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 2),
@@ -517,8 +597,7 @@ affix_pool.update({
     },
 
     "shadow_protection": {
-        "stat": "shadow_protection",
-        "type": "flat",
+        "mod": "shadow_protection",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -530,8 +609,7 @@ affix_pool.update({
     },
 
     "fire_protection": {
-        "stat": "fire_protection",
-        "type": "flat",
+        "mod": "fire_protection",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -543,8 +621,7 @@ affix_pool.update({
     },
 
     "frost_protection": {
-        "stat": "frost_protection",
-        "type": "flat",
+        "mod": "frost_protection",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -556,8 +633,7 @@ affix_pool.update({
     },
 
     "nature_protection": {
-        "stat": "nature_protection",
-        "type": "flat",
+        "mod": "nature_protection",
         "weight": 10,
         "tiers": {
             rarity_common:    (1, 3),
@@ -570,8 +646,7 @@ affix_pool.update({
 # -------------------------------- INCREASED DAMAGE ------------------------------------------ 
 
     "elemental_damage": {
-        "stat": "elemental_damage",
-        "type": "increased",
+        "mod": "increased_elemental_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -582,8 +657,7 @@ affix_pool.update({
     },
 
     "fire_damage": {
-        "stat": "fire_damage",
-        "type": "increased",
+        "mod": "increased_fire_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -594,8 +668,7 @@ affix_pool.update({
     },
 
     "nature_damage": {
-        "stat": "nature_damage",
-        "type": "increased",
+        "mod": "increased_nature_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -606,8 +679,7 @@ affix_pool.update({
     },
 
     "frost_damage": {
-        "stat": "frost_damage",
-        "type": "increased",
+        "mod": "increased_frost_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -618,8 +690,7 @@ affix_pool.update({
     },
 
     "shadow_damage": {
-        "stat": "shadow_damage",
-        "type": "increased",
+        "mod": "increased_shadow_damage",
         "tiers": {
             rarity_common:    (1, 8),
             rarity_uncommon:  (9, 18),
@@ -630,8 +701,7 @@ affix_pool.update({
     },
 
     "physical_damage": {
-        "stat": "physical_damage",
-        "type": "increased",
+        "mod": "increased_physical_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -642,8 +712,7 @@ affix_pool.update({
     },
 
     "attack_damage": {
-        "stat": "attack_damage",
-        "type": "increased",
+        "mod": "increased_attack_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -654,8 +723,7 @@ affix_pool.update({
     },
 
     "spell_damage": {
-        "stat": "spell_damage",
-        "type": "increased",
+        "mod": "increased_spell_damage",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -665,9 +733,9 @@ affix_pool.update({
         },
     },
 
+# -------------------------------- ATTRIBUTES ------------------------------------------ 
     "domination": {
-        "stat": "domination",
-        "type": "flat",
+        "mod": "domination",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -678,8 +746,7 @@ affix_pool.update({
     },
 
     "creation": {
-        "stat": "domination",
-        "type": "flat",
+        "mod": "creation",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
@@ -690,14 +757,47 @@ affix_pool.update({
     },
 
     "efficiency": {
-        "stat": "efficiency",
-        "type": "flat",
+        "mod": "efficiency",
         "tiers": {
             rarity_common:    (1, 10),
             rarity_uncommon:  (11, 19),
             rarity_rare:      (20, 30),
             rarity_epic:      (31, 45),
             rarity_legendary: (46, 65),
+        },
+    },
+
+    "verdancy": {
+        "mod": "verdancy",
+        "tiers": {
+            rarity_common:    (1, 10),
+            rarity_uncommon:  (11, 19),
+            rarity_rare:      (20, 30),
+            rarity_epic:      (31, 45),
+            rarity_legendary: (46, 65),
+        },
+    },
+
+    "duality": {
+        "mod": "duality",
+        "tiers": {
+            rarity_common:    (1, 10),
+            rarity_uncommon:  (11, 19),
+            rarity_rare:      (20, 30),
+            rarity_epic:      (31, 45),
+            rarity_legendary: (46, 65),
+        },
+    },
+# -------------------------------- PETS ------------------------------------------   
+
+    "increased_pet_buff_effect": {
+        "mod": "increased_pet_buff_effect",
+        "tiers": {
+            rarity_common:    (1, 2),
+            rarity_uncommon:  (3, 4),
+            rarity_rare:      (5, 6),
+            rarity_epic:      (7, 8),
+            rarity_legendary: (9, 10),
         },
     },
 })
@@ -765,6 +865,18 @@ affix_groups.update({
         "shadow_damage",
     ],
 
+    "immunity_group": [
+        "poison_immunity",
+        "burn_immunity",
+    ],
+
+    "attribute_group": [
+        "domination",
+        "verdancy",
+        "duality",
+        "efficiency",
+        "creation",
+    ],    
 })
         
 affix_count_by_rarity.update({
@@ -824,28 +936,30 @@ base_items.update({
         "name": "Wooden shield",
         "sprite": "shield_item_sprite",
         "slot": "offhand",
-        "affixes": ["aoe", "cooldown", "crit_damage", "increased_crit_chance", "lifesteal", "attack_speed", "resistance_group"],
+        "affixes": ["aoe", "cooldown", "crit_damage", "increased_crit_chance", "lifesteal", "attack_speed", "resistance_group", "protection_group"],
     },
 
     "jeweled_ring": {
         "name": "Jeweled ring",
         "sprite": "ring_item_sprite",
         "slot": "ring",
-        "affixes": ["aoe", "cooldown", "crit_damage", "increased_crit_chance", "elemental_damage", "spell_damage", "max_health"],
+        "affixes": [("aoe", 1), ("cooldown", 0.5), ("crit_damage", 2), ("increased_crit_chance", 2), "spell_damage", "flat_to_spells_group", "flat_to_attacks_group", ("protection_penetration_group", 0.5), ("penetration_group", 1), "increased_spell_crit_chance", "increased_attack_crit_chance",
+                    "increased_damage_group", "max_mana", "mana_regen", ("increased_max_mana", 1), ("immunity_group", 0.5), ("spell_leech", 0.2), ("attribute_group", 50000)],
     },
 
     "jeweled_necklace": {
         "name": "Jeweled necklace",
         "sprite": "necklace_item_sprite",
         "slot": "neck",
-        "affixes": ["aoe", "cooldown", "crit_damage", "increased_crit_chance", "elemental_damage", "spell_damage", "max_health"]
+        "affixes": [("aoe", 1), ("cooldown", 0.5), ("crit_damage", 2), ("increased_crit_chance", 2), "spell_damage", "flat_to_spells_group", "flat_to_attacks_group", ("protection_penetration_group", 0.5), ("penetration_group", 1), "increased_spell_crit_chance", "increased_attack_crit_chance",
+                    "increased_damage_group", "max_mana", "mana_regen", ("increased_max_mana", 1), ("immunity_group", 0.5), ("spell_leech", 0.2), "attribute_group"],
     },
 
     "leather_body": {
         "name": "Leather body armor",
         "sprite": "body_item_sprite",
         "slot": "body",
-        "affixes": ["aoe", "cooldown", "max_health", "health_regen", "resistance_group"],
+        "affixes": ["aoe", "cooldown", "max_health", "health_regen", "resistance_group", "protection_group", "max_mana",],
     },
 
     "leather_helmet": {
@@ -893,9 +1007,9 @@ item_templates.update({
     "sprite": "wand_item_sprite",
     "slot": "weapon",
     "weapon_class": "wand",
-    "stats": [
-        {"stat": "spell_damage", "type": "increased", "amount": 5},
-        {"stat": "elemental_damage", "type": "increased", "amount": 5},
+    "mods": [
+        ("increased_spell_damage", 5),
+        ("increased_elemental_damage", 5),
     ],
     "rarity": rarity_common,
     },
@@ -907,8 +1021,8 @@ item_templates.update({
         "swing_sprite": "melee_attack_sprite",
         "slot": "weapon",
         "weapon_class": "sword",
-        "stats": [
-            {"stat": "spell_damage", "type": "increased", "amount": 10},
+        "mods": [
+            ("increased_spell_damage", 10),
         ],
         "rarity": rarity_common,
     },
@@ -918,13 +1032,13 @@ item_templates.update({
         "name": "Helmet",
         "sprite": "helmet_item_sprite",
         "slot": "head",
-        "stats": [
-            {"stat": "max_health", "type": "increased", "amount": 1},
-            {"stat": "max_health", "type": "increased", "amount": 1},
-            {"stat": "max_health", "type": "increased", "amount": 2},
-            {"stat": "max_health", "type": "increased", "amount": 3},
-            {"stat": "max_health", "type": "increased", "amount": 3},
-            {"stat": "max_health", "type": "increased", "amount": 4},
+        "mods": [
+            ("increased_max_health", 1),
+            ("increased_max_health", 1),
+            ("increased_max_health", 2),
+            ("increased_max_health", 3),
+            ("increased_max_health", 3),
+            ("increased_max_health", 4),
         ],
         "rarity": rarity_legendary,
     },
@@ -1003,6 +1117,8 @@ item_templates.update({
     "support_added_physical_attack":{"kind": "support_gem", "gem_type": "added_physical_attack","rarity": rarity_common},
     "support_chain":                {"kind": "support_gem", "gem_type": "chain",                "rarity": rarity_common},
     "support_split":                {"kind": "support_gem", "gem_type": "split",                "rarity": rarity_common},
+    "support_fire_explosion":       {"kind": "support_gem", "gem_type": "fire_explosion",       "rarity": rarity_common},
+    "support_return":               {"kind": "support_gem", "gem_type": "return",               "rarity": rarity_common},
 
     # Currency
     "gold_coin": {

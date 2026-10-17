@@ -5,6 +5,7 @@ Pure data. Add new entries here - never in systems/.
 
 from systems.rarity import rarity_common, rarity_epic, rarity_legendary, rarity_rare, rarity_uncommon
 from systems.supports import register_support_gem
+from systems.mods import register_effect_mod
 from systems.melee import cast_melee_attack
 from systems.abilities import active_gem_templates, basic_attack_templates, basic_attacks_by_weapon, basic_attacks_by_weapon_key, build_active_gem, cast_projectile_spell, shoot_projectile_gun
 
@@ -210,6 +211,40 @@ active_gem_templates.update({
     },
 })
 
+# ---------------------------------------------------------------
+# EFFECT MODS - a named mod that puts an effect on hits (systems/mods.py).
+# Once registered, the name works everywhere: items, trees and support gems.
+# The mod's value goes into "percent".
+# ---------------------------------------------------------------
+register_effect_mod("fire_explosion",
+                    {"name": "explode", "type": "fire", "of": "hit", "radius": 150},
+                    value_field="percent",          # ("fire_explosion", 30): 30% of the hit's FIRE damage
+                    needs=("damage", "fire"))       # only skills with the fire tag
+
+register_support_gem(
+    "fire_explosion", "Fire Explosion",
+    tiers={
+        rarity_common:    (10, 15),
+        rarity_uncommon:  (15, 20),
+        rarity_rare:      (20, 30),
+        rarity_epic:      (30, 40),
+        rarity_legendary: (40, 50),
+    },
+    mod="fire_explosion",
+)
+
+register_support_gem(
+    "return", "Return",
+    tiers={                                         # seconds before it turns back
+        rarity_common:    (1.0, 1.0),
+        rarity_uncommon:  (1.0, 1.0),
+        rarity_rare:      (1.0, 1.0),
+        rarity_epic:      (1.0, 1.0),
+        rarity_legendary: (1.0, 1.0),
+    },
+    mod="return",
+)
+
 register_support_gem(
     "projectiles", "Multiple Projectiles",
     tiers={
@@ -225,53 +260,49 @@ register_support_gem(
 register_support_gem(
     "speed", "Projectile Speed",
     tiers={
-        rarity_common:    (1.10, 1.25),
-        rarity_uncommon:  (1.25, 1.45),
-        rarity_rare:      (1.45, 1.70),
-        rarity_epic:      (1.70, 2.00),
-        rarity_legendary: (2.00, 2.50),
+        rarity_common:    (10, 25),
+        rarity_uncommon:  (25, 45),
+        rarity_rare:      (45, 70),
+        rarity_epic:      (70, 100),
+        rarity_legendary: (100, 150),
     },
-    mod="speed",
-    combine="mul"
+    mod="more_projectile_speed",
 )
 
 register_support_gem(
-    "aoe", "Increased Area",
+    "aoe", "More Area",
     tiers={
-        rarity_common:    (1.10, 1.20),
-        rarity_uncommon:  (1.20, 1.35),
-        rarity_rare:      (1.35, 1.55),
-        rarity_epic:      (1.55, 1.80),
-        rarity_legendary: (1.80, 2.20),
+        rarity_common:    (10, 20),
+        rarity_uncommon:  (20, 35),
+        rarity_rare:      (35, 55),
+        rarity_epic:      (55, 80),
+        rarity_legendary: (80, 120),
     },
-    mod="aoe",
-    combine="mul"
+    mod="more_aoe",
 )
 
 register_support_gem(
     "damage", "More Damage",
     tiers={
-        rarity_common:    (1.10, 1.20),
-        rarity_uncommon:  (1.20, 1.35),
-        rarity_rare:      (1.35, 1.55),
-        rarity_epic:      (1.55, 1.80),
-        rarity_legendary: (1.80, 2.20),
+        rarity_common:    (10, 20),
+        rarity_uncommon:  (20, 35),
+        rarity_rare:      (35, 55),
+        rarity_epic:      (55, 80),
+        rarity_legendary: (80, 120),
     },
-    mod="damage",
-    combine="mul"
+    mod="more_damage",
 )
 
 register_support_gem(
-    "dot_damage", "Increased DoT",
+    "dot_damage", "More Damage over Time",
     tiers={
-        rarity_common:    (1.10, 1.20),
-        rarity_uncommon:  (1.20, 1.35),
-        rarity_rare:      (1.35, 1.55),
-        rarity_epic:      (1.55, 1.80),
-        rarity_legendary: (1.80, 2.20),
+        rarity_common:    (10, 20),
+        rarity_uncommon:  (20, 35),
+        rarity_rare:      (35, 55),
+        rarity_epic:      (55, 80),
+        rarity_legendary: (80, 120),
     },
-    mod="dot_damage",
-    combine="mul"
+    mod="more_dot_damage",
 )
 
 register_support_gem(
@@ -283,7 +314,7 @@ register_support_gem(
         rarity_epic:      (131, 150),
         rarity_legendary: (151, 200),
     },
-    mod="crit_chance",
+    mod="increased_crit_chance",
 )
 
 register_support_gem(
@@ -370,7 +401,7 @@ register_support_gem(
         rarity_epic:      (16, 25),
         rarity_legendary: (26, 40),
     },
-    mod="attack_speed",
+    mod="increased_attack_speed",
 )
 
 register_support_gem(

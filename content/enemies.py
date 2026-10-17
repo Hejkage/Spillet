@@ -1,7 +1,7 @@
 from systems.rarity import rarity_common
 from systems.items import make_item
 from systems.drops import generic_drop_pool
-from systems.enemies import EnemyProjectileAbility, enemy_configs
+from systems.enemies import EnemyProjectileAbility, EnemyMeleeAbility, EnemyHasteAbility, enemy_configs
 from .drops import example_drop_pool, frost_pool
 
 generic_drop_pool.add_entry(lambda: make_item("gold_coin"), weight=1, min_amount=1, max_amount=10)
@@ -12,6 +12,12 @@ def witch_wand_attack():
 
 def witch_meteor():
     return EnemyProjectileAbility(cooldown=12, ability_range=600, damage=300, speed=250, sprite_name="fireball_sprite", aoe=2.5, damage_type="fire", hit_type="spell")
+
+def phantom_swipe():
+    return EnemyMeleeAbility(cooldown=1.2, ability_range=100, damage=1, cast_time=0.3, damage_type="shadow", visual="swipe_mark_sprite", visual_time=0.25, visual_offset=12, visual_spin=20, reaction_time=0.2, sound="melee_attack_sound", sound_volume=0.2)
+
+def phantom_sprint():
+    return EnemyHasteAbility(cooldown=6, ability_range=700, min_range=300, speed_mult=2.0, duration=1.0)
 
 enemy_configs.update({
     "witch": {
@@ -129,6 +135,22 @@ enemy_configs.update({
         "show_hit_stats": True,
         "defence": {"fire_resistance": 0, "frost_resistance": 25, "elemental_protection": 0, "shadow_protection": 50},
     },
+
+    "ghost": {
+        "base_sprite": "ghost_sprite",      # placeholder: put your own sprite name here
+        "sprite_scale": 0.25,
+        "health": 100,
+        "xp_value": 40,
+        "move_speed": 200,
+        "contact_damage": 0,
+        "behavior": "melee",                     # walks straight at you, stops when close
+        "passes_walls": True,
+        "keep_distance": 90,                     # stops this far away (the swipe reaches 70)
+        "cast_cooldown": 0.2,                    # short pause between its abilities
+        "abilities": [phantom_swipe, phantom_sprint],
+        "drop_pool": example_drop_pool,
+    },
+
 })
 
 
@@ -152,7 +174,7 @@ enemy_configs.update({
 
         # --- how it behaves ----------------------------------------------
         "behavior":          "caster",   # melee / caster / leaper, or your own
-        "attack_range":      450,        # how close before it attacks
+        "keep_distance":     450,        # how close it walks to the player. Its abilities' ability_range decides when it attacks
         "retreat_range":     150,        # caster: backs off inside this
         "retreat_speed_mult": 0.65,      # caster: retreats slower than it chases
         "cast_time":         0.5,        # wind-up before a spell lands

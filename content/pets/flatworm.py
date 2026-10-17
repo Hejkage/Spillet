@@ -7,7 +7,7 @@ Drop chances for each version are in content/drops.py (flatworm_group).
 from core.state import world
 from systems.status import register_status, register_hit_effect
 from systems.pets import make_pet_projectile_ability, make_pet_heal_ability, register_pet, register_pet_movement, pet_item_key, register_pet_group
-from systems.gemtree import register_gem_node, register_gem_edge
+from systems.gemtree import pet_tree
 from systems.rarity import rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary
 
 
@@ -134,9 +134,9 @@ def flatworm_rarity_overrides(damage_type, variant):
     """Per rarity: the aura buff (+ the legendary bonus) and the version's own per_rarity values."""
     overrides = {}
     for rarity, amount in variant["aura"].items():
-        buffs = [{"stat": f"added_{damage_type}", "type": "flat", "amount": amount, "targets": ["player", "pets"]}]
+        buffs = [{"mod": f"added_{damage_type}", "amount": amount, "targets": ["player", "pets"]}]
         if rarity == rarity_legendary:
-            buffs.append({"stat": "movement_speed", "type": "increased", "amount": 1, "targets": ["player"]})
+            buffs.append({"mod": "increased_movement_speed", "amount": 1, "targets": ["player"]})
         overrides[rarity] = {"buffs": buffs, **variant.get("per_rarity", {}).get(rarity, {})}
     return overrides
 
@@ -159,7 +159,7 @@ for damage_type, variant in flatworm_variants.items():
 
     # Skill tree - every version gets the same start node for now
     tree = pet_item_key(key)                           # "fire_flatworm_pet"
-    register_gem_node(tree, "start", variant["name"], position=(800, 800), is_root=True)
+    pet_tree(tree).node("start", variant["name"], position=(0, 0), is_root=True)
 
     # --- 6. How likely each version is, wherever "flatworm" is used as a group. ---
 register_pet_group("flatworm", {

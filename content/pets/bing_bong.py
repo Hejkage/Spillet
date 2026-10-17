@@ -1,5 +1,5 @@
 from systems.pets import make_pet_projectile_ability, register_pet, pet_item_key
-from systems.gemtree import register_gem_node, register_gem_edge
+from systems.gemtree import pet_tree
 from systems.rarity import rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary
 
 register_pet(
@@ -34,20 +34,20 @@ register_pet(
         "sound_interval": 60.0,
         "sound_volume": 0.6,
     },
-    # Auras: same lines as item stats, plus who gets them.
+    # Auras: a mod (same names as everywhere), how much, and who gets it.
     rarity_overrides={
-        rarity_common:    {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 2, "targets":  ["player", "pets"]}]},
-        rarity_uncommon:  {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 4, "targets":  ["player", "pets"]}]},
-        rarity_rare:      {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 7, "targets":  ["player", "pets"]}]},
-        rarity_epic:      {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 10, "targets": ["player", "pets"]}]},
-        rarity_legendary: {"buffs": [{"stat": "added_fire_spell", "type": "flat", "amount": 12, "targets": ["player", "pets"]}, {"stat": "movement_speed",   "type": "increased", "amount": 1, "targets": ["player"]},   # legendary-only bonus
+        rarity_common:    {"buffs": [{"mod": "added_fire_spell", "amount": 2,  "targets": ["player", "pets"]}]},
+        rarity_uncommon:  {"buffs": [{"mod": "added_fire_spell", "amount": 4,  "targets": ["player", "pets"]}]},
+        rarity_rare:      {"buffs": [{"mod": "added_fire_spell", "amount": 7,  "targets": ["player", "pets"]}]},
+        rarity_epic:      {"buffs": [{"mod": "added_fire_spell", "amount": 10, "targets": ["player", "pets"]}]},
+        rarity_legendary: {"buffs": [{"mod": "added_fire_spell", "amount": 12, "targets": ["player", "pets"]},
+                                     {"mod": "increased_movement_speed", "amount": 1, "targets": ["player"]},   # legendary-only bonus
         ]},
     },
 )
 
 # --- Skill tree (same system as gem trees) ---
-tree = pet_item_key("bing_bong")   # "bing_bong_pet"
-register_gem_node(tree, "start", "Bing Bong", position=(800, 800), is_root=True)
-register_gem_node(tree, "loud_song", "Loud Song", position=(800, 600),
-                  stats=[{"stat": "buff_effect", "type": "increased", "amount": 100}])
-register_gem_edge(tree, "start", "loud_song")
+tree = pet_tree(pet_item_key("bing_bong"))   # "bing_bong_pet"
+tree.node("start", "Bing Bong", position=(0, 0), is_root=True)
+tree.node("loud_song", "Loud Song", position=(0, -200), connects="start",
+          mods=[("increased_buff_effect", 100)])

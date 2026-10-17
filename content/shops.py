@@ -20,7 +20,7 @@ blacksmith = register_shop("blacksmith", ShopContainer(4, 4, reroll_cost=100, st
         3: roll_from_group(pet_group),
     },
     random_entries=[
-        DropEntry(lambda: roll_item("short_sword"), weight=10),
+        DropEntry(lambda: roll_item("jeweled_ring"), weight=100000),
         DropEntry(lambda: make_item("fireball_gem", rarity=roll_rarity()), weight=5),
         *leather_armor_group,
         *low_level_weapons_group,

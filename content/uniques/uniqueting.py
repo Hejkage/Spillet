@@ -7,14 +7,16 @@ base_items.update({
         "name": "Ember Crown",
         "rarity": rarity_unique,
         "min_monster_tier": 3,
-        "stats": [
-            {"stat": "fire_damage", "type": "increased", "amount": (20, 40)},
-            {"stat": "burn_immunity", "type": "flat", "amount": 1},
-            {"stat": "fire_resistance", "type": "flat", "amount": 25},
+        "mods": [
+            ("increased_fire_damage", (20, 40)),
+            ("burn_immunity", 100),
+            ("fire_resistance", 25),
+            ("projectiles", 1),
         ],
-        "mods":    [("projectiles", 1)],
         "grants":  {"ring_slots": 1},
-        "effects": {"on_kill": [{"name": "explode", "radius": 150, "damage": (100, 200), "damage_type": "fire"}]},
+        # killed enemies explode for 5-10% of their max health as fire damage
+        "effects": {"on_kill": [{"name": "explode", "type": "fire", "of": "max_health",
+                                 "percent": (5, 10), "radius": 150}]},
         "summons": {"spider": 1},
     },
 })

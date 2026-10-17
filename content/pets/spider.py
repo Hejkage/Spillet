@@ -1,5 +1,5 @@
 from systems.pets import make_pet_projectile_ability, register_pet, pet_item_key
-from systems.gemtree import register_gem_node, register_gem_edge
+from systems.gemtree import pet_tree
 from systems.rarity import rarity_common, rarity_uncommon, rarity_rare, rarity_epic, rarity_legendary
 
 register_pet(
@@ -34,8 +34,7 @@ register_pet(
 )
 
 # --- Skill tree (same system as gem trees) ---
-tree = pet_item_key("spider")      # "spider_pet"
-register_gem_node(tree, "start", "Spider", position=(800, 800), is_root=True)
-register_gem_node(tree, "venom", "Venom", position=(800, 600),
-                  stats=[{"stat": "damage", "type": "increased", "amount": 50}])
-register_gem_edge(tree, "start", "venom")
+tree = pet_tree(pet_item_key("spider"))      # "spider_pet"
+tree.node("start", "Spider", position=(0, 0), is_root=True)
+tree.node("venom", "Venom", position=(0, -200), connects="start",
+          mods=[("increased_damage", 50)])
