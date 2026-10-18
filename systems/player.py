@@ -13,9 +13,11 @@ from systems.rarity import rarity_common
 from core.screen import camera
 from systems.facing import face_direction, facing_sprite_name, facing_surface
 from systems.skilltree import allocated_points, allocated_sources
+from systems.mods import hit_key
 from systems.bonuses import collect_bonuses
 from systems.status import StatusHolder, draw_statuses
 import systems.ailments        # registers the burn / poison stats BEFORE the player is created
+import systems.leech           # registers spell leech BEFORE the player is created
 from systems.resources import clamp_resources, fill_resources, regen_resources, can_pay, pay
 from systems.attributes import attribute_values, attribute_bonuses, attribute_lines
 
@@ -112,9 +114,12 @@ class Player(StatusHolder):
             from systems.popups import spawn_floating_text
             spawn_floating_text("Level Up! +1 Skill Point", self.x, self.y - 40, color=(255, 230, 120))
 
-    def take_damage(self, amount):
+    def take_damage(self, amount, flash=True):
         if self.current_health <= 0:
             return
+        if flash and amount > 0:
+            from systems.hitflash import flash as hit_flash
+            hit_flash(self)
         self.current_health -= amount
         if self.current_health <= 0:
             self.current_health = 0
@@ -147,7 +152,7 @@ class Player(StatusHolder):
     
     def resolve_stat(self, key, hit_stats=None):
         s = hit_stats or {}
-        flat = self.base_stats[key] + self.added_flat[key] + s.get(key, 0)
+        flat = self.base_stats[key] + self.added_flat[key] + s.get(hit_key(key), 0)   # + what this hit carries
         inc = 1 + self.increased[key] + s.get(key + "_increase", 0) / 100
         return flat * inc
 
@@ -165,6 +170,19 @@ class Player(StatusHolder):
                + s.get("crit_chance_increase", 0) / 100)
 
         return (flat * inc, self.resolve_stat("crit_damage", hit_stats))
+
+    def effect_crit_stats(self):
+        """Crit for effects (explosions...). Their base crit chance is 0%, so only
+        ADDED crit chance counts, then increased crit chance like everything else:
+        250% increased on 0 is still 0. Attack / spell crit chance never count."""
+        chance = self.added_flat["crit_chance"] * (1 + self.increased["crit_chance"])
+        return (chance, self.resolve_stat("crit_damage"))
+
+    def effect_more_damage(self):
+        """Every "more_damage" you have (items, passive tree) as one multiplier: 1.2 = 20% more."""
+        from systems.mods import combine_values
+        values = [value for name, value in getattr(self, "outside_mods", ()) if name == "more_damage"]
+        return 1 + combine_values("more_damage", values) / 100
 
     def has_grant(self, name):
         """True if the tree (or anything else filling grants) allows this."""
@@ -226,8 +244,9 @@ class Player(StatusHolder):
             self.apply_modifier(mod)
         for stat in self.base_stats:
             setattr(self, stat, self.resolve_stat(stat))
-        # immunities: "poison_immunity" above 0 -> poison is in self.immune
-        self.immune = {status for stat, status in immunity_stats.items() if getattr(self, stat, 0) > 0}
+        # immunities: "poison_immunity" 100 or more -> poison is in self.immune. Less is a chance.
+        from systems.items import immunity_full
+        self.immune = {status for stat, status in immunity_stats.items() if getattr(self, stat, 0) >= immunity_full}
         for status in self.immune:
             self.statuses.pop(status, None)          # becoming immune removes it right away
         self.damage_totals = fold_damage_stats(lambda s: getattr(self, s, 0))
@@ -251,7 +270,7 @@ class Player(StatusHolder):
         )
 
     def rebuild_gem_ability(self):
-        from systems.gemtree import tree_supports, tree_mods
+        from systems.gemtree import tree_supports, tree_mods, tree_effects
         outside_mods = list(getattr(self, "outside_mods", ()))
         signature = []
         for slot in active_gem_slots:
@@ -280,7 +299,8 @@ class Player(StatusHolder):
                 t, supports,
                 gem_stats=getattr(active_item, "gem_stats", None),
                 outside_mods=outside_mods,
-                tree_mods=tree_mods(active_item))            # only THIS gem's tree
+                tree_mods=tree_mods(active_item),            # only THIS gem's tree
+                tree_effects=tree_effects(active_item))
 
     def rebuild_pets(self):
         equipped = [None if equipment.is_disabled(s) else equipment.pet_slots[s] for s in pet_equip_slots]

@@ -1,37 +1,60 @@
-"""BONUSES - what an item or a skill tree node GIVES the player.
+"""BONUSES - what an item, a tree node or an attribute GIVES.
 
-Items and skill tree nodes use the SAME five parts, written the same way:
+Every source uses the SAME parts, written the same way:
 
-  stats     plain stat lines     [{"stat": "max_health", "type": "flat", "amount": 50}]
-  mods      mechanics for every ability that fits them (systems/mods.py)
-                                 [("projectiles", 2), ("pierce", 1)]
+  mods      EVERY number and mechanic, one name each (the full list: systems/mods.py)
+                                 [("max_health", 50), ("increased_fire_damage", 10), ("pierce", 1)]
   grants    permissions / counts other systems ask about
                                  {"ring_slots": 1, "dual_wield_two_handers": True}
-  effects   things that happen on an event ("on_kill", ...)
-                                 {"on_kill": [{"name": "explode", "radius": 200, "damage": 250}]}
+  effects   things that happen on an event: "on_hit" or "on_kill". Any effect can
+            have a "chance" (systems/status.py)
+                                 {"on_kill": [{"name": "explode", "chance": 5, "type": "fire",
+                                               "of": "max_health", "percent": 10, "radius": 200}]}
   summons   pets that follow you while you have it
                                  {"spider": 2, "bing_bong": 1}
 
+(Old "stats" lists - {"stat": ..., "type": ..., "amount": ...} - still work. Random
+item affixes are stored that way, but you write mods.)
+
 So a unique that gives +2 projectiles, or a tree node that summons a spider,
-needs no new code: the player collects all five from every equipped item and
+needs no new code: the player collects them from every equipped item and
 every allocated node in recalculate_stats().
 
 RANGES: in an item definition any number can be a range, (low, high).
 It is rolled ONCE when the item is made:
-    {"stat": "spell_damage", "type": "increased", "amount": (20, 40)}
+    ("increased_spell_damage", (20, 40))
     ("projectiles", (1, 3))
-    {"on_kill": [{"name": "explode", "radius": 200, "damage": (150, 300)}]}
+    {"on_kill": [{"name": "explode", "type": "fire", "of": "max_health", "percent": (5, 10), "radius": 200}]}
 """
 import random
 
 bonus_parts = ("stats", "mods", "grants", "effects", "summons")
+effect_events = ("on_hit", "on_kill")      # when an "effects" entry happens
 
 
-def get_part(source, part):
-    """Read one part from a skill node (a dict) or an item (an object)."""
+def raw_part(source, part):
+    """One part exactly as written, from a skill node (a dict) or an item (an object)."""
     if isinstance(source, dict):
         return source.get(part)
     return getattr(source, part, None)
+
+def get_part(source, part):
+    """One part, for the PLAYER. Stat names inside "mods" (("max_health", 50))
+    become stat lines, so everything that reads stats sees them; "mods" then
+    holds only the mechanics (pierce, split, more_damage...)."""
+    value = raw_part(source, part)
+    if part not in ("stats", "mods"):
+        return value
+    from systems.mods import stat_of
+    mods = raw_part(source, "mods") or ()
+    if part == "mods":
+        return [(name, v) for name, v in mods if stat_of(name) is None]
+    lines = list(value or ())
+    for name, amount in mods:
+        found = stat_of(name)
+        if found:
+            lines.append({"stat": found[0], "type": found[1], "amount": amount})
+    return lines
 
 
 # ---------------------------------------------------------------
@@ -118,12 +141,12 @@ def collect_bonuses(sources):
     """sources = [(source_key, item_or_node), ...]
     -> {"stats": [...], "mods": [...], "grants": {...}, "effects": {...},
         "summons": [(source_key, pet_type, number), ...]}"""
-    from systems.mods import mod_types
+    from systems.mods import mod_exists
     totals = {"stats": [], "mods": [], "grants": {}, "effects": {}, "summons": []}
     for source_key, source in sources:
         totals["stats"].extend(get_part(source, "stats") or ())
         for name, value in get_part(source, "mods") or ():
-            if name in mod_types:
+            if mod_exists(name):
                 totals["mods"].append((name, value))
         for name, value in (get_part(source, "grants") or {}).items():
             totals["grants"][name] = totals["grants"].get(name, 0) + (1 if value is True else value)
@@ -174,17 +197,12 @@ def merged_stat_lines(stat_lines):
     return list(merged.values())
 
 def merged_mods(mods):
-    """("pierce", 1) x 9 -> ("pierce", 9). Multiplying mods ("damage", 1.1) are multiplied."""
-    from systems.mods import mod_combine
-    merged = {}
+    """("pierce", 1) x 9 -> ("pierce", 9). MORE mods multiply: 10% more twice = 21% more."""
+    from systems.mods import combine_values
+    grouped = {}
     for name, value in mods:
-        if name not in merged:
-            merged[name] = value
-        elif mod_combine(name) == "mul":
-            merged[name] *= value
-        else:
-            merged[name] += value
-    return list(merged.items())
+        grouped.setdefault(name, []).append(value)
+    return [(name, combine_values(name, values)) for name, values in grouped.items()]
 
 def describe_bonuses(source, include_stats=True):
     """-> [str, ...] one line for everything this item / node gives."""
@@ -213,8 +231,8 @@ def describe_bonuses(source, include_stats=True):
 def check_bonuses(where, source, problems):
     """Add a line to `problems` for every unknown stat, mod, effect or pet."""
     from systems.items import stat_defs
-    from systems.mods import mod_types
-    from systems.status import status_effect_types, hit_effect_types
+    from systems.mods import mod_exists
+    from systems.status import status_effect_types, hit_effect_types, check_effect
     from systems.pets import pet_configs
     for line in get_part(source, "stats") or ():
         if line.get("stat") not in stat_defs:
@@ -222,12 +240,16 @@ def check_bonuses(where, source, problems):
         if line.get("type") not in ("flat", "increased"):
             problems.append(f"{where}: stat '{line.get('stat')}' needs \"type\": \"flat\" or \"increased\"")
     for name, _ in get_part(source, "mods") or ():
-        if name not in mod_types:
+        if not mod_exists(name):
             problems.append(f"{where}: unknown mod '{name}'")
     for event, effects in (get_part(source, "effects") or {}).items():
+        if event not in effect_events:
+            problems.append(f"{where}: unknown effect event '{event}' (use one of {effect_events})")
         for effect in effects:
             if effect.get("name") not in status_effect_types and effect.get("name") not in hit_effect_types:
                 problems.append(f"{where}: unknown effect '{effect.get('name')}'")
+            else:
+                problems += [f"{where}: {p}" for p in check_effect(effect)]
     for pet_type in get_part(source, "summons") or {}:
         if pet_type not in pet_configs:
             problems.append(f"{where}: summons unknown pet '{pet_type}'")

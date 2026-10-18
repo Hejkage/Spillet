@@ -5,13 +5,15 @@ other stat) that ALSO gives bonuses of its own, in the same format as a skill
 tree node:
 
     register_attribute("domination", "Domination",
-        per_point={"stats": [{"stat": "max_health", "type": "flat", "amount": 2}]},
+        per_point={"mods": [("max_health", 2)]},
         checkpoints={
-            100: {"stats": [{"stat": "physical_damage", "type": "increased", "amount": 10}]},
+            100: {"mods": [("increased_physical_damage", 10)]},
             500: {"grants": {"pet_slots": 1}},
         })
 
 per_point    given for every point you have
+every        given once per FULL step of points: {10: {"mods": [("increased_pet_buff_effect", 1)]}}
+             = 1% per 10 points (15 points = 1%, 20 points = 2%)
 checkpoints  given once you reach that many points. Every checkpoint reached counts.
 Both use the five parts from systems/bonuses.py: stats, mods, grants, effects, summons.
 An attribute's bonuses can NOT give attributes (it would raise itself forever).
@@ -29,11 +31,12 @@ attribute_types = {}
 
 stat_tabs.append(("attributes", "Attributes"))      # its own tab in the stats panel
 
-def register_attribute(key, label, per_point=None, checkpoints=None, color=None, description=""):
+def register_attribute(key, label, per_point=None, checkpoints=None, color=None, description="", every=None):
     register_stat(key, label, base=0, tab="attributes", always=True, color=color)
     attribute_types[key] = {
         "label": label,
         "per_point": per_point or {},
+        "every": {int(k): dict(v) for k, v in (every or {}).items()},
         "checkpoints": {int(k): dict(v) for k, v in (checkpoints or {}).items()},
         "description": description,
     }
@@ -75,6 +78,11 @@ def attribute_bonuses(values):
             continue
         for part, value in config["per_point"].items():
             add_part(total, part, scale_part(part, value, points))
+        for step, bonus in config.get("every", {}).items():
+            times = points // step                        # full steps only
+            if times > 0:
+                for part, value in bonus.items():
+                    add_part(total, part, scale_part(part, value, times))
         for at, bonus in sorted(config["checkpoints"].items()):
             if at <= points:
                 for part, value in bonus.items():
@@ -122,7 +130,8 @@ def attributes_with(player, item, slot_name, equipment):
         return getattr(player, "attributes", {})               # already worn: already counted
     replaced = id(equipment.item_in(slot_name)) if equipment.item_in(slot_name) is not None else None
     lines = [line for source, line in getattr(player, "attribute_lines", []) if source != replaced]
-    lines += [line for line in getattr(item, "stats", []) if line.get("stat") in attribute_types]
+    from systems.bonuses import get_part
+    lines += [line for line in (get_part(item, "stats") or []) if line.get("stat") in attribute_types]   # "mods" too
     return attribute_values(lines)
 
 def missing_requirements(item, player, slot_name=None, equipment=None):

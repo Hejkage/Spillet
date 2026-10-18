@@ -43,20 +43,19 @@ def support_fits(gem_type, ability_tags, blocked=()):
     return fits(config["needs"], config["scales"], ability_tags, blocked)
 
 def combine_support_values(gem_type, values):
-    mode = support_gem_types[gem_type].get("combine", "add")
-    if mode == "mul":
-        total = 1.0
-        for v in values:
-            total *= v
-        return round(total, 3)
-    return sum(values)
+    from systems.mods import combine_values
+    config = support_gem_types[gem_type]
+    return combine_values(config["mod"], values) if config["mod"] else sum(values)
 
 class SupportGem:
     def __init__(self, gem_type, value, rarity):
         self.gem_type = gem_type
+        self.config = support_gem_types[gem_type]
+        from systems.mods import mod_combine
+        if self.config["mod"] and mod_combine(self.config["mod"]) == "more" and 0 < value < 5:
+            value = round((value - 1) * 100, 2)      # an old save: 1.25 (x1.25) is now 25 (25% more)
         self.value = value
         self.rarity = rarity
-        self.config = support_gem_types[gem_type]
         self.gem_name = self.config["name"]
 
     def apply_gem(self, packets):
@@ -109,13 +108,29 @@ def build_hit_packets(base_direction, base_speed, base_damage, base_aoe, sprite_
     for gem in support_gems:
         packets = gem.apply_gem(packets)
 
-    # 4. only now the real damage: all flat, then increased, then all multipliers
+    # 4. effects from the gem's tree and from your items ("on_hit" / "on_kill")
+    for event, effects in (extra or {}).get("_events", {}).items():
+        field = "effects" if event == "on_hit" else event
+        for p in packets:
+            p[field] = list(p.get(field, ())) + list(effects)
+
+    # 5. only now the real numbers: damage (flat, then increased, then more),
+    #    and projectile speed / area with what the hit carries added to yours
     if extra and "_stat" in extra:
         from systems.damage import finish_hit_damage
-        from systems.mods import finish_increased_stats
-        finish_hit_damage(packets, base_damage, extra["_stat"])
-        finish_increased_stats(packets, extra["_stat"])        # increased speed / area
+        stat = extra["_stat"]
+        finish_hit_damage(packets, base_damage, stat)
+        for player_stat, key in hit_scaled_stats:
+            yours = stat(player_stat, 100, None)
+            for p in packets:
+                with_hit = stat(player_stat, 100, p)
+                if yours and with_hit != yours:
+                    p[key] = p[key] * with_hit / yours
     return packets
+
+# Stats that are already in a packet's numbers before mods run (speed, aoe). A mod
+# like ("increased_projectile_speed", 20) on a gem is added to YOUR stat at the end.
+hit_scaled_stats = [("projectile_speed", "speed"), ("aoe", "aoe")]
 # the old name, so nothing breaks while you rename the call sites
 apply_support_gems = build_hit_packets
 #endregion

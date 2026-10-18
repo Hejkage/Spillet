@@ -33,6 +33,11 @@ enemy_grid_cell_size = 128
 # the same spell. An ability can override it with "cooldown_jitter".
 enemy_ability_jitter = 0.35
 
+# When the player comes into an ability's range, the enemy waits a random time
+# between 0 and this before using it. Stops a group that arrives together from
+# all attacking on the same frame. An ability can set its own with reaction_time=.
+enemy_ability_reaction_time = 0.6
+
 enemy_collision_ratio = 0.625   # radius = sprite width * this (player: 32px sprite -> 20)
 
 class SpatialGrid:
@@ -80,8 +85,12 @@ class SpatialGrid:
 enemy_grid = SpatialGrid(enemy_grid_cell_size)
 
 class EnemyAbility():
-    def __init__(self, cooldown, ability_range, projectiles=1, spread=12, hit_type="spell"):
+    def __init__(self, cooldown, ability_range, projectiles=1, spread=12, hit_type="spell", cast_time=None,
+                 reaction_time=None):
+        self.reaction_time = enemy_ability_reaction_time if reaction_time is None else reaction_time
+        self.in_range = False               # was the player in range last frame?
         self.cooldown = cooldown
+        self.cast_time = cast_time          # wind-up before it happens. None = the enemy's own cast_time
         self.hit_type = hit_type            # "attack" or "spell": silence blocks spells
         self.ability_range = ability_range
         self.projectiles = projectiles      # how many it fires at once
@@ -93,11 +102,16 @@ class EnemyAbility():
             self.timer -= dt
 
     def update(self, enemy, player, dt, dist):
+        if dist > self.ability_range:
+            self.in_range = False
+            return
+        if not self.in_range:               # the player just came into range: react after a random moment
+            self.in_range = True
+            self.timer = max(self.timer, random.uniform(0, self.reaction_time))
+            return
         if self.timer > 0:
             return
         if enemy.is_blocked(self.hit_type):
-            return
-        if dist > self.ability_range:
             return
         if enemy.begin_cast(self):
             face_direction(enemy, player.x - enemy.x, player.y - enemy.y)
@@ -128,6 +142,63 @@ class EnemyProjectileAbility(EnemyAbility):
         self.aoe = aoe
         self.damage_type = damage_type
 
+class EnemyMeleeAbility(EnemyAbility):
+    """A close-up attack: stands still for its wind-up (cast_time), then hits the
+    player if they are still in reach, and shows `visual` on them.
+
+        EnemyMeleeAbility(cooldown=1.5, ability_range=70, damage=40, cast_time=0.3,
+                          visual="swipe_marks_sprite")
+
+    reach_leeway  the player may step this much past ability_range during the wind-up
+                  and still get hit (1.25 = 25% further). Lower = easier to dodge."""
+    def __init__(self, cooldown, ability_range, damage, damage_type="physical", hit_type="attack",
+                 cast_time=None, visual=None, visual_time=0.25, reach_leeway=1.25,
+                 visual_offset=0, visual_spin=0, sound=None, sound_volume=1.0, reaction_time=None):
+        super().__init__(cooldown, ability_range, hit_type=hit_type, cast_time=cast_time, reaction_time=reaction_time)
+        self.damage = damage
+        self.damage_type = damage_type
+        self.visual = visual
+        self.visual_time = visual_time
+        self.visual_offset = visual_offset   # random nudge in pixels
+        self.visual_spin = visual_spin       # random turn, +- degrees
+        self.sound = sound                   # file name in assets/sounds, without .ogg/.wav
+        self.sound_volume = sound_volume
+        self.reach_leeway = reach_leeway
+
+    def fire(self, enemy, player, dist):
+        face_direction(enemy, player.x - enemy.x, player.y - enemy.y)
+        if self.sound:
+            from core.sounds import play_sound
+            play_sound(self.sound, self.sound_volume)    # plays on every swipe, hit or miss
+        if dist > self.ability_range * self.reach_leeway:
+            return                                         # the player stepped away: a miss
+        from systems.damage import resolve_damage
+        player.take_damage(resolve_damage(self.damage, {"damage_type": self.damage_type, "hit_type": self.hit_type}, player))
+        from systems.visuals import spawn_visual
+        spawn_visual(self.visual, follow=player, duration=self.visual_time, offset=self.visual_offset, spin=self.visual_spin)
+
+class EnemyHasteAbility(EnemyAbility):
+    """Moves faster for a while: the "haste" status on itself.
+
+        EnemyHasteAbility(cooldown=6, ability_range=600, speed_mult=2.5, duration=1.5)
+
+    ability_range  used when the player is this close (or closer)
+    min_range      ...and at least this far, so it doesn't sprint when already next to you
+    cast_time      0 = no wind-up, it just takes off"""
+    def __init__(self, cooldown, ability_range, speed_mult, duration, min_range=0, cast_time=0):
+        super().__init__(cooldown, ability_range, hit_type="spell", cast_time=cast_time)
+        self.speed_mult = speed_mult
+        self.duration = duration
+        self.min_range = min_range
+
+    def update(self, enemy, player, dt, dist):
+        if dist < self.min_range:
+            return
+        super().update(enemy, player, dt, dist)
+
+    def fire(self, enemy, player, dist):
+        enemy.apply_status("haste", self.duration, amount=self.speed_mult)
+
 enemy_defaults = {
     "base_sprite": None, 
     "back_sprite": None, 
@@ -135,7 +206,8 @@ enemy_defaults = {
     "health": 100, 
     "xp_value": 10,
     "move_speed": 120, "contact_damage": 0, "behavior": "melee",
-    "attack_range": 400, "cast_cooldown": enemy_global_cast_cooldown,
+    "keep_distance": enemy_stop_distance,   # how close it walks to the player (melee AND caster)
+    "cast_cooldown": enemy_global_cast_cooldown,
     "cast_time": enemy_cast_time, "skip_generic_drops": False,
     "retreat_range": 150,          # add — how close the player has to get before it backs away
     "retreat_speed_mult": 0.65,    # add — retreat is slower than its chase speed
@@ -153,6 +225,7 @@ enemy_defaults = {
     "poison_stack_mult": 1.0,      # 0.5 = this enemy can only have half the max poison stacks
     "poison_duration_mult": 1.0,   # 0.5 = poison lasts half as long on it
     "burn_duration_mult": 1.0,
+    "passes_walls": False,         # True = walks straight through trees, rocks and walls
 }
 
 enemy_behaviors = {}
@@ -176,6 +249,7 @@ class Enemy(StatusHolder):
         self.abilities = [f() for f in cfg.get("abilities", [])]
         self.alive = True
         self.slow_multiplier = 1.0
+        self.haste_multiplier = 1.0    # the "haste" status raises it
         self.statuses = {}
         self.sprites = {name: self.build_scaled_sprite(name) for name in (self.sprite_name, self.back_sprite_name) if name}
         self.sprite = self.sprites[self.sprite_name]
@@ -203,23 +277,30 @@ class Enemy(StatusHolder):
     def defence_stat(self, stat):
         return self.damage_totals.get(stat, 0)
 
-    def enemy_take_damage(self, amount):
+    def enemy_take_damage(self, amount, flash=True, source=None):
+        """source = what dealt it (a projectile, a swing, an explosion). Your on-kill
+        effects get it, so "of": "hit" knows the damage. None = damage over time."""
         if not self.alive:
             return
+        if flash and amount > 0:
+            from systems.hitflash import flash as hit_flash
+            hit_flash(self)
         self.health -= amount
         if self.health <= 0:
             self.alive = False
             player.gain_xp(self.xp_value)
             credit_gem_kill()
-            on_kill = player.effects_for("on_kill")
+            # yours (items, passive tree) + the on-kill effects of the hit it came from:
+            # a fireball's own on-kill also happens when its burn or explosion kills
+            on_kill = list(player.effects_for("on_kill")) + list(kill_effects_of(source))
             if on_kill:
-                apply_hit_effects(self, on_kill)   # the normal effect pipeline
+                apply_hit_effects(self, on_kill, source=source)   # the normal effect pipeline
             spawn_drops(self)
             if self.enemy_type == "baby_witch":
                 app.start_completed = True
     
     def current_speed(self):
-        return self.move_speed * self.slow_multiplier
+        return self.move_speed * self.slow_multiplier * self.haste_multiplier
 
     def get_sort_y(self):
         return feet_y(self.y, self.sprite)
@@ -315,7 +396,12 @@ class Enemy(StatusHolder):
         length = (move_x * move_x + move_y * move_y) ** 0.5
         if length > 0:
             step = self.current_speed() * dt
-            move_with_collision(self, (move_x / length) * step, (move_y / length) * step, self.collision_radius)
+            step_x, step_y = (move_x / length) * step, (move_y / length) * step
+            if self.passes_walls:                     # straight through anything in the way
+                self.x = max(0, min(world.width, self.x + step_x))
+                self.y = max(0, min(world.height, self.y + step_y))
+            else:
+                move_with_collision(self, step_x, step_y, self.collision_radius)
             face_direction(self, move_x, move_y)
 
     def update_idle(self, dt):
@@ -332,7 +418,7 @@ class Enemy(StatusHolder):
         if self.casting or self.global_cast_timer > 0:
             return False
         self.casting = True
-        self.cast_timer = self.cast_time
+        self.cast_timer = self.cast_time if ability.cast_time is None else ability.cast_time
         self.pending_cast = ability
         return True
     
@@ -408,10 +494,19 @@ class Enemy(StatusHolder):
 
         if p.hits_rect(self.rect):
             if p.from_player:
-                apply_player_hit(self, p.damage, p.effects, p.hit_stats, source=p, attacker=p.attacker)
+                origin = p.origin
+                if p.hits > 0 and not p.orbit and origin == "main":
+                    origin = "pierce"                  # it already went through someone
+                p.hits += 1
+                apply_player_hit(self, p.damage, p.effects, p.hit_stats, source=p, attacker=p.attacker, origin=origin)
             else:
                 self.enemy_take_damage(p.damage)
                 apply_hit_effects(self, p.effects, source=p)
+
+            if p.redirected:                           # it chained: same projectile, new target, no pierce used
+                p.redirected = False
+                p.pierced.add(self)
+                return
 
             if p.orbit:
                 if p.pierce > 0:
@@ -430,7 +525,7 @@ class Enemy(StatusHolder):
         return (-self.rect.width < screen_x < app.screen_width + self.rect.width and -self.rect.height < screen_y < app.screen_height + self.rect.height)
     
 def melee_behavior(e, player, dt, dx, dy, dist):
-    if dist > enemy_stop_distance and dist > 0:
+    if dist > e.keep_distance and dist > 0:
         return dx / dist, dy / dist
     return 0, 0
 
@@ -438,7 +533,7 @@ def caster_behavior(e, player, dt, dx, dy, dist):
     if dist <= 0:
         return 0, 0
     ux, uy = dx / dist, dy / dist
-    if dist > e.attack_range * 1.1:
+    if dist > e.keep_distance * 1.1:
         return ux, uy
     if dist < e.retreat_range:
         depth = (e.retreat_range - dist) / max(1.0, e.retreat_range * 0.5)
@@ -473,23 +568,44 @@ def credit_gem_kill():
             if after > before:
                 spawn_floating_text(f"{gem.name} reached level {after}", player.x, player.y - 40, color=(120, 200, 255))
 
-def deal_effect_damage(enemy, damage, hit_stats=None, attacker=None, label="Effect"):
-    """Damage that is NOT a hit: explosions, burning ground... It is reduced by
-    resistance and protection like a hit, but never crits, never leeches, never
-    burns/poisons and never triggers on-hit effects.
+def kill_effects_of(source):
+    """The on-kill effects that come with what dealt the killing damage: a gem's
+    projectile or swing, or a burn / poison / explosion that hit made."""
+    return (getattr(source, "hit_stats", None) or {}).get("on_kill", ())
+
+def deal_effect_damage(enemy, damage, hit_stats=None, attacker=None, label="Effect", source=None):
+    """Damage from an EFFECT (explosions, burning ground...), with YOUR stats only.
+    hit_stats should hold only its damage types: nothing from a gem.
+
+      crit        base 0%: only your added crit chance, then increased (player.effect_crit_stats)
+      defences    resistance and protection, lowered by your penetration
+      ailments    burn / poison with your chances, from the damage it dealt
+      never       leech (it is not an attack or spell), on-hit effects
+      on kill     your on-kill effects happen, with `source` (the explosion)
+
     label = what the target dummy calls it ("Explosion")."""
     from systems.damage import damage_split, resolve_damage_parts
     attacker = attacker or player
+    if hasattr(attacker, "effect_crit_stats"):
+        chance, crit_multiplier = attacker.effect_crit_stats()
+        if chance > 0 and random.uniform(0, 100) < chance:
+            damage *= crit_multiplier / 100
     parts = resolve_damage_parts(damage, hit_stats, enemy, attacker)
+    raw = {t: damage * share for t, share in damage_split(hit_stats).items()}      # before defences
     if enemy.show_hit_stats:
-        enemy.last_hit = {"raw": {t: damage * share for t, share in damage_split(hit_stats).items()},
-                          "after": parts, "label": label}
+        enemy.last_hit = {"raw": raw, "after": parts, "label": label}
     total = sum(parts.values())
-    enemy.enemy_take_damage(total)
+    enemy.enemy_take_damage(total, source=source)
+    if enemy.alive:
+        from systems.ailments import try_ailments
+        try_ailments(enemy, attacker, hit_stats, parts, raw)
     return total
 
-def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None, attacker=None):
-    """A hit from the player's side. attacker = whose stats it uses (a pet), None = the player."""
+def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None, attacker=None, origin="main"):
+    """A hit from the player's side. attacker = whose stats it uses (a pet), None = the player.
+    origin = where the hit came from (systems/origins.py). A hit that is not the skill
+    (a split projectile) never triggers on-hit effects - only statuses like slow land."""
+    from systems.origins import is_skill_hit
     attacker = attacker or player
     chance, crit_multiplier = attacker.crit_stats(hit_stats)
 
@@ -498,20 +614,24 @@ def apply_player_hit(enemy, damage, effects=(), hit_stats=None, source=None, att
 
     from systems.damage import damage_split, resolve_damage_parts
     parts = resolve_damage_parts(damage, hit_stats, enemy, attacker)
+    raw = {t: damage * share for t, share in damage_split(hit_stats).items()}      # before defences
     if enemy.show_hit_stats:
-        enemy.last_hit = {"raw": {t: damage * share for t, share in damage_split(hit_stats).items()}, "after": parts}
+        enemy.last_hit = {"raw": raw, "after": parts}
     damage = sum(parts.values())
 
-    enemy.enemy_take_damage(damage)
+    if source is None:                                      # called without a projectile / swing (a pet's bite)
+        from systems.status import EffectSource
+        source = EffectSource(damage, hit_stats, 0, attacker=attacker, origin=origin)
+    enemy.enemy_take_damage(damage, source=source)          # its on-kill effects happen in there
 
     if enemy.alive:
         from systems.ailments import try_ailments
-        try_ailments(enemy, attacker, hit_stats, parts)     # parts = what actually landed
+        try_ailments(enemy, attacker, hit_stats, parts, raw)     # parts = what landed, raw = before defences
 
-    if attacker is player and player.lifesteal > 0:
-        player.heal(damage * player.lifesteal / 100)
+    from systems.leech import leech
+    leech(attacker, hit_stats, damage)                      # attacks: lifesteal, spells: spell leech
 
-    apply_hit_effects(enemy, effects, source=source)
+    apply_hit_effects(enemy, effects, source=source, statuses_only=not is_skill_hit(origin))
 
     return damage
 

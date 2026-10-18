@@ -31,7 +31,8 @@ def facing_sprite_name(entity):
     return entity.sprite_name
 
 def facing_surface(entity, sprite):
-    """Mirror a sprite if the entity faces left."""
+    """Mirror a sprite if the entity faces left, and tint it if it was just hit."""
     if getattr(entity, "facing", 1) == -1:
-        return pygame.transform.flip(sprite, True, False)
-    return sprite
+        sprite = pygame.transform.flip(sprite, True, False)
+    from systems.hitflash import flash_surface
+    return flash_surface(entity, sprite)

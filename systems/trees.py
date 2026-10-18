@@ -16,7 +16,7 @@ MAKING A TREE (in content/):
     tree.node("start", "Origin", position=(0, 0), is_root=True)
     tree.node("vitality", "Vitality", position=(-25, -43), connects="start",
               max_points=10, points_to_pass=5,
-              per_point={"stats": [{"stat": "max_health", "type": "flat", "amount": 5}]})
+              per_point={"mods": [("max_health", 5)]})
 
 NODE OPTIONS - the same in every tree:
 
@@ -63,6 +63,11 @@ SECTIONS - a tree can be split into parts that must be UNLOCKED with a section p
 
 WHAT A TREE ACCEPTS: get_tree("fireball", accepts={"mods"}). A node using any
 other part is an error at start-up - so nothing is ever silently ignored.
+OWNER: who the tree's mods are for (systems/mods.py):
+    "player"  anything                      (the passive tree)
+    "gem"     only mods ONE hit can use     (gem trees: crit, penetration, pierce...)
+    "pet"     only the pet's own stats      (pet trees)
+A mod that can't work for the owner is an error when the node is made.
 """
 from systems.bonuses import bonus_parts, add_part, scale_part
 
@@ -123,17 +128,21 @@ class Tree:
         self.accepts = set(bonus_parts)    # which of the five parts a node may give
         self.respec_cost = 5      # gold to take back ONE saved point
         self.section_lock_cost = 500       # gold to lock a section you had saved
-        self.pet_stats = False    # True: "stats" are PET stats (tooltips use pet labels)
+        self.owner = "player"     # "player", "gem" or "pet": which mods make sense here
 
-    def settings(self, accepts=None, respec_cost=None, section_lock_cost=None, pet_stats=None):
+    @property
+    def pet_stats(self):
+        return self.owner == "pet"
+
+    def settings(self, accepts=None, respec_cost=None, section_lock_cost=None, owner=None):
+        if owner is not None:
+            self.owner = owner
         if accepts is not None:
             self.accepts = set(accepts)
         if respec_cost is not None:
             self.respec_cost = respec_cost
         if section_lock_cost is not None:
             self.section_lock_cost = section_lock_cost
-        if pet_stats is not None:
-            self.pet_stats = pet_stats
 
     # --- building it --------------------------------------------------------
     def section(self, key, name):
@@ -221,6 +230,13 @@ class Tree:
         if used - self.accepts:
             raise ValueError(f"{where}: this tree only takes {sorted(self.accepts)}, "
                              f"not {sorted(used - self.accepts)}")
+        from systems.mods import owner_mod_problem
+        mods = [name for name, _ in (per_point or {}).get("mods", ())]
+        mods += [name for bonus in at_points.values() for name, _ in bonus.get("mods", ())]
+        for name in mods:
+            problem = owner_mod_problem(name, self.owner)
+            if problem:
+                raise ValueError(f"{where}: {problem}")
         return per_point or {}, at_points
 
     def edge(self, a, b, one_way=False):
@@ -293,8 +309,8 @@ class Tree:
         if not self.pet_stats:
             return describe_bonuses(bonuses)
         from systems.pets import describe_pet_mod
-        return ([describe_pet_mod(line) for line in bonuses.get("stats", ())]
-                + describe_bonuses(bonuses, include_stats=False))
+        from systems.gemtree import pet_stat_lines
+        return [describe_pet_mod(line) for line in pet_stat_lines(bonuses)]
 
 
 # ---------------------------------------------------------------

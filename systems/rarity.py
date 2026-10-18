@@ -103,6 +103,15 @@ def roll_affix_value(affix, tier_rarity):
         return random.randint(low, high)
     return round(random.uniform(low, high), 3)
 
+def affix_stat(affix):
+    """{"stat": ..., "type": ...} for an affix. An affix names its mod:
+    "mod": "increased_movement_speed"  (the same names as everywhere else)."""
+    from systems.mods import stat_of
+    found = stat_of(affix["mod"])
+    if found is None:
+        raise ValueError(f"Affix mod '{affix['mod']}' is not a stat (see systems/mods.py)")
+    return {"stat": found[0], "type": found[1]}
+
 def roll_item(base_key, rarity=None, monster_tier=None):
     """Make an item from base_items[base_key]. Normal bases and uniques both go here.
 
@@ -137,7 +146,7 @@ def roll_item(base_key, rarity=None, monster_tier=None):
             affix = affix_pool[affix_key]
             tier = random.choice(allowed_tiers)
             amount = roll_affix_value(affix, tier)
-            stats.append({"stat": affix["stat"], "type": affix["type"], "amount": amount, "tier": tier})
+            stats.append({**affix_stat(affix), "amount": amount, "tier": tier})
 
     return EquippableItem(base["name"], base["sprite"], base["slot"], stats=stats, rarity=rarity,
                           weapon_class=base.get("weapon_class"), swing_sprite_name=base.get("swing_sprite"),

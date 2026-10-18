@@ -134,6 +134,7 @@ def final_damage(base_damage, hit_stats, stat):
 
     for t in parts:
         increased = sum((stat(f"{k}_damage", 100) - 100) / 100 for k in part_keys(t, hit_stats) if k not in blocked)
+        increased += (stat("damage", 100) - 100) / 100       # "increased damage" counts for every part
         parts[t] *= max(0, 1 + increased)
 
     return sum(parts.values()), parts
@@ -147,28 +148,22 @@ def increased_only(base_damage, damage_type, stat):
     stat(name, default) -> the attacker's value of a stat."""
     keys = {damage_type, *damage_types.get(damage_type, ())}
     increased = sum((stat(f"{k}_damage", 100) - 100) / 100 for k in keys)
+    increased += (stat("damage", 100) - 100) / 100           # "increased damage" counts for everything
     return base_damage * max(0, 1 + increased)
 
 def finish_hit_damage(packets, base_damage, stat):
     """The real damage of each hit, worked out AFTER every support, tree node and mod
     has run - so the order they are socketed in never matters:
 
-      1. FLAT       the ability's own damage + the player's added_<type> stats
-                    + every added_<type> a support / mod put on the hit
-      2. INCREASED  the player's increased damage stats (fire, elemental, spell...)
-      3. MORE       every damage multiplier from supports / the tree ("damage_more"),
-                    multiplied together
+      1. FLAT       the ability's own damage + added_<type> from you AND from this hit
+      2. INCREASED  increased damage (fire, elemental, spell...) from you AND this hit,
+                    all added together
+      3. MORE       every more_damage on the hit, multiplied together
 
-    stat(name, default) -> the player's value of a stat."""
+    stat(name, default, hit) -> the attacker's value of a stat, with what the hit
+    itself carries added in (player.resolve_stat does exactly that)."""
     for p in packets:
-        def total_stat(name, default, p=p):
-            value = stat(name, default)
-            if name.startswith("added_"):
-                value += p.get(name, 0)          # flat damage a support added to this hit
-            elif name.endswith("_damage"):       # "fire_damage" -> "increased_fire" a mod put on this hit
-                value += p.get("increased_" + name[:-len("_damage")], 0)
-            return value
-        total, parts = final_damage(base_damage, p, total_stat)
+        total, parts = final_damage(base_damage, p, lambda name, default, p=p: stat(name, default, p))
         more = p.get("damage_more", 1.0)
         p["damage_split"] = {t: v * more for t, v in parts.items()}
         p["damage"] = total * more
@@ -210,6 +205,8 @@ def resolve_damage_parts(damage, hit_stats, defender, attacker=None, protectable
 
         def penetration(suffix):
             total = attacker_stat(attacker, f"{damage_type}_{suffix}", hit_stats)
+            # a group on the HIT ("elemental_penetration" from a gem tree) counts for its types
+            total += sum((hit_stats or {}).get(f"{g}_{suffix}", 0) for g in damage_types.get(damage_type, ()))
             return total + sum(attacker_stat(attacker, f"{k}_{suffix}", hit_stats) for k in tag_keys)
 
         # 1. resistance: a % of this part. Capped, then penetration lowers it.

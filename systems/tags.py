@@ -55,6 +55,23 @@ register_tag("two_hand")
 # ---------------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------------
+# How tags are shown to the player, in this order. A tag not listed here is shown
+# after these, with its name in Title Case ("one_hand" -> "One Hand").
+tag_display = [("attack", "Attack"), ("spell", "Spell"), ("projectile", "Projectile"), ("melee", "Melee"),
+               ("aoe", "Area"), ("dot", "Damage over Time")]
+hidden_tags = {"damage"}     # every damaging ability has it - not worth a word
+
+def tag_line(tags, blocked=()):
+    """ "Tags: Spell, Projectile, Area, Fire, Elemental" - what an ability IS, and so what
+    scales it. A tag it blocks is left out, because nothing with that tag scales it."""
+    shown = set(tags) - with_members(blocked) - hidden_tags
+    order = [label for key, label in tag_display if key in shown]
+    order += [t.title() for t in damage_types if t in shown]                     # its damage types
+    order += [g.title() for g in damage_groups if g in shown]                    # their groups
+    known = {key for key, _ in tag_display} | set(damage_types) | set(damage_groups)
+    order += [t.replace("_", " ").title() for t in sorted(shown - known)]        # weapon tags...
+    return "Tags: " + ", ".join(order) if order else ""
+
 def with_groups(tags):
     """Add the group of every damage type: {"fire"} -> {"fire", "elemental"}."""
     tags = set(tags or ())
@@ -205,8 +222,8 @@ def check_all_content():
             where = f"tree '{tree.key}', node '{key}'"
             tables = node["choices"] or [node]                 # a choice node: check every option
             for at, bonus in [(at, b) for t in tables for at, b in [("per_point", t["per_point"])] + list(t["at_points"].items())]:
-                if tree.pet_stats:                     # pet stats aren't player stats: check the rest only
-                    bonus = {part: value for part, value in bonus.items() if part != "stats"}
+                if tree.owner == "pet":                # pet stat names were checked when the node was made
+                    bonus = {part: value for part, value in bonus.items() if part != "mods"}
                 check_bonuses(f"{where} at {at}", bonus, problems)
                 if at != "per_point" and at > node["max_points"]:
                     problems.append(f"{where}: at_points {at} is more than max_points {node['max_points']}")

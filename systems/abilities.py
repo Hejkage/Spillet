@@ -28,6 +28,7 @@ class ActiveGem:
          # mods this ability always has (systems/mods.py)
         self.always_mods = []      # from the gem template's "always" list
         self.outside_mods = []     # from the skill tree, uniques...
+        self.own_effects = {}      # {"on_hit": [...], "on_kill": [...]} from this gem's own tree
         self.tags = set()          # what this ability IS (ability_tags) - decides which mods/supports fit
         self.blocked = set()       # what it can't scale with ("blocked" in its template)
         self.facing_flip = 1
@@ -57,9 +58,16 @@ class ActiveGem:
         else:
             cooldown = self.base_cooldown * max(0.1, 1 - player.cooldown / 100)
 
+        def stat(name, default, hit=None):
+            """Your stat, plus what this hit itself carries (its gem tree, supports)."""
+            if name in player.base_stats:
+                return player.resolve_stat(name, hit)
+            return getattr(player, name, default)
+
         return {
             "damage": self.base_damage,
-            "stat": lambda name, default: getattr(player, name, default),   # the player's stats, for finish_hit_damage
+            "stat": stat,                                  # for finish_hit_damage
+            "on_hit": list(player.effects_for("on_hit")),  # on-hit effects from your items / passive tree
             "aoe": self.base_aoe * (player.aoe / 100) if self.uses_aoe else self.base_aoe,
             "speed": self.base_projectile_speed * (player.projectile_speed / 100),
             "cooldown": cooldown,
@@ -68,13 +76,16 @@ class ActiveGem:
 
     def final_cooldown(self, player, base, probe):
         """The real cooldown, after supports and mods.
-        Spells: the player's cooldown reduction + every "cooldown_reduction" mod on
-        this gem are ADDED together, then applied once (90% at most).
-        Then any cooldown_mult from supports (burst fire, attack speed) on top."""
-        cooldown = base["cooldown"]
-        if not self.speed_stat:
-            reduction = player.cooldown + max((p.get("cooldown_reduction", 0) for p in probe), default=0)
-            cooldown = self.base_cooldown * max(0.1, 1 - reduction / 100)
+        ATTACKS: your attack speed + attack speed on this gem (its tree, supports).
+        SPELLS:  your cooldown reduction + cooldown reduction on this gem, ADDED
+                 together, then applied once (90% at most).
+        Then any cooldown_mult from supports (burst fire) on top."""
+        hit = probe[0] if probe else None
+        stat = base["stat"]
+        if self.speed_stat:
+            cooldown = self.base_cooldown / max(0.01, stat(self.speed_stat, 100, hit) / 100)
+        else:
+            cooldown = self.base_cooldown * max(0.1, 1 - stat("cooldown", 0, hit) / 100)
         return cooldown * min((p.get("cooldown_mult", 1.0) for p in probe), default=1.0)
 
     def get_effective_stats(self, player):
@@ -115,6 +126,10 @@ class ActiveGem:
         extra["_always"] = self.always_mods
         extra["_mods"] = self.outside_mods
         extra["_stat"] = base["stat"]             # build_hit_packets() works out the final damage with these
+        events = {event: list(effects) for event, effects in self.own_effects.items()}
+        if base.get("on_hit"):
+            events["on_hit"] = events.get("on_hit", []) + base["on_hit"]
+        extra["_events"] = events                 # on-hit / on-kill effects (its tree + your items)
         return extra
 
     def try_cast(self, player, target_pos, camera):
@@ -178,7 +193,7 @@ def ability_blocked(t):
     from systems.tags import with_members
     return with_members(t.get("blocked", ()))
 
-def build_active_gem(t, supports, gem_stats=None, outside_mods=(), tree_mods=()):
+def build_active_gem(t, supports, gem_stats=None, outside_mods=(), tree_mods=(), tree_effects=None):
         extra = {k: v for k, v in t.items() if k not in standard_gem_fields}
         extra["hit_type"] = template_hit_type(t)
         extra["tags"] = ability_tags(t)
@@ -231,6 +246,7 @@ def build_active_gem(t, supports, gem_stats=None, outside_mods=(), tree_mods=())
         gem.base_projectiles = int(val("projectiles", 1))
         gem.always_mods = list(t.get("always", ())) + list(tree_mods)   # what this gem always does + its own tree
         gem.outside_mods = list(outside_mods)              # skill tree, uniques
+        gem.own_effects = {e: list(v) for e, v in (tree_effects or {}).items()}   # this gem's own tree
         gem.tags = extra["tags"]                           # decides which mods / supports fit
         gem.blocked = extra["blocked"]
         return gem

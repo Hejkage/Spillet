@@ -56,6 +56,11 @@ def regen_resources(owner, dt):
         if regen:
             owner.resources[name] = max(0, min(resource_max(owner, name), owner.resources.get(name, 0) + regen * dt))
 
+def gain_resource(owner, name, amount):
+    """Add some of a resource (mana from spell leech...), never above its max."""
+    current = owner.resources.get(name, 0)
+    owner.resources[name] = max(0, min(resource_max(owner, name), current + amount))
+
 def can_pay(owner, cost):
     """cost = {"mana": 12}. None / {} = free."""
     return all(owner.resources.get(name, 0) >= amount for name, amount in (cost or {}).items())

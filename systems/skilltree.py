@@ -11,8 +11,8 @@ Content goes in content/skilltree.py:
 
     passive_tree.node("vitality", "Vitality", position=(550, 600), connects="start",
         max_points=10, points_to_pass=5,
-        per_point={"stats": [{"stat": "max_health", "type": "flat", "amount": 5}]},
-        at_points={10: {"stats": [{"stat": "max_health", "type": "increased", "amount": 10}]}})
+        per_point={"mods": [("max_health", 5)]},
+        at_points={10: {"mods": [("increased_max_health", 10)]}})
 """
 from systems.trees import get_tree, TreeProgress, node_kinds, register_node_kind   # noqa: F401 (content imports them from here)
 

@@ -10,16 +10,17 @@ What is special about them:
       level 1 with 10 points, +10 per level, 100 at level 10
     - SECTIONS: a gem tree can have sections (systems/trees.py). A section point
       comes at level 1 and at level 6, so 2 of 3 sections can be open at once
-    - an ACTIVE GEM tree gives "mods" - they change only this gem's hits -
-      and has sockets for support gems
-    - a PET tree gives "stats" - they change only this pet
+    - an ACTIVE GEM tree gives "mods" a single hit can use, and "effects"
+      ("on_hit" / "on_kill") - they change only this gem's hits - and has
+      sockets for support gems
+    - a PET tree gives "mods" that are the pet's own stats - they change only this pet
 
 Content (content/gem_trees.py, content/pets/...):
 
     tree = gem_tree("fireball")
     tree.node("start", "Ember Core", position=(0, 0), is_root=True)
     tree.node("dmg_1", "Kindling", position=(-200, -180), connects="start",
-              mods=[("damage", 1.12)])
+              mods=[("increased_damage", 12)])
     tree.node("socket_1", "Socket", position=(-400, 0), connects="start", is_socket=True)
 
     With sections, each section has its own root:
@@ -28,7 +29,7 @@ Content (content/gem_trees.py, content/pets/...):
 
     tree = pet_tree(pet_item_key("spider"))
     tree.node("venom", "Venom", position=(0, -200), connects="start",
-              stats=[{"stat": "damage", "type": "increased", "amount": 50}])
+              mods=[("increased_damage", 50)])
 """
 from systems.trees import get_tree, TreeProgress
 
@@ -40,14 +41,16 @@ gem_respec_cost = 25            # gold to take back one saved point
 section_lock_cost = 500         # gold to lock a section you had kept (to unlock a different one)
 
 def gem_tree(template_key):
-    """The tree layout for an active gem type. Its nodes may only give mods."""
-    return get_tree(template_key, accepts={"mods"}, respec_cost=gem_respec_cost,
-                    section_lock_cost=section_lock_cost)
+    """The tree layout for an active gem type. Its nodes give mods ONE hit can use
+    (systems/mods.py) and effects ("on_hit" / "on_kill") - all for this gem only."""
+    return get_tree(template_key, accepts={"mods", "effects"}, owner="gem",
+                    respec_cost=gem_respec_cost, section_lock_cost=section_lock_cost)
 
 def pet_tree(pet_key):
-    """The tree layout for a pet type. Its nodes may only give (pet) stats."""
-    return get_tree(pet_key, accepts={"stats"}, pet_stats=True, respec_cost=gem_respec_cost,
-                    section_lock_cost=section_lock_cost)
+    """The tree layout for a pet type. Its nodes give the pet's own stats, with the
+    same names as everywhere: ("increased_damage", 50), ("crit_chance", 5)."""
+    return get_tree(pet_key, accepts={"mods"}, owner="pet",
+                    respec_cost=gem_respec_cost, section_lock_cost=section_lock_cost)
 
 def make_item_tree(item):
     """Every gem / pet ITEM gets its own progress - this is what keeps them apart."""
@@ -70,9 +73,23 @@ def tree_mods(item):
     """[(mod, value), ...] from this item's nodes. Only its own hits use them."""
     return list(item.tree.bonuses().get("mods", ()))
 
+def tree_effects(item):
+    """{"on_hit": [...], "on_kill": [...]} from this item's nodes. Only its own hits use them."""
+    return dict(item.tree.bonuses().get("effects", {}))
+
+def pet_stat_lines(bonuses):
+    """A pet tree's mods as the pet's stat lines: ("increased_damage", 50) ->
+    {"stat": "damage", "type": "increased", "amount": 50}."""
+    from systems.mods import pet_stat_of
+    lines = []
+    for name, amount in bonuses.get("mods", ()):
+        stat, kind = pet_stat_of(name)
+        lines.append({"stat": stat, "type": kind, "amount": amount})
+    return lines
+
 def tree_stats(item):
     """[stat line, ...] from this item's nodes. Only its own pet uses them."""
-    return list(item.tree.bonuses().get("stats", ()))
+    return pet_stat_lines(item.tree.bonuses())
 
 def supports_gem(support_item, gem_item):
     """Can this support gem go in a socket of this active gem?"""
@@ -115,7 +132,7 @@ def kills_needed_for_next(item):
 
 # ---------------------------------------------------------------
 # The older way of writing nodes. Still works, so old content needs no changes.
-#   support_type="damage", value=1.12   ->   mods=[("damage", 1.12)]
+#   support_type="pierce", value=2   ->   mods=[("pierce", 2)]
 # ---------------------------------------------------------------
 def is_pet_tree(template_key):
     from systems.pets import pet_configs, pet_item_key
@@ -126,6 +143,10 @@ def register_gem_node(template_key, key, name, position, support_type=None, valu
         from systems.supports import support_gem_types
         mod = support_gem_types[support_type]["mod"] or support_type
         options["mods"] = list(options.get("mods") or ()) + [(mod, value)]
+    if options.get("stats"):                                  # old pet-tree stat lines -> mods
+        options["mods"] = list(options.get("mods") or ()) + [
+            (line["stat"] if line.get("type") == "flat" else "increased_" + line["stat"], line["amount"])
+            for line in options.pop("stats")]
     tree = pet_tree(template_key) if is_pet_tree(template_key) else gem_tree(template_key)
     return tree.node(key, name, position, **options)
 

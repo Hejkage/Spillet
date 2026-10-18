@@ -152,6 +152,7 @@ def register_stat(key, label, base=0, percent=False, show_in_panel=True, panel_l
 
 register_stat("movement_speed",     "Movement Speed",                   base=350,   tab="misc", always=True)
 register_stat("projectile_speed",   "Projectile Speed",                 base=100,   tab="misc", panel_label="Increased Projectile Speed")
+register_stat("damage",             "Damage",                           base=100,   tab="offence", panel_label="Increased Damage")   # every kind of damage
 register_stat("spell_damage",       "Spell Damage",                     base=100,   tab="offence", panel_label="Increased Spell Damage")
 register_stat("attack_damage",      "Attack Damage",                    base=100,   tab="offence", panel_label="Increased Attack Damage")
 register_stat("cooldown",           "Cooldown Reduction",               base=0,     tab="offence", percent=True)
@@ -168,20 +169,25 @@ register_stat("attack_speed",       "Attack Speed",                     base=100
 register_stat("attack_range",       "Attack Range",                     base=0)
 
 # ---------------------------------------------------------------
-# IMMUNITIES - gives the stat "<status>_immunity". Any amount above 0 = the
-# player never gets that status. Items, the tree and pet auras give it like
-# any other stat:  {"stat": "poison_immunity", "type": "flat", "amount": 1}
-# One line per status you want to be able to give immunity to.
+# IMMUNITIES - every status (slow, burn, poison, your own) gets the stat
+# "<status>_immunity" by itself when it is registered (systems/status.py).
+# It is a % CHANCE TO AVOID that status, and it adds up like any other stat:
+#     ("poison_immunity", 5)     5% chance to avoid being poisoned
+#     two rings with 50          100% = immune: you never get it
+# Anything above 100 counts as 100. register_status(..., avoidable=False)
+# for statuses nobody should avoid (your own buffs, like haste).
 # ---------------------------------------------------------------
 immunity_stats = {}          # stat -> status name
+immunity_full = 100          # this much (or more) = immune
 
-def register_immunity(status, label):
-    key = register_stat(f"{status}_immunity", label, tab="defence", flag=True)
+def register_immunity(status, avoid=None):
+    """Called by register_status(). avoid = what you avoid, e.g. "Being Poisoned"
+    -> "Chance to Avoid Being Poisoned". Left out: the status's name ("Ember Burn")."""
+    label = f"Chance to Avoid {avoid or status.replace('_', ' ').title()}"
+    key = register_stat(f"{status}_immunity", label, tab="defence",
+                        percent=True, cap=immunity_full, panel_label=label)
     immunity_stats[key] = status
     return key
-
-register_immunity("poison", "Immune to Poison")
-register_immunity("burn",   "Immune to Burn")
 
 from systems.damage import (damage_colors, damage_groups, damage_keys, damage_types, flat_conditions, max_protection, max_resistance)
 
@@ -267,7 +273,7 @@ def stat_rows(player, tab):
         suffix = "%" if (d["percent"] or d["as_increase"]) else ""
         text = f"{d['panel_label']}: {_number(value)}{suffix}"
         if d["cap"] is not None and value > d["cap"]:
-            text = f"{d['panel_label']}: {_number(d['cap'])}{suffix}  ({_number(value)}{suffix} total)"
+            text = f"{d['panel_label']}: {_number(d['cap'])}{suffix} ({_number(value)}{suffix})"
         rows.append((text, d["color"] or (255, 255, 255)))
     for source in panel_extra_rows.get(tab, ()):
         rows.extend(source(player))
@@ -284,32 +290,28 @@ def _rows_total_crit(player):
 @panel_rows("misc")
 def _rows_global_mods(player):
     """Mods the skill tree and items give every ability that accepts them: pierce, extra projectiles..."""
-    from systems.mods import describe_mod, mod_combine
+    from systems.mods import describe_mod, combine_values
     grouped = {}
     for name, value in getattr(player, "outside_mods", ()):
         grouped.setdefault(name, []).append(value)
-    rows = []
-    for name, values in grouped.items():
-        if mod_combine(name) == "mul":
-            total = 1.0
-            for v in values:
-                total *= v
-        else:
-            total = sum(values)
-        rows.append((describe_mod(name, total), (255, 255, 255)))
-    return rows
+    return [(describe_mod(name, combine_values(name, values)), (255, 255, 255))
+            for name, values in grouped.items()]
+
+# One section in the "Other" tab per event, with every effect from items and the tree under it.
+event_section_titles = {"on_kill": "On kill", "on_hit": "On hit"}
+event_section_color = (230, 200, 120)
 
 @panel_rows("misc")
 def _rows_event_effects(player):
-    """On-kill effects and the like, from the skill tree and items."""
-    from systems.status import describe_effect, own_effect_damage
+    """On-kill / on-hit effects from items and the skill tree, one section per event."""
+    from systems.status import describe_effect
     rows = []
     for event, effects in getattr(player, "event_effects", {}).items():
-        for effect in effects:
-            if "damage" in effect:                     # show the damage WITH your increased stats
-                damage, _ = own_effect_damage(effect, player)
-                effect = dict(effect, damage=damage)
-            rows.append((f"{describe_effect(effect)} ({event.replace('_', ' ')})", (255, 255, 255)))
+        if not effects:
+            continue
+        rows.append(("", _WHITE))                                  # a gap before the section
+        rows.append((event_section_titles.get(event, event.replace("_", " ").capitalize()), event_section_color))
+        rows += [(describe_effect(effect, final=True), _WHITE) for effect in effects]   # YOUR numbers
     return rows
 
 item_kinds = {}
@@ -816,14 +818,16 @@ def _tt_two_handed(item, lines):
 
 @tooltip_section
 def _tt_stats(item, lines):
+    from systems.bonuses import get_part
+    stat_lines = get_part(item, "stats") or []     # rolled affixes AND stats written in "mods" (uniques)
     if pygame.key.get_mods() & pygame.KMOD_ALT:
-        for mod in item.stats:
+        for mod in stat_lines:
             color = rarity_colors.get(mod.get("tier"), _WHITE)
             lines.append((_format_mod_line(mod), color))
         return
 
     grouped = {}
-    for mod in item.stats:
+    for mod in stat_lines:
         key = (mod.get("stat"), mod.get("type"))
         g = grouped.setdefault(key, {"amount": 0, "count": 0, "tier": mod.get("tier")})
         g["amount"] += mod.get("amount", 0)
@@ -930,12 +934,15 @@ def _tt_active_gem(item, lines):
         lines.append((f"{speed:.0f} projectile speed", _WHITE))
 
     gem_aoe = gem_val("aoe")
-    if gem_aoe is not None and template_uses_aoe(t):
-        lines.append((f"{gem_aoe * 100:.0f}% area of effect", _WHITE))
+    if gem_aoe is not None and template_uses_aoe(t) and t.get("hit_kind", "projectile") == "projectile":
+        from systems.projectiles import projectile_size
+        lines.append((f"Size: {projectile_size(t['sprite_name'], gem_aoe):.0f}", _WHITE))
 
-    blocked = t.get("blocked")
-    if blocked:
-        lines.append((f"Can't scale with: {', '.join(sorted(blocked))}", _GRAY))
+    from systems.abilities import ability_tags, ability_blocked
+    from systems.tags import tag_line
+    tags = tag_line(ability_tags(t), ability_blocked(t))     # what it IS = what scales it
+    if tags:
+        lines.append((tags, _GRAY))
 
     built_in = getattr(item, "built_in_support", None)
     if built_in is not None:

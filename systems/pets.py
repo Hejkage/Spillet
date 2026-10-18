@@ -154,10 +154,8 @@ def pet_hit(values):
         hit_stats["blocked"] = set(values["blocked"])                  # e.g. {"elemental"}
     total, parts = final_damage(values.get("ability_damage", 0), hit_stats,
                                 lambda name, default: values.get(name, default))
-    mult = values.get("damage", 100) / 100
-    parts = {t: v * mult for t, v in parts.items()}
-    hit_stats["damage_split"] = parts
-    return total * mult, hit_stats
+    hit_stats["damage_split"] = parts          # "damage" (increased damage) is counted in final_damage
+    return total, hit_stats
 
 def pet_ability_cooldown(values):
     """Same rule as gems (systems/abilities.py, template_speed_stat):
@@ -564,7 +562,8 @@ def register_pet(key, name, sprite, stats, buffs=None, rarity_overrides=None, de
 
     key              - internal name, e.g. "spider"
     stats            - everything the pet does (ability, movement_speed, crit_chance...)
-    buffs            - auras it gives, e.g. [{"stat": "added_fire_spell", "type": "flat", "amount": 20}]
+    buffs            - auras it gives: a mod (the same names as everywhere), how much, and who gets it:
+                       [{"mod": "added_fire_spell", "amount": 20, "targets": ["player", "pets"]}]
     rarity_overrides - exact values for one rarity, e.g. {rarity_legendary: {"crit_chance": 15}}
                        (use "buffs" as a key to replace its buffs at that rarity)
     description      - one line for the tooltip
@@ -578,6 +577,9 @@ def register_pet(key, name, sprite, stats, buffs=None, rarity_overrides=None, de
 
     if key in pet_configs:
         raise ValueError(f"Pet '{key}' is registered twice")
+    buffs = [buff_line(b) for b in buffs or ()]
+    rarity_overrides = {r: ({**o, "buffs": [buff_line(b) for b in o["buffs"]]} if "buffs" in o else o)
+                        for r, o in (rarity_overrides or {}).items()}
     pet_configs[key] = {
         "sprite": sprite,
         "name": name,
@@ -598,6 +600,19 @@ def register_pet(key, name, sprite, stats, buffs=None, rarity_overrides=None, de
         "rarity": item_rarity or rarity_common,
     }
     return key
+
+def buff_line(buff):
+    """{"mod": "increased_movement_speed", "amount": 1, ...} -> the stat line the
+    aura code uses. An old {"stat": ..., "type": ...} buff is kept as it is."""
+    if "mod" not in buff:
+        return dict(buff)
+    from systems.mods import stat_of, pet_stat_of
+    found = stat_of(buff["mod"]) or pet_stat_of(buff["mod"])
+    if found is None:
+        raise ValueError(f"Pet buff mod '{buff['mod']}' is not a stat")
+    line = {k: v for k, v in buff.items() if k != "mod"}
+    line["stat"], line["type"] = found
+    return line
 
 def pet_item_key(pet_type):
     """"spider" -> "spider_pet": the item key AND the key of its tree."""
