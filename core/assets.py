@@ -297,6 +297,7 @@ register_window("equipment", "equipment_background_sprite",  96,   144)    # 2:3
 register_window("stats",     "stats_background_sprite",      96,   144)    # 2:3
 register_window("chest",     "chest_background_sprite",     144,    96)    # 3:2
 register_window("shop",      "shop_background_sprite",       80,   120)    # 2:3
+register_window("settings",  "settings_background_sprite",  200,   140)    # 10:7
 
 def window_size(name):
     """The window's size in game pixels: (width, height)."""

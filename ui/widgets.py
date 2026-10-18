@@ -2,7 +2,6 @@ import pygame
 from core.state import app
 from core.screen import get_font
 from core.assets import scaled_sprites, get_ui_scaled
-from systems.ground import assign_label_slots, loot_filter_levels
 
 BUTTON_SIZE = (256, 128)   # design-resolution size for every button-shaped UI element
 
@@ -212,7 +211,7 @@ class Checkbox:
 # centre, so the spacing is the same on every window size (fits 1280x720).
 settings_button_scale = 0.75       
 buttons = [
-    Button("button_sprite", "Fullscreen",    (0.5, 0.5), offset=(0, -150), scale=settings_button_scale, action="toggle_fullscreen"),
+    Button("button_sprite", "Settings",      (0.5, 0.5), offset=(0, -150), scale=settings_button_scale, action="settings_window"),
     Button("button_sprite", "Quit",          (0.5, 0.5), offset=(0, -50),  scale=settings_button_scale, action="quit"),
     Button("button_sprite", "Save and exit", (0.5, 0.5), offset=(0, 50),   scale=settings_button_scale, action="save_exit"),
     Button("button_sprite", "Restart",       (0.5, 0.5), offset=(0, 150),  scale=settings_button_scale, action="restart"),
@@ -229,20 +228,6 @@ menu_buttons = [
 
 skill_tree_button = Button("button_sprite", "Skills", (0, 1), offset=(20, -20), anchor="bottom_left", action="skilltree", scale=0.75)
 skill_tree_button.update()
-
-def set_loot_filter(value):
-    app.loot_filter_index = loot_filter_levels.index(value)
-    if app.show_all_labels:
-        assign_label_slots()
-
-loot_filter_dropdown = Dropdown(position=(0.5, 0.5), offset=(0, -250), scale=settings_button_scale, options=list(loot_filter_levels), on_select=set_loot_filter, get_label=lambda r: r.capitalize() + "+", header_label=lambda r: ["Item Filter ", r.capitalize() + "+"],)
-
-def set_loot_filter_enabled(value):
-    app.loot_filter_enabled = value
-    if app.show_all_labels:
-        assign_label_slots()
-
-loot_filter_checkbox = Checkbox(position=(0.28, 0.20), get_state=lambda: app.loot_filter_enabled, on_toggle=set_loot_filter_enabled, follow=loot_filter_dropdown)
 
 for b in menu_buttons:
     b.update()

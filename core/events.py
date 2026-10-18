@@ -8,7 +8,10 @@ from systems.ground import assign_label_slots, drop_item_on_ground, try_pickup_g
 from systems.player import player
 from systems.areas import areas, switch_area, try_click_portal
 from ui.skilltree import skill_tree_panel
-from ui.widgets import Dropdown, buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons, skill_tree_button
+from ui.widgets import Dropdown, buttons, menu_buttons, skill_tree_button
+from ui.settings_menu import settings_window
+from core.keybinds import is_action
+from core.settings import set_setting
 from ui.panels import attack_blocking_panel_open, grid_containers, open_center_panel
 from ui.chest import try_click_container_object, try_shift_transfer
 from ui.gemtree import gem_tree_panel
@@ -30,6 +33,8 @@ def handle_events():
                 window_resized(event.w, event.h)
                 on_screen_resized()
         
+        elif event.type == pygame.KEYDOWN and settings_window.handle_key(event):
+            pass                                          # the settings window used it (Escape, a new keybind)
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE and app.game_state != "menu":
                 if Dropdown.close_open():
@@ -47,39 +52,42 @@ def handle_events():
                 else:
                     toggle_settings()
         
-            elif event.key == pygame.K_i:
+            elif is_action(event, "inventory"):
                 if app.game_state == "" and not skill_tree_panel.open:
                     inventory.toggle()
 
-            elif event.key == pygame.K_e:
+            elif is_action(event, "equipment"):
                 if app.game_state == "" and not skill_tree_panel.open:
                     if equipment.open:
                         open_center_panel(None)
                     else:
                         open_center_panel(equipment)
 
-            elif event.key == pygame.K_SPACE:
+            elif is_action(event, "dash"):
                 if app.game_state == "":
                     player.use_dash()
             
-            elif event.key == pygame.K_z:
+            elif is_action(event, "show_labels"):
                 app.show_all_labels = not app.show_all_labels
                 if app.show_all_labels:
                     assign_label_slots()
             
-            elif event.key == pygame.K_q:
+            elif is_action(event, "debug_hitboxes"):
                 app.debug_hitboxes = not app.debug_hitboxes
 
         elif event.type == pygame.MOUSEWHEEL:
-            if gem_tree_panel.open:
+            if settings_window.open:
+                settings_window.handle_wheel(event.y)
+            elif gem_tree_panel.open:
                 gem_tree_panel.handle_wheel(event.y)          # zoom the tree
             elif skill_tree_panel.open:
                 skill_tree_panel.handle_wheel(event.y)
             else:
                 equipment.scroll_stats(event.y)
 
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            handle_mouse(to_game_pos(event.pos), event.button)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            settings_window.release()                     # a slider being dragged lets go
+            handle_mouse_up(to_game_pos(event.pos), event.button)
 
         elif event.type == pygame.MOUSEBUTTONUP:
             handle_mouse_up(to_game_pos(event.pos), event.button)
@@ -91,15 +99,17 @@ def handle_mouse(pos, button):
     app.attack_input_blocked = True 
 
     if app.game_state == "settings":
-        if loot_filter_dropdown.handle_click(pos):
-            return
-        if loot_filter_checkbox.handle_click(pos):
+        if settings_window.open:
+            settings_window.handle_click(pos)
             return
         
         for b in buttons:
             if b.rect.collidepoint(pos):
 
-                if b.action == "toggle_fullscreen":
+                if b.action == "settings_window":
+                    settings_window.show()
+
+                elif b.action == "toggle_fullscreen":
                     toggle_fullscreen()
 
                 elif b.action == "quit":
@@ -207,6 +217,7 @@ def toggle_settings():
 
     if app.game_state == "settings":
         Dropdown.close_open()
+        settings_window.close()
         app.game_state = app.previous_game_state
     else:
         app.previous_game_state = app.game_state
@@ -217,6 +228,7 @@ def quit_game():
 
 def toggle_fullscreen():
     open_window(fullscreen=not app.fullscreen)
+    set_setting("fullscreen", app.fullscreen)      # remembered for the next start
     on_screen_resized()
 
 def on_screen_resized():

@@ -1,5 +1,6 @@
 import pygame
 from core.state import app, world
+from core.settings import register_setting, get_setting
 
 # region Screen logic and display settings
 # ---------------------------------------------------------------
@@ -22,7 +23,11 @@ from core.state import app, world
 scale_step = (1920, 1080)
 min_window = (1280, 720)
 max_view = (2560, 1440)
-windowed_size = (1600, 900)      # size of the window when leaving fullscreen
+windowed_size = (1600, 900)      # default size of the window when not fullscreen
+# The sizes the Screen tab offers for the window. Fullscreen always uses the monitor's size.
+window_size_presets = [(1280, 720), (1600, 900), (1920, 1080), (2560, 1080), (2560, 1440), (3440, 1440)]
+register_setting("fullscreen", True)
+register_setting("window_size", list(windowed_size))
 view_limit_color = (12, 12, 12)
 
 app.ui_scale = 1.0               # always 1: pixel_scale does the scaling now
@@ -43,7 +48,7 @@ def open_window(fullscreen):
     if fullscreen:
         app.display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     else:
-        app.display = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
+        app.display = pygame.display.set_mode(tuple(get_setting("window_size")), pygame.RESIZABLE)
     app.fullscreen = fullscreen
     apply_window_size()
 
@@ -117,7 +122,7 @@ def place_bottom_right_window(width, height):
     """Top-left for a window pinned to the bottom-right corner of the screen."""
     return app.screen_width - window_margin - width, app.screen_height - window_margin - height
 
-open_window(fullscreen=True)
+open_window(fullscreen=get_setting("fullscreen"))
 base_width, base_height = app.screen_width, app.screen_height
 
 _font_cache = {}

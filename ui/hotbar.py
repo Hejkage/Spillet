@@ -14,8 +14,14 @@ hotbar_padding = 8
 pet_bar_left = 12        # distance from the left edge
 pet_bar_top = 50         # distance from the top (below the FPS counter)
 
-hotbar_slots = [("primary", "MB1")] + [(slot, str(i + 1)) for i, slot in enumerate(active_gem_slots)]
-ability_keybinds = {slot: getattr(pygame, f"K_{i + 1}") for i, slot in enumerate(active_gem_slots)}
+# Each skill slot's key is a keybind (core/keybinds.py), so it can be changed in the settings.
+from core.keybinds import register_action, key_label
+ability_actions = {slot: register_action(f"skill_{i + 1}", f"Skill {i + 1}", getattr(pygame, f"K_{i + 1}"), "Skills")
+                   for i, slot in enumerate(active_gem_slots)}
+hotbar_slots = ["primary"] + list(active_gem_slots)
+
+def hotbar_key_label(slot):
+    return "MB1" if slot == "primary" else key_label(ability_actions[slot])
 
 app.hotbar_rects = {}
 
@@ -33,7 +39,7 @@ def draw_hotbar(player):
 
     font = get_font(max(14, int(18 * scale)))
 
-    for i, (ability_key, key_label) in enumerate(hotbar_slots):
+    for i, ability_key in enumerate(hotbar_slots):
         x = start_x + i * (slot_size + padding)
         rect = pygame.Rect(x, y, slot_size, slot_size)
         app.hotbar_rects[ability_key] = rect
@@ -62,7 +68,7 @@ def draw_hotbar(player):
             overlay.fill((0, 0, 0, 140))
             app.screen.blit(overlay, (rect.x, rect.bottom - overlay_height))
 
-        label = font.render(key_label, True, (255, 255, 255))
+        label = font.render(hotbar_key_label(ability_key), True, (255, 255, 255))
         app.screen.blit(label, (rect.x + int(4 * scale), rect.y + int(2 * scale)))
 
         if rect.collidepoint(pygame.mouse.get_pos()) and ability:

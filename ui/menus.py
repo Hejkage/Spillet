@@ -80,8 +80,13 @@ def draw_resource_bars(player):
 
 _fps_font = None
 
+from core.settings import register_setting, get_setting
+register_setting("show_fps", True)
+
 def draw_fps(clock):
     global _fps_font
+    if not get_setting("show_fps"):
+        return
     if _fps_font is None:
         _fps_font = get_font(28)
     fps_font = _fps_font
