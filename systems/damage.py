@@ -16,6 +16,7 @@ damage_types = {
     "frost":    ("elemental",),
     "nature":   ("elemental",),
     "shadow":   ("dark",),
+    "necrotic": ("dark",),
     "pure":     ("light",),
 }
 
@@ -33,6 +34,7 @@ damage_colors = {
     "nature":   (110, 220, 90),
     "shadow":   (170, 110, 230),
     "pure":     (255, 255, 150),
+    "necrotic": (102, 0, 50)
 }
 
 # "added_cold" adds flat cold to every hit that accepts it.

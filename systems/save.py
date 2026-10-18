@@ -2,7 +2,6 @@ import json, atexit
 from core.state import app, base_dir
 from systems.items import Item, equipment, item_kinds
 from systems.player import player
-from ui.widgets import loot_filter_dropdown
 from ui.panels import shops
 from ui.chest import chest
 from systems.skilltree import allocated_points, load_points, passive_progress
@@ -47,8 +46,6 @@ def save_game():
             for name, shop in shops.items()
         },
         "settings": {
-            "loot_filter_index": app.loot_filter_index,
-            "loot_filter_enabled": app.loot_filter_enabled,
             "show_all_labels": app.show_all_labels,
             "start_completed": app.start_completed,
         },
@@ -119,12 +116,8 @@ def load_game():
     clamp_resources(player)
 
     settings = data.get("settings", {})
-    app.loot_filter_index = settings.get("loot_filter_index", app.loot_filter_index)
-    app.loot_filter_enabled = settings.get("loot_filter_enabled", app.loot_filter_enabled)
     app.show_all_labels = settings.get("show_all_labels", app.show_all_labels)
     app.start_completed = settings.get("start_completed", app.start_completed)
-
-    loot_filter_dropdown.selected_index = app.loot_filter_index
 
     print("Game loaded.")
 

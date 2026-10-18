@@ -30,10 +30,6 @@ def ground_item_sprite(item):
     _ground_sprite_cache[key] = fitted
     return fitted
 
-loot_filter_levels = list(all_rarities)      # common ... legendary, unique
-app.loot_filter_index = 0
-app.loot_filter_enabled = False
-
 app.show_all_labels = False
 app.label_font = None
 app.label_row_h = 0
@@ -103,19 +99,10 @@ def assign_label_slots():
             g.label_anchor = (c["cx"], c["cy"])
             g.label_col_w = label_box_width(g)      
 
-def loot_filter_min_rarity():
-    return loot_filter_levels[app.loot_filter_index]
-
 def item_passes_filter(item):
-    if not app.loot_filter_enabled:
-        return True
-    if item.category == item_category_currency:
-        return True
-    if getattr(item, "built_in_support", None) is not None:
-        return True
-    if item.rarity not in loot_filter_levels:
-        return True
-    return loot_filter_levels.index(item.rarity) >= app.loot_filter_index
+    """Is this ground item shown? The rules live in systems/lootfilter.py."""
+    from systems.lootfilter import item_passes_filter as passes
+    return passes(item)
 
 class GroundItem:
     def __init__(self, item, x, y):
@@ -188,11 +175,39 @@ def spawn_drops(enemy):
         offset_y = random.randint(-15, 15)
         add_ground_item(item, enemy.x + offset_x, enemy.y + offset_y)      
     assign_label_slots()
+    play_drop_sound(dropped)
+
+# ---------------------------------------------------------------
+# DROP SOUNDS - a sound when something special drops. The rules live in
+# content/drops.py:
+#     register_drop_sound(lambda item: item.rarity == rarity_unique, "unique_drop_sound")
+# Every special item plays its own sound - 1000 rare drops = 1000 sounds.
+# An item that matches several rules plays only the FIRST one, so list the
+# most special first (a unique legendary pet plays the unique sound).
+# ---------------------------------------------------------------
+drop_sounds = []        # (check, sound, volume)
+
+def register_drop_sound(check, sound, volume=1.0):
+    """check(item) -> True if this item should make the sound."""
+    drop_sounds.append((check, sound, volume))
+    
+def play_drop_sound(items):
+    from core.sounds import play_sound
+    for item in items:
+        if item is None:
+            continue
+        for check, sound, volume in drop_sounds:
+            if check(item):
+                play_sound(sound, volume, stack=True)
+                break                                   # one sound per item: its most special one
 
 coin_pickup_radius = 50
+coin_pickup_sound = "coin_pickup_sound"     # file name in assets/sounds (any folder). None = silent
+coin_pickup_volume = 0.5
 
 def try_pickup_coins(player):
     remaining = []
+    picked_up = False
     for g in world.ground_items:
         if g.item.category == item_category_currency:
             dx = g.x - player.x
@@ -200,9 +215,13 @@ def try_pickup_coins(player):
             distance = (dx * dx + dy * dy) ** 0.5
             if distance <= coin_pickup_radius:
                 player.coins += g.stack_count
+                picked_up = True
                 continue
         remaining.append(g)
     world.ground_items = remaining
+    if picked_up and coin_pickup_sound:
+        from core.sounds import play_sound
+        play_sound(coin_pickup_sound, coin_pickup_volume)      # once, even for several piles
 
 pickup_click_radius = 60
 click_target_tolerance = 30

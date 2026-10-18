@@ -387,16 +387,17 @@ class Player(StatusHolder):
             self.move_target = None
             return
 
+        from core.keybinds import action_held
         keys = pygame.key.get_pressed()
         direction = pygame.Vector2(0, 0)
 
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
+        if action_held("move_up") or keys[pygame.K_UP]:          # the arrow keys always work too
             direction.y -= 1
-        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+        if action_held("move_down") or keys[pygame.K_DOWN]:
             direction.y += 1
-        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+        if action_held("move_left") or keys[pygame.K_LEFT]:
             direction.x -= 1
-        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+        if action_held("move_right") or keys[pygame.K_RIGHT]:
             direction.x += 1
 
         if direction.length() > 0:
