@@ -119,6 +119,13 @@ def ailment_tooltip_lines(player, stats):
             lines.append((f"Chance to {name}: {min(100, chance):g}%", status_effect_types[name]["color"]))
     return lines
 
+def area_text(ability, stats):
+    """ "Size: 30" - the size you see. A melee swing's size is its Range, so it has no line."""
+    if stats["hit_kind"] == "melee":
+        return None
+    from systems.projectiles import projectile_size
+    return f"Size: {projectile_size(ability.sprite_name, stats['aoe']):.0f}"
+
 def ability_tooltip_lines(ability, player):
     """The lines describing one ability. Used by the hotbar tooltip AND by the
     gem item tooltip, so the two can never drift apart.
@@ -127,6 +134,10 @@ def ability_tooltip_lines(ability, player):
     stats = ability.get_effective_stats(player)
     white = (255, 255, 255)
     lines = [(ability.name, (255, 220, 120))]
+    from systems.tags import tag_line
+    tags = tag_line(getattr(ability, "tags", ()), getattr(ability, "blocked", ()))
+    if tags:
+        lines.append((tags, (170, 170, 180)))            # what it IS = what scales it
 
     from systems.damage import damage_lines
     lines.extend(damage_lines(stats["parts"]))
@@ -166,8 +177,8 @@ def ability_tooltip_lines(ability, player):
     else:
         lines.append((f"Projectile speed: {stats['speed']:.0f}", white))
 
-    if stats["uses_aoe"]:
-        lines.append((f"Area of effect: {stats['aoe'] * 100:.0f}%", white))
+    if stats["uses_aoe"] and area_text(ability, stats):
+        lines.append((area_text(ability, stats), white))
     if stats.get("orbit_range", 0) > 0:
         lines.append((f"Orbits you at {stats['orbit_range']:.0f} range", white))
     if stats["hit_stats"].get("pierce"):

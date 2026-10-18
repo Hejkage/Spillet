@@ -21,6 +21,7 @@ from systems.save import load_game
 from content import inventory
 from ui.gemtree import gem_tree_panel
 from systems.popups import draw_floating_texts, update_floating_texts
+from systems.visuals import draw_visuals, update_visuals
 from systems.damage import resolve_damage
 
 # region Main game loop
@@ -117,6 +118,7 @@ register_update(35, update_melee_swings)   # update_melee_swings already takes d
 register_update(40, update_enemies)
 register_update(50, update_world)
 register_update(29, lambda dt: update_floating_texts(dt))
+register_update(36, update_visuals)
 
 update_screen_data()
 
@@ -187,6 +189,8 @@ while app.running:
         draw_floating_texts(camera)
 
         draw_melee_swings(camera)
+
+        draw_visuals(camera)        # swipe marks and other short sprite effects
 
         draw_view_limit()           # darken the world outside max_view; the UI comes after this
 
