@@ -12,9 +12,11 @@ from systems.player import player
 from systems.enemies import enemy_grid, process_projectile_hits
 from systems.areas import areas, switch_area
 from ui.skilltree import skill_tree_panel
-from ui.widgets import buttons, loot_filter_checkbox, loot_filter_dropdown, menu_buttons, skill_tree_button
+from ui.widgets import buttons, menu_buttons, skill_tree_button
+from ui.settings_menu import settings_window
 from ui.panels import attack_blocking_panel_open, grid_containers, shop_containers
-from ui.hotbar import ability_keybinds, draw_ability_tooltip, draw_hotbar
+from ui.hotbar import ability_actions, draw_ability_tooltip, draw_hotbar
+from core.keybinds import action_held, key_for
 from ui.menus import draw_fps, draw_health_bar, draw_main_menu, draw_settings_menu, draw_xp_bar
 from core.events import handle_events
 from systems.save import load_game
@@ -26,7 +28,6 @@ from systems.damage import resolve_damage
 
 # region Main game loop
 
-app.fullscreen = True
 app.game_state = "menu"
 app.running = True
 clock = pygame.time.Clock()
@@ -41,11 +42,12 @@ held_order = []     # ability slots, in the order their input was pressed
 def held_ability_slots():
     """Every ability slot whose input is held right now."""
     held = set()
-    if pygame.mouse.get_pressed()[0] and not app.attack_input_blocked:
+    # basic attack: a held mouse button only counts if its click started in the world (not on a window)
+    mouse_bound = key_for("basic_attack") < 0
+    if action_held("basic_attack") and not (mouse_bound and app.attack_input_blocked):
         held.add("primary")
-    keys = pygame.key.get_pressed()
-    for slot, key in ability_keybinds.items():
-        if keys[key]:
+    for slot, action in ability_actions.items():
+        if action_held(action):
             held.add(slot)
     return held
 
@@ -89,7 +91,7 @@ def update_world(dt):
     for g in world.ground_items:
         g.ground_item_update_hitbox(camera)
         if (not app.show_all_labels and not inventory.open and not equipment.open
-                and item_passes_filter(g.item) and g.rect.collidepoint(pygame.mouse.get_pos())):
+                and item_passes_filter(g.item, g.stack_count) and g.rect.collidepoint(pygame.mouse.get_pos())):
             hover_state.ground_item = g
     for o in world.world_objects:
         o.world_object_update_hitbox(camera)
@@ -208,10 +210,11 @@ while app.running:
         draw_settings_menu()
 
     if app.game_state == "settings":
-        for b in buttons:
-            b.draw_button()
-        loot_filter_dropdown.draw()
-        loot_filter_checkbox.draw()
+        if settings_window.open:
+            settings_window.draw()
+        else:
+            for b in buttons:
+                b.draw_button()
     
     gem_tree_panel.draw()
 

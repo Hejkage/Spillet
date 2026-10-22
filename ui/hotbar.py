@@ -21,7 +21,7 @@ ability_actions = {slot: register_action(f"skill_{i + 1}", f"Skill {i + 1}", get
 hotbar_slots = ["primary"] + list(active_gem_slots)
 
 def hotbar_key_label(slot):
-    return "MB1" if slot == "primary" else key_label(ability_actions[slot])
+    return key_label("basic_attack" if slot == "primary" else ability_actions[slot], short=True)
 
 app.hotbar_rects = {}
 

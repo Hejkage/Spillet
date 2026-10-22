@@ -48,6 +48,17 @@ def weapon_allows(ability, weapon_class):
 
 summon_rarity = rarity_common     # rarity of pets from "summons" on items and tree nodes
 
+class _Spot:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+mouse_move_stop_radius = 6        # how close to the cursor counts as "there"
+
+def mouse_move_order():
+    """Walk to the spot under the mouse (mouse movement mode)."""
+    mx, my = pygame.mouse.get_pos()
+    return MoveOrder(_Spot(mx + camera.x, my + camera.y), mouse_move_stop_radius, lambda: None)
+
 class Player(StatusHolder):
     def __init__(self, sprite_name, player_x, player_y):
         self.sprite_name = sprite_name
@@ -387,7 +398,16 @@ class Player(StatusHolder):
             self.move_target = None
             return
 
-        from core.keybinds import action_held
+        from core.keybinds import action_held, movement_mode
+        if movement_mode() == "mouse":
+            if app.mouse_move_active:
+                if action_held("move_to_mouse"):
+                    self.move_target = mouse_move_order()          # follow the cursor while held
+                else:
+                    app.mouse_move_active = False                  # let go: finish walking to the last spot
+            self.move_towards_target(dt)
+            return
+
         keys = pygame.key.get_pressed()
         direction = pygame.Vector2(0, 0)
 

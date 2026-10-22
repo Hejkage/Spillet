@@ -18,7 +18,8 @@ ROWS you can use:
     Toggle(label, get, set)                   On / Off
     Choice(label, options, get, set, fmt)     < value >  (click the arrows)
     Slider(label, get, set)                   0 - 100 %, click or drag
-    KeyRow(action)                            click, then press the new key
+    KeyRow(action)                            click, then press the new key or mouse button
+    NumberInput(label, get, set)              click, type a number, Enter
     ActionButton(text, fn)                    a button that runs fn()
     RarityRow()                               the item filter's rarity steps
     GroupRow(group)                           Normal / Always show / Always hide
@@ -173,6 +174,25 @@ class KeyRow(Row):
             return True
         return False
 
+class NumberInput(Row):
+    """A whole number the player types: click the box, type, Enter (or click elsewhere)."""
+    def __init__(self, label, get, set):
+        self.text, self.get, self.set = label, get, set
+    def box(self, rect):
+        return pygame.Rect(rect.right - 160, rect.top + 4, 160, rect.height - 8)
+    def draw(self, rect, ui):
+        _label(self.text, rect, ui.font)
+        if ui.typing and ui.typing[0] == self.text:
+            _button(self.box(rect), ui.typed + "|", ui.font, _BUTTON_ON, _GOLD, hover=False)
+        else:
+            _button(self.box(rect), str(self.get()), ui.font)
+    def click(self, pos, ui):
+        if self.box(ui.last_rects[self]).collidepoint(pos):
+            ui.typing = (self.text, self.set)
+            ui.typed = ""
+            return True
+        return False
+
 class ActionButton(Row):
     height = 46
     def __init__(self, text, fn):
@@ -253,22 +273,47 @@ class SettingsWindow:
         self.tab = None
         self.scroll = 0
         self.capturing = None          # an action waiting for its new key
+        self.typing = None             # (label, set fn) of a NumberInput being typed in
+        self.typed = ""
+        self.back_to_menu = False      # opened from the main menu: Back goes straight back there
         self.dragging = None           # (bar rect, set fn, on_release) of a slider being dragged
         self.last_rects = {}           # row -> rect, from the last draw (clicks use it)
         self.tab_rects = {}
         self.back_rect = None
         self.content_rect = None
 
-    def show(self):
+    def show(self, back_to_menu=False):
+        self.back_to_menu = back_to_menu
         self.open = True
         self.scroll = 0
         if self.tab is None and settings_tabs:
             self.tab = settings_tabs[0][0]
 
     def close(self):
+        self.finish_typing()
         self.open = False
         self.capturing = None
         self.release()
+        if self.back_to_menu:                              # opened from the main menu: skip the pause buttons
+            self.back_to_menu = False
+            from core.events import toggle_settings
+            toggle_settings()
+
+    def finish_typing(self, keep=True):
+        if self.typing and keep and self.typed:
+            self.typing[1](int(self.typed))
+        self.typing = None
+        self.typed = ""
+
+    def bind_mouse(self, button):
+        """A mouse button pressed while a keybind is waiting. True if it was used."""
+        if not self.capturing:
+            return False
+        if button not in (4, 5):                           # 4 / 5 are the scroll wheel
+            from core.keybinds import set_key, mouse
+            set_key(self.capturing, mouse(button))
+        self.capturing = None
+        return True
 
     def rows(self):
         for key, _, rows_fn in settings_tabs:
@@ -340,6 +385,7 @@ class SettingsWindow:
             self.close()
             return True
         self.capturing = None
+        self.finish_typing()                               # clicking anywhere confirms a typed number
         if self.content_rect and self.content_rect.collidepoint(pos):
             for row, rect in list(self.last_rects.items()):
                 if rect.collidepoint(pos) and row.click(pos, self):
@@ -360,6 +406,16 @@ class SettingsWindow:
         """True if the window used the key. While waiting for a keybind, it takes every key."""
         if not self.open:
             return False
+        if self.typing and event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.finish_typing()
+            elif event.key == pygame.K_ESCAPE:
+                self.finish_typing(keep=False)
+            elif event.key == pygame.K_BACKSPACE:
+                self.typed = self.typed[:-1]
+            elif event.unicode.isdigit() and len(self.typed) < 9:
+                self.typed += event.unicode
+            return True
         if self.capturing and event.type == pygame.KEYDOWN:
             if event.key != pygame.K_ESCAPE:              # Escape cancels: it is never bindable
                 from core.keybinds import set_key
@@ -378,21 +434,20 @@ settings_window = SettingsWindow()
 # ---------------------------------------------------------------
 def screen_rows():
     from core.settings import get_setting, set_setting
-    from core.screen import window_size_presets, open_window
-    from core.events import toggle_fullscreen, on_screen_resized
+    from core.screen import window_size_presets, open_window, display_modes
+    from core.events import set_display_mode, on_screen_resized
 
     def set_size(size):
         set_setting("window_size", list(size))
-        if not app.fullscreen:                             # in fullscreen it is used next time you leave it
-            open_window(fullscreen=False)
+        if app.display_mode == "windowed":                 # otherwise it is used next time you go windowed
+            open_window(mode="windowed")
             on_screen_resized()
 
     return [
         Header("Display"),
-        Toggle("Fullscreen", lambda: app.fullscreen, lambda on: toggle_fullscreen()),
+        Choice("Display", display_modes, lambda: app.display_mode, set_display_mode, fmt=lambda m: m.capitalize()),
         Choice("Window size", window_size_presets, lambda: tuple(get_setting("window_size")), set_size,
                fmt=lambda s: f"{s[0]} x {s[1]}"),
-        Note("The window size is used when you are not in fullscreen."),
         Toggle("Show FPS", lambda: get_setting("show_fps"), lambda on: set_setting("show_fps", on)),
     ]
 
@@ -410,25 +465,26 @@ def sound_rows():
     rows = [Header("Volume"),
             Slider("Master", lambda: get_setting("master_volume"),
                    lambda v: set_setting("master_volume", round(v, 3), save=False), save_settings),
-            Header("Per sound folder")]
+            Header("Sounds")]
     for category in all_sound_categories():
         rows.append(Slider(category.replace("_", " ").capitalize(), lambda c=category: category_volume(c),
                            set_category(category), save_settings))
-    rows.append(Note("Each folder in assets/sounds gets its own slider."))
     return rows
 
 def keybind_rows():
-    from core.keybinds import action_groups, reset_keys
-    rows = []
+    from core.keybinds import action_groups, reset_keys, movement_mode, movement_modes, set_movement_mode
+    names_of_modes = {"keyboard": "Keyboard", "mouse": "Mouse"}
+    rows = [Header("Controls"),
+            Choice("Movement", movement_modes, movement_mode, set_movement_mode,
+                   fmt=lambda m: names_of_modes.get(m, m))]
     for group, names in action_groups().items():
         rows.append(Header(group))
         rows += [KeyRow(name) for name in names]
-    rows.append(Note("Click a key, then press the new one. Escape cancels."))
     rows.append(ActionButton("Reset all keys", reset_keys))
     return rows
 
 def filter_rows():
-    from systems.lootfilter import filter_groups, filter_enabled, set_filter_enabled
+    from systems.lootfilter import filter_groups, filter_enabled, set_filter_enabled, min_coins, set_min_coins
     from systems.ground import assign_label_slots
 
     def set_labels(on):
@@ -438,14 +494,15 @@ def filter_rows():
 
     return [
         Header("Item filter"),
-        Toggle("Item filter on", filter_enabled, set_filter_enabled),
-        Note("Show this rarity and everything above it:"),
+        Toggle("Item filter", filter_enabled, set_filter_enabled),
+        Note("Minimum rarity"),
         RarityRow(),
         Header("Groups"),
-        Note("Show always shows it, Hide always hides it. Normal: the rarity decides."),
         *[GroupRow(key) for key in filter_groups],
+        Header("Coins"),
+        NumberInput("Minimum pile", min_coins, set_min_coins),
         Header("Labels"),
-        Toggle("Show all item labels", lambda: app.show_all_labels, set_labels),
+        Toggle("Show all labels", lambda: app.show_all_labels, set_labels),
     ]
 
 register_settings_tab("screen",   "Screen",      screen_rows)

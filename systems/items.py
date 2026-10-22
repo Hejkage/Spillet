@@ -1024,7 +1024,7 @@ def draw_all_ground_labels():
     h = app.label_row_h
 
     for g in world.ground_items:
-        if not item_passes_filter(g.item):        
+        if not item_passes_filter(g.item, g.stack_count):        
             continue
         if g.label_offset is None or g.label_anchor is None:
             continue

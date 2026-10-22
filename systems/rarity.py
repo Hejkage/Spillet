@@ -160,7 +160,7 @@ def rank_item_rarity_weights(rank):
 
 rarity_colors = {
     rarity_common: (255, 255, 255),
-    rarity_uncommon: (100, 220, 200),
+    rarity_uncommon: (150, 250, 160),
     rarity_rare: (70, 130, 255),
     rarity_epic: (170, 70, 255),
     rarity_legendary: (255, 165, 0),

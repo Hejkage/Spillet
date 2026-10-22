@@ -63,7 +63,7 @@ def ground_label_color(g):
 
 def assign_label_slots():
     get_label_font()
-    items = [g for g in world.ground_items if item_passes_filter(g.item)]     
+    items = [g for g in world.ground_items if item_passes_filter(g.item, g.stack_count)]    
     for g in items:
         g.label_offset = None
 
@@ -99,10 +99,10 @@ def assign_label_slots():
             g.label_anchor = (c["cx"], c["cy"])
             g.label_col_w = label_box_width(g)      
 
-def item_passes_filter(item):
-    """Is this ground item shown? The rules live in systems/lootfilter.py."""
+def item_passes_filter(item, amount=1):
+    """Is this ground item shown? amount = the pile size (coins). Rules: systems/lootfilter.py."""
     from systems.lootfilter import item_passes_filter as passes
-    return passes(item)
+    return passes(item, amount)
 
 class GroundItem:
     def __init__(self, item, x, y):
@@ -122,7 +122,7 @@ class GroundItem:
             self.rect = sprite.get_rect(center=camera.apply_camera(self.x, self.y))
 
     def ground_item_draw(self):
-        if not item_passes_filter(self.item):
+        if not item_passes_filter(self.item, self.stack_count):
             return
         sprite = ground_item_sprite(self.item)
         if sprite:
@@ -253,7 +253,7 @@ def try_pickup_ground_item_click(pos, player):
     for g in world.ground_items:
         if g.item.category == item_category_currency or not g.rect:
             continue
-        if not item_passes_filter(g.item):
+        if not item_passes_filter(g.item, g.stack_count):
             continue
 
         click_dx = pos[0] - g.rect.centerx

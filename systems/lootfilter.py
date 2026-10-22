@@ -1,6 +1,7 @@
 """ITEM FILTER - which items on the ground are shown (label, hover, pick up by click).
 
 When the filter is ON, an item is checked like this:
+    0. coins: shown if the pile has at least the chosen amount (0 = every pile)
     1. it is in a group set to "Always show"  -> shown   (this always wins)
     2. it is in a group set to "Always hide"  -> hidden
     3. otherwise its RARITY decides: the chosen rarity and everything above it is shown
@@ -22,6 +23,7 @@ filter_rarities = list(all_rarities)            # common ... legendary, unique -
 register_setting("loot_filter_enabled", False)
 register_setting("loot_filter_rarity", filter_rarities[0])
 register_setting("loot_filter_groups", {})      # group -> "normal" / "show" / "hide"
+register_setting("loot_filter_min_coins", 0)    # smallest coin pile that is shown
 
 filter_groups = {}                              # key -> {"label", "check", "default"}
 filter_modes = ("normal", "show", "hide")
@@ -57,9 +59,20 @@ def set_filter_rarity(rarity):
     set_setting("loot_filter_rarity", rarity)
     _labels_changed()
 
-def item_passes_filter(item):
+def min_coins():
+    return int(get_setting("loot_filter_min_coins") or 0)
+
+def set_min_coins(amount):
+    set_setting("loot_filter_min_coins", max(0, int(amount)))
+    _labels_changed()
+
+def item_passes_filter(item, amount=1):
+    """amount = how many are in the pile (coins on the ground stack up)."""
     if not filter_enabled():
         return True
+    from systems.items import item_category_currency
+    if getattr(item, "category", None) == item_category_currency:
+        return amount >= min_coins()                 # coins have no rarity: only the pile size counts
     modes = {group_mode(key) for key, g in filter_groups.items() if g["check"](item)}
     if "show" in modes:
         return True
