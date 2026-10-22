@@ -7,6 +7,11 @@ register_grant_label("dual_wield_two_handers", "Can wield two two-handed weapons
 register_grant_label("ring_slots", "extra ring slot")
 register_grant_label("pet_slots", "extra pet slot")
 
+NR = lambda amount: {"mods": [("nature_resistance", amount)]}
+FrR = lambda amount: {"mods": [("frost_resistance", amount)]}
+FR = lambda amount: {"mods": [("fire_resistance", amount)]}
+
+
 register_skill_node("start", "Origin", position=(0, 0), is_root=True,
     frame="root_border", sprite_name="fjol_to_sprite")
 
@@ -18,20 +23,25 @@ register_skill_node("vitality_1", "Vitality I", position=(-25, -43.3),
 register_skill_node("vitality_2", "Vitality II", position=(-84.15, -102.45),
     mods=[("max_health", 50)])
 
-FR = lambda amount: {"mods": [("fire_resistance", amount)]}
 register_skill_node("fire_res_1", "Fire Resistance I", position=(-164.95, -124.1),
     max_points=5, points_to_pass=3, at_points={(1, 4): FR(1), 5: FR(3)})
 
-NR = lambda amount: {"mods": [("nature_resistance", amount)]}
 register_skill_node("nature_res_1", "Nature Resistance I", position=(-143.3, -161.6),
     max_points=5, points_to_pass=3, at_points={(1, 4): NR(1), 5: NR(3)})
 
-FrR = lambda amount: {"mods": [("frost_resistance", amount)]}
 register_skill_node("frost_res_1", "Frost Resistance I", position=(-105.8, -183.25),
     max_points=5, points_to_pass=3, at_points={(1, 4): FrR(1), 5: FrR(3)})
 
 register_skill_node("elemental_res_1", "Elemental Resistances I", position=(-202.45, -220.75),
     mods=[("elemental_resistance", 1)])
+
+register_skill_node("elemental_dmg_1", "Elemental Damage I", position=(-371.88, -243.58),
+    mods=[("increased_elemental_damage", 5)])
+
+register_skill_node("cdr_1", "Cooldown Reduction I", position=(-225.27, -390.19),
+    mods=[("cooldown", 5)])
+
+
 #############################################################################################################
 
 register_skill_node("attack_speed_1", "Attack Speed I", position=(50, 0),
@@ -78,6 +88,8 @@ register_skill_edge("vitality_2", "nature_res_1")
 register_skill_edge("fire_res_1", "elemental_res_1")
 register_skill_edge("frost_res_1", "elemental_res_1")
 register_skill_edge("nature_res_1", "elemental_res_1")
+register_skill_edge("elemental_res_1", "elemental_dmg_1")
+register_skill_edge("elemental_res_1", "cdr_1")
 
 """
 # +5 health per point, extra at 10, need 5 to pass

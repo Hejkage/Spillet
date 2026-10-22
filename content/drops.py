@@ -5,7 +5,7 @@ Pure data. Add new entries here - never in systems/.
 from systems.rarity import rarity_epic, rarity_legendary, rarity_rare, rarity_unique, roll_item, roll_rarity
 from systems.ground import register_drop_sound
 from systems.lootfilter import register_filter_group
-from systems.items import item_category_currency, gem_slot_active, gem_slot_support
+from systems.items import gem_slot_active, gem_slot_support
 from systems.items import make_item
 from systems.drops import DropEntry, DropPool, roll_from_group, item_drop
 from systems.pets import pet_item_key, pet_groups
@@ -191,10 +191,9 @@ register_drop_sound(lambda item: item.rarity == rarity_legendary,               
 # ITEM FILTER GROUPS - one line each, they show up in the Item filter tab by themselves.
 # default = what a new player starts with: "normal" (rarity decides), "show" or "hide".
 # ---------------------------------------------------------------
-register_filter_group("currency",     "Coins",                        lambda item: item.category == item_category_currency, default="show")
-register_filter_group("uniques",      "Uniques",                      lambda item: item.rarity == rarity_unique)
-register_filter_group("pets",         "Pets",                         lambda item: getattr(item, "is_pet", False))
-register_filter_group("special_gems", "Gems with a built-in support", lambda item: getattr(item, "built_in_support", None) is not None, default="show")
-register_filter_group("skill_gems",   "Skill gems",                   lambda item: getattr(item, "gem_slot", None) == gem_slot_active)
-register_filter_group("support_gems", "Support gems",                 lambda item: getattr(item, "gem_slot", None) == gem_slot_support)
-register_filter_group("equipment",    "Gear",                         lambda item: getattr(item, "slot_type", None) is not None)
+register_filter_group("uniques",      "Uniques",        lambda item: item.rarity == rarity_unique)
+register_filter_group("pets",         "Pets",           lambda item: getattr(item, "is_pet", False))
+register_filter_group("special_gems", "Special gems",   lambda item: getattr(item, "built_in_support", None) is not None, default="show")
+register_filter_group("skill_gems",   "Skill gems",     lambda item: getattr(item, "gem_slot", None) == gem_slot_active)
+register_filter_group("support_gems", "Support gems",   lambda item: getattr(item, "gem_slot", None) == gem_slot_support)
+register_filter_group("equipment",    "Gear",           lambda item: getattr(item, "slot_type", None) is not None)

@@ -944,7 +944,7 @@ base_items.update({
         "sprite": "ring_item_sprite",
         "slot": "ring",
         "affixes": [("aoe", 1), ("cooldown", 0.5), ("crit_damage", 2), ("increased_crit_chance", 2), "spell_damage", "flat_to_spells_group", "flat_to_attacks_group", ("protection_penetration_group", 0.5), ("penetration_group", 1), "increased_spell_crit_chance", "increased_attack_crit_chance",
-                    "increased_damage_group", "max_mana", "mana_regen", ("increased_max_mana", 1), ("immunity_group", 0.5), ("spell_leech", 0.2), ("attribute_group", 50000)],
+                    "increased_damage_group", "max_mana", "mana_regen", ("increased_max_mana", 1), ("immunity_group", 0.5), ("spell_leech", 0.2), ("attribute_group", 5)],
     },
 
     "jeweled_necklace": {

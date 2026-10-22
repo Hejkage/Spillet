@@ -10,7 +10,7 @@ from systems.areas import areas, switch_area, try_click_portal
 from ui.skilltree import skill_tree_panel
 from ui.widgets import Dropdown, buttons, menu_buttons, skill_tree_button
 from ui.settings_menu import settings_window
-from core.keybinds import is_action
+from core.keybinds import is_action, button_is
 from core.settings import set_setting
 from ui.panels import attack_blocking_panel_open, grid_containers, open_center_panel
 from ui.chest import try_click_container_object, try_shift_transfer
@@ -52,28 +52,8 @@ def handle_events():
                 else:
                     toggle_settings()
         
-            elif is_action(event, "inventory"):
-                if app.game_state == "" and not skill_tree_panel.open:
-                    inventory.toggle()
-
-            elif is_action(event, "equipment"):
-                if app.game_state == "" and not skill_tree_panel.open:
-                    if equipment.open:
-                        open_center_panel(None)
-                    else:
-                        open_center_panel(equipment)
-
-            elif is_action(event, "dash"):
-                if app.game_state == "":
-                    player.use_dash()
-            
-            elif is_action(event, "show_labels"):
-                app.show_all_labels = not app.show_all_labels
-                if app.show_all_labels:
-                    assign_label_slots()
-            
-            elif is_action(event, "debug_hitboxes"):
-                app.debug_hitboxes = not app.debug_hitboxes
+            else:
+                handle_action_press(event)
 
         elif event.type == pygame.MOUSEWHEEL:
             if settings_window.open:
@@ -85,14 +65,44 @@ def handle_events():
             else:
                 equipment.scroll_stats(event.y)
 
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if settings_window.bind_mouse(event.button):
+                pass                                      # a keybind was waiting for this button
+            elif app.game_state == "" and handle_action_press(event):
+                pass                                      # a mouse button bound to inventory, dash...
+            else:
+                handle_mouse(to_game_pos(event.pos), event.button)
+
         elif event.type == pygame.MOUSEBUTTONUP:
             settings_window.release()                     # a slider being dragged lets go
             handle_mouse_up(to_game_pos(event.pos), event.button)
-
-        elif event.type == pygame.MOUSEBUTTONUP:
-            handle_mouse_up(to_game_pos(event.pos), event.button)
         
-#Button actions 
+def handle_action_press(event):
+    """Keys AND mouse buttons bound to an action (core/keybinds.py). True if one was used."""
+    from content import inventory
+    if is_action(event, "inventory"):
+        if app.game_state == "" and not skill_tree_panel.open:
+            inventory.toggle()
+    elif is_action(event, "equipment"):
+        if app.game_state == "" and not skill_tree_panel.open:
+            if equipment.open:
+                open_center_panel(None)
+            else:
+                open_center_panel(equipment)
+    elif is_action(event, "dash"):
+        if app.game_state == "":
+            player.use_dash()
+    elif is_action(event, "show_labels"):
+        app.show_all_labels = not app.show_all_labels
+        if app.show_all_labels:
+            assign_label_slots()
+    elif is_action(event, "debug_hitboxes"):
+        app.debug_hitboxes = not app.debug_hitboxes
+    else:
+        return False
+    return True
+
+#Button actions
 def handle_mouse(pos, button):
 
     from systems.save import save_game
@@ -139,6 +149,7 @@ def handle_mouse(pos, button):
 
                 elif b.action == "settings":
                     toggle_settings()
+                    settings_window.show(back_to_menu=True)       # straight to the settings window
         return
 
     if sprite_rects["gear_sprite"].collidepoint(pos):
@@ -196,9 +207,17 @@ def handle_mouse(pos, button):
             return
         if try_click_portal(pos):
             return
-        if attack_blocking_panel_open():
+
+    # a click in the world: what is this button bound to? (core/keybinds.py)
+    for rect in app.hotbar_rects.values():
+        if rect.collidepoint(pos):
             return
-        
+    if attack_blocking_panel_open():
+        return
+
+    if button_is(button, "move_to_mouse"):                 # mouse movement: walk while it is held
+        app.mouse_move_active = True
+    if button_is(button, "basic_attack"):
         app.attack_input_blocked = False
         player.use_ability("primary", pos, camera)
 
@@ -211,6 +230,7 @@ def handle_mouse_up(pos, button):
 
 app.previous_game_state = "menu"
 app.attack_input_blocked = False
+app.mouse_move_active = False
 app.debug_hitboxes = False
 
 def toggle_settings():
@@ -227,8 +247,12 @@ def quit_game():
     app.running = False
 
 def toggle_fullscreen():
-    open_window(fullscreen=not app.fullscreen)
-    set_setting("fullscreen", app.fullscreen)      # remembered for the next start
+    set_display_mode("windowed" if app.fullscreen else "fullscreen")
+
+def set_display_mode(mode):
+    """Fullscreen / borderless / windowed. Remembered for the next start."""
+    open_window(mode=mode)
+    set_setting("display_mode", mode)
     on_screen_resized()
 
 def on_screen_resized():

@@ -26,8 +26,14 @@ max_view = (2560, 1440)
 windowed_size = (1600, 900)      # default size of the window when not fullscreen
 # The sizes the Screen tab offers for the window. Fullscreen always uses the monitor's size.
 window_size_presets = [(1280, 720), (1600, 900), (1920, 1080), (2560, 1080), (2560, 1440), (3440, 1440)]
-register_setting("fullscreen", True)
+register_setting("fullscreen", True)            # old setting, only read once to fill display_mode
 register_setting("window_size", list(windowed_size))
+
+# fullscreen  the real fullscreen
+# borderless  a window without edges, exactly as big as the monitor (alt-tab friendly)
+# windowed    a normal window you can resize, starting at window_size
+display_modes = ("fullscreen", "borderless", "windowed")
+register_setting("display_mode", "fullscreen" if get_setting("fullscreen") else "windowed")
 view_limit_color = (12, 12, 12)
 
 app.ui_scale = 1.0               # always 1: pixel_scale does the scaling now
@@ -44,12 +50,18 @@ def apply_window_size():
         app.screen = pygame.Surface((w // app.pixel_scale, h // app.pixel_scale))
     app.screen_width, app.screen_height = app.screen.get_size()
 
-def open_window(fullscreen):
-    if fullscreen:
+def open_window(fullscreen=None, mode=None):
+    """mode: "fullscreen", "borderless" or "windowed". (fullscreen=True/False still works.)"""
+    if mode is None:
+        mode = "fullscreen" if fullscreen else "windowed"
+    if mode == "fullscreen":
         app.display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    elif mode == "borderless":
+        app.display = pygame.display.set_mode(pygame.display.get_desktop_sizes()[0], pygame.NOFRAME)
     else:
         app.display = pygame.display.set_mode(tuple(get_setting("window_size")), pygame.RESIZABLE)
-    app.fullscreen = fullscreen
+    app.display_mode = mode
+    app.fullscreen = mode != "windowed"            # True = the window can't be resized by dragging
     apply_window_size()
 
 def window_resized(width, height):
@@ -122,7 +134,7 @@ def place_bottom_right_window(width, height):
     """Top-left for a window pinned to the bottom-right corner of the screen."""
     return app.screen_width - window_margin - width, app.screen_height - window_margin - height
 
-open_window(fullscreen=get_setting("fullscreen"))
+open_window(mode=get_setting("display_mode"))
 base_width, base_height = app.screen_width, app.screen_height
 
 _font_cache = {}
